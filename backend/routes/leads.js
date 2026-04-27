@@ -26,7 +26,8 @@ router.post("/lead", async (req, res) => {
         const sql = `
             INSERT INTO leads 
             (name, phone, email, area, district, profession, car_interest, action_type, tracking, score, priority, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+            RETURNING id
         `;
 
         const values = [
@@ -38,35 +39,34 @@ router.post("/lead", async (req, res) => {
             data.profession || "",
             data.car_interest || "Not Selected",
             data.action_type || "Enquiry",
-            JSON.stringify(tracking),
+            tracking, // ✅ JSON directly (no stringify)
             score,
             priority,
-            "NEW" // 🔥 ensure default status
+            "NEW"
         ];
 
-        db.query(sql, values, (err, result) => {
-            if (err) {
-                console.error("DB Error:", err);
-                return res.status(500).json({ message: "Database error" });
-            }
+        // ✅ PostgreSQL query
+        const result = await db.query(sql, values);
 
-            console.log("✅ Lead saved:", result.insertId);
+        const leadId = result.rows[0].id;
 
-            // 🔹 Send WhatsApp (non-blocking)
-            sendWhatsApp(
-                `whatsapp:+91${data.phone}`,
-                `Hi ${data.name},
+        console.log("✅ Lead saved:", leadId);
+
+        // 🔹 WhatsApp (NON-BLOCKING)
+        sendWhatsApp(
+            `whatsapp:+91${data.phone}`,
+            `Hi ${data.name},
 
 Thanks for your interest in ${data.car_interest || "Mahindra"}.
 
 Our team will contact you shortly.
 
 - Shiva Automobiles`
-            ).catch(err => console.error("WA Customer Error:", err.message));
+        ).catch(err => console.error("WA Customer Error:", err.message));
 
-            sendWhatsApp(
-                process.env.SALES_WHATSAPP_NUMBER,
-                `New Lead 🚗
+        sendWhatsApp(
+            process.env.SALES_WHATSAPP_NUMBER,
+            `New Lead 🚗
 
 Name: ${data.name}
 Phone: ${data.phone}
@@ -75,14 +75,13 @@ Action: ${data.action_type || "Enquiry"}
 
 🔥 Score: ${score}
 Priority: ${priority}`
-            ).catch(err => console.error("WA Sales Error:", err.message));
+        ).catch(err => console.error("WA Sales Error:", err.message));
 
-            res.json({
-                message: "Lead saved successfully",
-                id: result.insertId,
-                score,
-                priority
-            });
+        res.json({
+            message: "Lead saved successfully",
+            id: leadId,
+            score,
+            priority
         });
 
     } catch (error) {
@@ -93,20 +92,19 @@ Priority: ${priority}`
 
 
 // 🔹 GET: Fetch all leads
-router.get("/leads", (req, res) => {
-    db.query("SELECT * FROM leads ORDER BY id DESC", (err, results) => {
-        if (err) {
-            console.error("Fetch Error:", err);
-            return res.status(500).json({ message: "Error fetching leads" });
-        }
-
-        res.json(results);
-    });
+router.get("/leads", async (req, res) => {
+    try {
+        const result = await db.query("SELECT * FROM leads ORDER BY id DESC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Fetch Error:", err);
+        res.status(500).json({ message: "Error fetching leads" });
+    }
 });
 
 
-// 🔹 UPDATE STATUS (WITH VALIDATION)
-router.put("/lead/:id/status", (req, res) => {
+// 🔹 UPDATE STATUS
+router.put("/lead/:id/status", async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
@@ -116,47 +114,46 @@ router.put("/lead/:id/status", (req, res) => {
         return res.status(400).json({ message: "Invalid status" });
     }
 
-    const sql = "UPDATE leads SET status = ? WHERE id = ?";
-
-    db.query(sql, [status, id], (err) => {
-        if (err) {
-            console.error("Status Update Error:", err);
-            return res.status(500).json({ message: "Update failed" });
-        }
+    try {
+        await db.query(
+            "UPDATE leads SET status = $1 WHERE id = $2",
+            [status, id]
+        );
 
         res.json({ message: "Status updated successfully" });
-    });
+
+    } catch (err) {
+        console.error("Status Update Error:", err);
+        res.status(500).json({ message: "Update failed" });
+    }
 });
-router.get("/analytics", (req, res) => {
-    const queries = {
-        total: "SELECT COUNT(*) AS total FROM leads",
-        hot: "SELECT COUNT(*) AS hot FROM leads WHERE priority='HOT'",
-        warm: "SELECT COUNT(*) AS warm FROM leads WHERE priority='WARM'",
-        cold: "SELECT COUNT(*) AS cold FROM leads WHERE priority='COLD'",
-        enquiry: "SELECT COUNT(*) AS enquiry FROM leads WHERE action_type='enquiry'",
-        testdrive: "SELECT COUNT(*) AS testdrive FROM leads WHERE action_type='test_drive'",
-        closed: "SELECT COUNT(*) AS closed FROM leads WHERE status='CLOSED'"
-    };
 
-    const results = {};
 
-    const keys = Object.keys(queries);
-    let completed = 0;
+// 🔹 ANALYTICS (FIXED FOR POSTGRES)
+router.get("/analytics", async (req, res) => {
+    try {
+        const total = await db.query("SELECT COUNT(*) FROM leads");
+        const hot = await db.query("SELECT COUNT(*) FROM leads WHERE priority='HOT'");
+        const warm = await db.query("SELECT COUNT(*) FROM leads WHERE priority='WARM'");
+        const cold = await db.query("SELECT COUNT(*) FROM leads WHERE priority='COLD'");
+        const enquiry = await db.query("SELECT COUNT(*) FROM leads WHERE action_type='Enquiry'");
+        const testdrive = await db.query("SELECT COUNT(*) FROM leads WHERE action_type='Test Drive'");
+        const closed = await db.query("SELECT COUNT(*) FROM leads WHERE status='CLOSED'");
 
-    keys.forEach(key => {
-        db.query(queries[key], (err, result) => {
-            if (err) {
-                console.error("Analytics Error:", err);
-                return res.status(500).json({ message: "Analytics failed" });
-            }
-
-            results[key] = result[0][key];
-            completed++;
-
-            if (completed === keys.length) {
-                res.json(results);
-            }
+        res.json({
+            total: total.rows[0].count,
+            hot: hot.rows[0].count,
+            warm: warm.rows[0].count,
+            cold: cold.rows[0].count,
+            enquiry: enquiry.rows[0].count,
+            testdrive: testdrive.rows[0].count,
+            closed: closed.rows[0].count
         });
-    });
+
+    } catch (err) {
+        console.error("Analytics Error:", err);
+        res.status(500).json({ message: "Analytics failed" });
+    }
 });
+
 module.exports = router;
