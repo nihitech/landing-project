@@ -1,0 +1,259 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: #ffffff;
+    color: #111;
+}
+
+/* HERO */
+.hero {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+}
+
+.container {
+    width: 90%;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hero-text h1 {
+    font-size: 42px;
+    margin-bottom: 15px;
+}
+
+.hero-text p {
+    font-size: 18px;
+    margin-bottom: 25px;
+}
+
+.cta-buttons button {
+    padding: 12px 24px;
+    margin-right: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.primary-btn {
+    background: #d32f2f;
+    color: #fff;
+}
+
+.secondary-btn {
+    background: transparent;
+    border: 1px solid #111;
+    color: #111;
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.secondary-btn:hover {
+    background: #111;
+    color: #fff;
+}
+
+/* IMAGE */
+.hero-image img {
+    width: 500px;
+}
+
+/* CAR SECTION */
+.cars {
+    padding: 60px 0;
+    text-align: center;
+}
+
+.car-grid {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.car-card {
+    border: 1px solid #eee;
+    padding: 20px;
+    width: 250px;
+}
+
+.car-card img {
+    width: 100%;
+}
+
+/* MODAL */
+.modal {
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 30px;
+    width: 300px;
+    text-align: center;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.modal-content button {
+    background: #d32f2f;
+    color: white;
+    padding: 10px;
+    border: none;
+    width: 100%;
+}
+
+.close-btn {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    cursor: pointer;
+}
+/* CATEGORY TABS */
+.category-tabs {
+    margin-top: 20px;
+}
+
+.tab {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.tab.active {
+    border-bottom: 2px solid #d32f2f;
+    color: #d32f2f;
+}
+
+/* SHOW/HIDE CATEGORY */
+.car-grid {
+    display: none;
+}
+
+.car-grid.active {
+    display: flex;
+}
+/* DETAILS SECTION */
+.car-details {
+    padding: 60px 0;
+    background: #f9f9f9;
+}
+
+.hidden {
+    display: none;
+}
+
+.details-container {
+    width: 90%;
+    margin: auto;
+    display: flex;
+    gap: 40px;
+    align-items: center;
+}
+
+.details-image img {
+    width: 450px;
+}
+
+.details-content h2 {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.details-content p {
+    margin-bottom: 15px;
+}
+
+.details-content ul {
+    margin-bottom: 20px;
+}
+
+.details-content ul li {
+    margin-bottom: 5px;
+}
+.lead-form-section {
+    padding: 60px 0;
+    text-align: center;
+}
+
+.lead-form-section form {
+    width: 350px;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.lead-form-section input,
+.lead-form-section select {
+    padding: 12px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+}
+
+.lead-form-section button {
+    padding: 12px;
+    margin-top: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.lead-form-section button:first-child {
+    background: #111;
+    color: #fff;
+}
+
+.lead-form-section button:last-child {
+    background: #d32f2f;
+    color: #fff;
+}
+
+#leadTable {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+#leadTable th, #leadTable td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
+
+#leadTable tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Priority colors */
+.hot {
+    color: red;
+    font-weight: bold;
+}
+
+.warm {
+    color: orange;
+    font-weight: bold;
+}
+
+.cold {
+    color: gray;
+}
