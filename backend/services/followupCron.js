@@ -13,7 +13,7 @@ cron.schedule("* * * * *", async () => {
         [now],
         (err, results) => {
             if (!err) {
-                results.forEach(lead => {
+                results.rows.forEach(lead => {
                     sendWhatsApp(
                         `whatsapp:+91${lead.phone}`,
 `Hi ${lead.name},
@@ -35,7 +35,7 @@ Would you like to book a test drive for ${lead.car_interest}?`
         [now],
         (err, results) => {
             if (!err) {
-                results.forEach(lead => {
+                results.rows.forEach(lead => {
                     sendWhatsApp(
                         `whatsapp:+91${lead.phone}`,
 `Hi ${lead.name},
@@ -55,7 +55,7 @@ We have special offers on ${lead.car_interest} today 🚗`
         [now],
         (err, results) => {
             if (!err) {
-                results.forEach(lead => {
+                results.rows.forEach(lead => {
                     sendWhatsApp(
                         `whatsapp:+91${lead.phone}`,
 `Hi ${lead.name},
