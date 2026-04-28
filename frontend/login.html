@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Login | Mahindra Lead CRM</title>
+
+    <link rel="stylesheet" href="./css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="login-page">
+
+    <div class="login-wrapper">
+        <div class="login-brand">
+            <span class="tag">Mahindra Lead CRM</span>
+            <h1>Welcome Back</h1>
+            <p>Login to manage leads, follow-ups, sales pipeline and customer actions.</p>
+        </div>
+
+        <div class="login-card">
+            <h2>Admin Login</h2>
+            <p>Enter your CRM credentials</p>
+
+            <div class="login-field">
+                <label>Email Address</label>
+                <input type="email" id="email" placeholder="admin@example.com">
+            </div>
+
+            <div class="login-field">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter password">
+            </div>
+
+            <button onclick="login()" class="login-btn">Login Dashboard</button>
+
+            <div id="loginMessage" class="login-message"></div>
+        </div>
+    </div>
+
+    <script>
+        const API = "https://landing-backend-8gvq.onrender.com/api";
+
+        async function login() {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const message = document.getElementById("loginMessage");
+
+            message.innerText = "";
+
+            if (!email || !password) {
+                message.innerText = "Please enter email and password.";
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/auth/login`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    message.innerText = data.message || "Login failed.";
+                    return;
+                }
+
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+
+                window.location.href = "admin.html";
+
+            } catch (error) {
+                console.error("Login error:", error);
+                message.innerText = "Something went wrong. Try again.";
+            }
+        }
+    </script>
+
+</body>
+</html>

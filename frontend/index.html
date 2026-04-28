@@ -5,156 +5,146 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mahindra Dealer | Premium Experience</title>
 
-    <!-- CSS -->
     <link rel="stylesheet" href="./css/styles.css">
-
-    <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
 
-    <!-- 🔴 ENTRY POPUP (Minimal Premium) -->
     <div id="entryModal" class="modal">
         <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">×</span>
             <h2>Welcome to Your Mahindra Experience</h2>
             <p>Enter your details to continue</p>
 
             <form id="entryForm">
-                <input type="text" placeholder="Your Name" required />
-                <input type="tel" placeholder="Phone Number" required />
+                <input type="text" placeholder="Your Name" required>
+                <input type="tel" placeholder="Phone Number" required>
                 <button type="submit">Continue</button>
             </form>
-
-            <span class="close-btn" onclick="closeModal()">×</span>
         </div>
     </div>
 
-    <!-- 🔹 HERO SECTION -->
     <section class="hero">
         <div class="container">
-
-            <!-- LEFT CONTENT -->
             <div class="hero-text">
+                <span class="tag">Authorized Mahindra Dealer</span>
                 <h1>Drive Your Dream Mahindra Today</h1>
-                <p>Experience performance, power, and premium comfort.</p>
+                <p>Experience performance, power, and premium comfort with next-gen Mahindra SUVs & EVs.</p>
 
                 <div class="cta-buttons">
-                    <button class="primary-btn">Book Test Drive</button>
-                    <button class="secondary-btn">Enquiry Now</button>
+                    <button class="primary-btn" onclick="scrollToLeadForm('TEST_DRIVE')">🚗 Book Test Drive</button>
+                    <button class="secondary-btn" onclick="scrollToLeadForm('ENQUIRY')">📞 Enquiry Now</button>
                 </div>
             </div>
 
-            <!-- RIGHT IMAGE -->
             <div class="hero-image">
                 <img src="./assets/images/hero-car.jpg" alt="Mahindra Car">
             </div>
-
         </div>
     </section>
 
-    <!-- 🔹 CAR SHOWCASE (Skeleton only now) -->
     <section class="cars">
-    <h2>Explore Our Range</h2>
+        <h2>Explore Our Range</h2>
+        <p>Choose from premium SUVs and Electric SUVs</p>
 
-    <!-- CATEGORY TABS -->
-    <div class="category-tabs">
-        <button class="tab active" onclick="switchCategory('suv', this)">SUV</button>
-        <button class="tab" onclick="switchCategory('esuv', this)">eSUV</button>
-    </div>
-
-    <!-- SUV CARS -->
-    <div id="suv" class="car-grid active">
-        <div class="car-card">
-            <img src="./assets/images/Thor_Roxx_AX7L_DeepForest_1366x443.jpg" alt="Thar">
-            <h3>Thar ROXX</h3>
-            <p>Bold. Rugged. Iconic.</p>
-            <button onclick="loadCarDetails('thar')">View Details</button>
+        <div class="category-tabs">
+            <button class="tab active" onclick="switchCategory('suv', this)">SUV</button>
+            <button class="tab" onclick="switchCategory('esuv', this)">eSUV</button>
         </div>
 
-        <div class="car-card">
-            <img src="./assets/images/xuv3xo.jpg" alt="XUV 3XO">
-            <h3>XUV 3XO</h3>
-            <p>Smart. Dynamic. Efficient.</p>
-            <button onclick="loadCarDetails('xuv3xo')">View Details</button>
-        </div>
-    </div>
+        <div id="suv" class="car-grid active">
+            <div class="car-card">
+                <img src="./assets/images/Thor_Roxx_AX7L_DeepForest_1366x443.jpg" alt="Thar ROXX">
+                <h3>Thar ROXX</h3>
+                <p>Bold. Rugged. Iconic SUV experience.</p>
+                <button onclick="loadCarDetails('thar')">View Details</button>
+            </div>
 
-    <!-- eSUV CARS -->
-    <div id="esuv" class="car-grid">
-        <div class="car-card">
-            <img src="./assets/images/xuv400.jpg" alt="XUV 400 EV">
-            <h3>XUV 400 EV</h3>
-            <p>Electric. Silent. Powerful.</p>
-            <button onclick="loadCarDetails('xuv400')">View Details</button>
-        </div>
-    </div>
-
-    </section>
-    <section id="carDetails" class="car-details hidden">
-
-    <div class="details-container">
-
-        <!-- LEFT: IMAGE -->
-        <div class="details-image">
-            <img id="detailImage" src="" alt="Car Image">
-        </div>
-
-        <!-- RIGHT: CONTENT -->
-        <div class="details-content">
-            <h2 id="detailTitle"></h2>
-            <p id="detailDesc"></p>
-
-            <ul id="detailFeatures"></ul>
-
-            <div class="cta-buttons">
-                <button class="primary-btn">Book Test Drive</button>
-                <button class="secondary-btn">Enquiry Now</button>
-                <a id="brochureLink" href="#" target="_blank">Download Brochure</a>
+            <div class="car-card">
+                <img src="./assets/images/xuv 3xo.jpg" alt="XUV 3XO">
+                <h3>XUV 3XO</h3>
+                <p>Smart. Dynamic. Next-gen SUV.</p>
+                <button onclick="loadCarDetails('xuv3xo')">View Details</button>
             </div>
         </div>
 
-    </div>
-
-    </section>
-
-    <section class="lead-form-section">
-
-    <h2>Book Your Experience</h2>
-
-    <form id="mainLeadForm">
-
-        <input type="text" id="name" placeholder="Full Name" required />
-        <input type="tel" id="phone" placeholder="Phone Number" required />
-        <input type="email" id="email" placeholder="Email Address" />
-
-        <input type="text" id="area" placeholder="Area" />
-        <input type="text" id="district" placeholder="District" />
-
-        <select id="profession">
-            <option value="">Select Profession</option>
-            <option>Business Owner</option>
-            <option>Employee</option>
-            <option>Government Staff</option>
-            <option>Student</option>
-            <option>Self-Employed</option>
-            <option>Farmer</option>
-            <option>Other</option>
-        </select>
-
-        <!-- Hidden Fields -->
-        <input type="hidden" id="selectedCar" />
-        <input type="hidden" id="actionType" />
-
-        <div class="cta-buttons">
-            <button type="button" onclick="submitLead('enquiry')">Submit Enquiry</button>
-            <button type="button" onclick="submitLead('testdrive')">Book Test Drive</button>
+        <div id="esuv" class="car-grid">
+            <div class="car-card">
+                <img src="./assets/images/xuv400.jpg" alt="XUV 400 EV">
+                <h3>XUV 400 EV</h3>
+                <p>Electric. Silent. Powerful EV drive.</p>
+                <button onclick="loadCarDetails('xuv400')">View Details</button>
+            </div>
         </div>
-
-    </form>
-
     </section>
-    <!-- JS -->
-    <script src="./js/main.js"></script>
 
+    <section id="carDetails" class="car-details hidden">
+        <div class="details-container">
+            <div class="details-image">
+    <img id="detailImage" src="" alt="Car Image">
+
+    <div id="imageCategory" class="image-category"></div>
+    <div id="imageOptions" class="image-options"></div>
+</div>
+
+            <div class="details-content">
+                <span class="detail-badge">Mahindra Premium Selection</span>
+                <h2 id="detailTitle"></h2>
+                <p id="detailDesc"></p>
+
+                <h4>Key Features</h4>
+                <ul id="detailFeatures"></ul>
+
+                <h4>Specifications</h4>
+                <div id="detailSpecs" class="spec-grid"></div>
+
+                <h4>Available Variants</h4>
+                <div id="detailVariants" class="variant-list"></div>
+                <div id="variantDetails" class="variant-details"></div>
+                <div class="details-actions">
+                    <button class="primary-btn" onclick="scrollToLeadForm('TEST_DRIVE')">🚗 Book Test Drive</button>
+                    <button class="secondary-btn" onclick="scrollToLeadForm('ENQUIRY')">📞 Enquiry Now</button>
+                    <a id="brochureLink" href="#" target="_blank" class="brochure-btn">📄 Download Brochure</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="leadFormSection" class="lead-form-section">
+        <h2>Book Your Premium Experience</h2>
+        <p>Get personalized offers & test drive assistance</p>
+
+        <form id="mainLeadForm">
+            <input type="text" id="name" placeholder="Full Name" required>
+            <input type="tel" id="phone" placeholder="Phone Number" required>
+            <input type="email" id="email" placeholder="Email Address">
+
+            <input type="text" id="area" placeholder="Area">
+            <input type="text" id="district" placeholder="District">
+
+            <select id="profession">
+                <option value="">Select Profession</option>
+                <option>Business Owner</option>
+                <option>Employee</option>
+                <option>Government Staff</option>
+                <option>Student</option>
+                <option>Self-Employed</option>
+                <option>Farmer</option>
+                <option>Other</option>
+            </select>
+
+            <input type="hidden" id="selectedCar">
+            <input type="hidden" id="actionType">
+
+            <div class="form-actions">
+                <button type="button" class="secondary-submit" onclick="submitLead('ENQUIRY')">Submit Enquiry</button>
+                <button type="button" class="primary-submit" onclick="submitLead('TEST_DRIVE')">Book Test Drive</button>
+            </div>
+        </form>
+    </section>
+
+    <script src="./js/tracking.js"></script>
+    <script src="./js/main.js"></script>
 </body>
 </html>

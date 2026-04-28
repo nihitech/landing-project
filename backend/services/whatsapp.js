@@ -9,16 +9,28 @@ const client = twilio(
 // 🔹 Send WhatsApp Message
 const sendWhatsApp = async (to, message) => {
     try {
-        await client.messages.create({
-            from: process.env.TWILIO_WHATSAPP_NUMBER, // e.g., 'whatsapp:+14155238886'
-            to: to, // must be full format: 'whatsapp:+91XXXXXXXXXX'
+        console.log("📤 Sending to:", to);
+        console.log("📲 From:", process.env.TWILIO_WHATSAPP_NUMBER);
+
+        const res = await client.messages.create({
+            from: process.env.TWILIO_WHATSAPP_NUMBER,
+            to: to,
             body: message
         });
-
-        console.log("WhatsApp sent to:", to);
-    } catch (error) {
-        console.error("WhatsApp Error:", error.message);
+    
+        console.log("✅ WhatsApp sent:", res.sid);
     }
+        catch (error) 
+        {
+        console.error("❌ FULL ERROR:", error);
+
+        if (error.response) {
+            console.error("🔴 Twilio Response:", error.response.data);
+        }
+
+        console.error("Message:", error.message);
+        console.error("Code:", error.code);
+        }
 };
 
 module.exports = sendWhatsApp;
