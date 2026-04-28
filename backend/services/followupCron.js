@@ -2,73 +2,80 @@ const cron = require("node-cron");
 const db = require("../config/db");
 const sendWhatsApp = require("./whatsapp");
 
+console.log("⏱ Follow-up cron started...");
+
 cron.schedule("* * * * *", async () => {
-    console.log("⏱ Checking follow-ups...");
+    try {
+        console.log("⏱ Checking follow-ups...");
 
-    const now = new Date();
+        const now = new Date();
 
-    // FOLLOW-UP 1
-    db.query(
-        "SELECT * FROM leads WHERE followup_1 <= $1 AND f1_sent = FALSE",
-        [now],
-        (err, results) => {
-            if (!err) {
-                results.rows.forEach(lead => {
-                    sendWhatsApp(
-                        `whatsapp:+91${lead.phone}`,
-`Hi ${lead.name},
+        await processFollowUp(
+            "followup_1",
+            "f1_sent",
+            `Just checking 😊
 
-Just checking 😊
+Would you like to book a test drive?`,
+            now
+        );
 
-Would you like to book a test drive for ${lead.car_interest}?`
-                    );
+        await processFollowUp(
+            "followup_2",
+            "f2_sent",
+            `We have special offers today 🚗
 
-                    db.query("UPDATE leads SET f1_sent = TRUE WHERE id = $1", [lead.id]);
-                });
-            }
-        }
-    );
+Let me know if you're interested.`,
+            now
+        );
 
-    // FOLLOW-UP 2
-    db.query(
-        "SELECT * FROM leads WHERE followup_2 <= $1 AND f2_sent = FALSE",
-        [now],
-        (err, results) => {
-            if (!err) {
-                results.rows.forEach(lead => {
-                    sendWhatsApp(
-                        `whatsapp:+91${lead.phone}`,
-`Hi ${lead.name},
+        await processFollowUp(
+            "followup_3",
+            "f3_sent",
+            `Last reminder 🔥
 
-We have special offers on ${lead.car_interest} today 🚗`
-                    );
+Shall we help you with booking?`,
+            now
+        );
 
-                    db.query("UPDATE leads SET f2_sent = TRUE WHERE id = $1", [lead.id]);
-                });
-            }
-        }
-    );
-
-    // FOLLOW-UP 3
-    db.query(
-        "SELECT * FROM leads WHERE followup_3 <= $1 AND f3_sent = FALSE",
-        [now],
-        (err, results) => {
-            if (!err) {
-                results.rows.forEach(lead => {
-                    sendWhatsApp(
-                        `whatsapp:+91${lead.phone}`,
-`Hi ${lead.name},
-
-Last reminder 🔥
-
-Shall we help you book ${lead.car_interest}?`
-                    );
-
-                    db.query("UPDATE leads SET f3_sent = TRUE WHERE id = $1", [lead.id]);
-                });
-            }
-        }
-    );
-
+    } catch (error) {
+        console.error("Follow-up cron error:", error.message);
+    }
 });
+
+async function processFollowUp(followupColumn, sentColumn, messageText, now) {
+    const query = `
+        SELECT * FROM leads
+        WHERE ${followupColumn} <= $1
+        AND ${sentColumn} = false
+    `;
+
+    const result = await db.query(query, [now]);
+    const leads = result.rows;
+
+    for (const lead of leads) {
+        try {
+            await sendWhatsApp(
+                `whatsapp:+91${lead.phone}`,
+                `Hi ${lead.name},
+
+${messageText}
+
+Car Interest: ${lead.car_interest || "Mahindra"}
+
+- Shiva Automobiles`
+            );
+
+            await db.query(
+                `UPDATE leads SET ${sentColumn} = true WHERE id = $1`,
+                [lead.id]
+            );
+
+            console.log(`✅ ${sentColumn} sent for lead:`, lead.id);
+
+        } catch (error) {
+            console.error(`❌ ${sentColumn} failed for lead ${lead.id}:`, error.message);
+        }
+    }
+}
+
+module.exports = {};
