@@ -7,23 +7,42 @@ const jwt = require("jsonwebtoken");
 // 🔹 REGISTER
 router.post("/register", async (req, res) => {
     try {
+        console.log("Incoming register:", req.body);
+
         const { name, email, password, role } = req.body;
 
+        // 🔹 Validation
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "All fields required" });
+        }
+
+        // 🔹 Check existing user
+        const existing = await db.query(
+            "SELECT * FROM users WHERE email=$1",
+            [email]
+        );
+
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ message: "User already exists" });
+        }
+
+        // 🔹 Hash password
+        const bcrypt = require("bcrypt");
         const hash = await bcrypt.hash(password, 10);
 
+        // 🔹 Insert user
         await db.query(
             "INSERT INTO users (name, email, password, role) VALUES ($1,$2,$3,$4)",
             [name, email, hash, role || "sales"]
         );
 
-        res.json({ message: "User created" });
+        res.json({ message: "User created successfully" });
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Register failed" });
+        console.error("REGISTER ERROR:", err); // 🔥 IMPORTANT LOG
+        res.status(500).json({ message: "Register failed", error: err.message });
     }
 });
-
 // 🔹 LOGIN
 router.post("/login", async (req, res) => {
     const { email, password } = req.body;
