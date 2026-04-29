@@ -437,4 +437,4 @@ setInterval(() => {
         loadLeads();
         loadAnalytics();
     }
-}, 100000);
+}, 50000);

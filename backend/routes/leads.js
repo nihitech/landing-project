@@ -95,6 +95,35 @@ Priority: ${priority}`
     }
 });
 
+// 🔐 GET: All Leads / Assigned Leads
+router.get("/leads", auth, async (req, res) => {
+    try {
+        let result;
+
+        if (req.user.role === "admin") {
+            result = await db.query(`
+                SELECT l.*, u.name AS assigned_name
+                FROM leads l
+                LEFT JOIN users u ON l.assigned_to = u.id
+                ORDER BY l.id DESC
+            `);
+        } else {
+            result = await db.query(`
+                SELECT l.*, u.name AS assigned_name
+                FROM leads l
+                LEFT JOIN users u ON l.assigned_to = u.id
+                WHERE l.assigned_to = $1
+                ORDER BY l.id DESC
+            `, [req.user.id]);
+        }
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error("Fetch Error:", err);
+        res.status(500).json({ message: "Error fetching leads" });
+    }
+});
 
 // 🔐 GET: All Leads (PROTECTED)
 router.get("/analytics", auth, async (req, res) => {
@@ -192,34 +221,6 @@ router.put("/lead/:id/notes", auth, async (req, res) => {
     } catch (err) {
         console.error("Notes Error:", err);
         res.status(500).json({ message: "Notes update failed" });
-    }
-});
-
-
-// 🔐 ANALYTICS
-router.get("/analytics", auth, async (req, res) => {
-    try {
-        const total = await db.query("SELECT COUNT(*) FROM leads");
-        const hot = await db.query("SELECT COUNT(*) FROM leads WHERE priority='HOT'");
-        const warm = await db.query("SELECT COUNT(*) FROM leads WHERE priority='WARM'");
-        const cold = await db.query("SELECT COUNT(*) FROM leads WHERE priority='COLD'");
-        const enquiry = await db.query("SELECT COUNT(*) FROM leads WHERE action_type='ENQUIRY'");
-        const testdrive = await db.query("SELECT COUNT(*) FROM leads WHERE action_type='TEST_DRIVE'");
-        const closed = await db.query("SELECT COUNT(*) FROM leads WHERE status='CLOSED'");
-
-        res.json({
-            total: Number(total.rows[0].count),
-            hot: Number(hot.rows[0].count),
-            warm: Number(warm.rows[0].count),
-            cold: Number(cold.rows[0].count),
-            enquiry: Number(enquiry.rows[0].count),
-            testdrive: Number(testdrive.rows[0].count),
-            closed: Number(closed.rows[0].count)
-        });
-
-    } catch (err) {
-        console.error("Analytics Error:", err);
-        res.status(500).json({ message: "Analytics failed" });
     }
 });
 
