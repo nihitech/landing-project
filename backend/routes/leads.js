@@ -128,26 +128,44 @@ router.put("/lead/:id/status", auth, async (req, res) => {
 
 router.put("/lead/:id/assign", auth, requireAdmin, async (req, res) => {
     try {
-        const userId = req.body.user_id || null;
+        const rawUserId = req.body.user_id || req.body.assigned_to || null;
+        const userId = rawUserId ? Number(rawUserId) : null;
+
+        if (rawUserId && !userId) {
+            return res.status(400).json({ message: "Invalid user selected" });
+        }
+
         if (userId) {
-            const user = await db.query("SELECT id FROM users WHERE id=$1 AND role='sales'", [userId]);
-            if (!user.rows.length) return res.status(400).json({ message: "Select a valid sales user" });
+            const user = await db.query(
+                "SELECT id FROM users WHERE id=$1 AND LOWER(role)='sales'",
+                [userId]
+            );
+
+            if (!user.rows.length) {
+                return res.status(400).json({ message: "Select a valid sales user" });
+            }
         }
 
         const result = await db.query(`
-            UPDATE leads SET assigned_to=$1, updated_at=NOW()
+            UPDATE leads 
+            SET assigned_to=$1, updated_at=NOW()
             WHERE id=$2
             RETURNING id, assigned_to
         `, [userId, req.params.id]);
 
-        if (!result.rows.length) return res.status(404).json({ message: "Lead not found" });
-        res.json({ message: userId ? "Lead assigned" : "Lead unassigned", lead: result.rows[0] });
+        if (!result.rows.length) {
+            return res.status(404).json({ message: "Lead not found" });
+        }
+
+        res.json({
+            message: userId ? "Lead assigned" : "Lead unassigned",
+            lead: result.rows[0]
+        });
     } catch (err) {
         console.error("ASSIGN ERROR:", err);
         res.status(500).json({ message: "Assign failed" });
     }
 });
-
 router.put("/lead/:id/notes", auth, async (req, res) => {
     try {
         const values = [String(req.body.notes || ""), req.params.id];
