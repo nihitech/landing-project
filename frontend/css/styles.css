@@ -1190,3 +1190,33 @@ tr.cold {
         font-size: 42px;
     }
 }
+
+.admin-user-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+#userInfo {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+}
+
+.logout-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    background: #111;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.logout-btn:hover {
+    background: #d32f2f;
+}

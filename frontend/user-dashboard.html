@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lead Dashboard</title>
+    <title>Sales Dashboard</title>
 
     <link rel="stylesheet" href="./css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,27 +12,29 @@
 <body class="admin-page">
 
     <div class="admin-header">
-        <div class="admin-user-box">
-            <span id="userInfo"></span>
-            <button onclick="logout()" class="logout-btn">Logout</button>
-    </div>
-        <div id="userInfo"></div>
         <div>
-            <span class="tag">Mahindra Lead CRM</span>
-            <h1>Leads Dashboard</h1>
+            <span class="tag">Sales CRM</span>
+            <h1>My Leads Dashboard</h1>
         </div>
+
         <input 
             type="text" 
             id="searchInput" 
             placeholder="🔍 Search name or phone..." 
             oninput="loadLeads()"
         />
+
         <select id="filter" onchange="loadLeads()">
             <option value="">All Leads</option>
             <option value="HOT">🔥 HOT</option>
             <option value="WARM">🟡 WARM</option>
             <option value="COLD">⚪ COLD</option>
         </select>
+
+        <div class="admin-user-box">
+            <span id="userInfo"></span>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
     </div>
 
     <div class="dashboard-stats">
@@ -45,40 +47,28 @@
         <div class="dash-card">Closed <span id="closed">0</span></div>
     </div>
 
-    <div class="chart-grid">
-        <div class="chart-card">
-            <h3>Lead Priority</h3>
-            <canvas id="priorityChart"></canvas>
-        </div>
-
-        <div class="chart-card">
-            <h3>Customer Actions</h3>
-            <canvas id="actionChart"></canvas>
-        </div>
-    </div>
     <div class="pipeline">
+        <div class="column" data-status="NEW">
+            <h3>NEW</h3>
+            <div class="dropzone" id="new"></div>
+        </div>
 
-    <div class="column" data-status="NEW">
-        <h3>NEW</h3>
-        <div class="dropzone" id="new"></div>
+        <div class="column" data-status="CONTACTED">
+            <h3>CONTACTED</h3>
+            <div class="dropzone" id="contacted"></div>
+        </div>
+
+        <div class="column" data-status="FOLLOW-UP">
+            <h3>FOLLOW-UP</h3>
+            <div class="dropzone" id="followup"></div>
+        </div>
+
+        <div class="column" data-status="CLOSED">
+            <h3>CLOSED</h3>
+            <div class="dropzone" id="closedZone"></div>
+        </div>
     </div>
 
-    <div class="column" data-status="CONTACTED">
-        <h3>CONTACTED</h3>
-        <div class="dropzone" id="contacted"></div>
-    </div>
-
-    <div class="column" data-status="FOLLOW-UP">
-        <h3>FOLLOW-UP</h3>
-        <div class="dropzone" id="followup"></div>
-    </div>
-
-    <div class="column" data-status="CLOSED">
-        <h3>CLOSED</h3>
-        <div class="dropzone" id="closedZone"></div>
-    </div>
-
-</div>
     <div class="table-card">
         <table id="leadTable">
             <thead>
@@ -90,7 +80,6 @@
                     <th>Score</th>
                     <th>Priority</th>
                     <th>Status</th>
-                    <th>Assign</th>
                     <th>Notes</th>
                     <th>Actions</th>
                 </tr>
@@ -99,6 +88,6 @@
         </table>
     </div>
 
-    <script src="./js/admin.js"></script>
+    <script src="./js/user-dashboard.js"></script>
 </body>
 </html>

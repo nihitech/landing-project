@@ -97,39 +97,39 @@ Priority: ${priority}`
 
 
 // 🔐 GET: All Leads (PROTECTED)
-router.get("/leads", auth, async (req, res) => {
+router.get("/analytics", auth, async (req, res) => {
     try {
-        let result;
+        const whereClause = req.user.role === "admin"
+            ? ""
+            : "WHERE assigned_to = $1";
 
-        // 👑 ADMIN → see all leads
-        if (req.user.role === "admin") {
-            result = await db.query(`
-                SELECT l.*, u.name AS assigned_name
-                FROM leads l
-                LEFT JOIN users u ON l.assigned_to = u.id
-                ORDER BY l.id DESC
-            `);
-        }
+        const params = req.user.role === "admin"
+            ? []
+            : [req.user.id];
 
-        // 👨‍💼 SALES → only assigned leads
-        else {
-            result = await db.query(`
-                SELECT l.*, u.name AS assigned_name
-                FROM leads l
-                LEFT JOIN users u ON l.assigned_to = u.id
-                WHERE l.assigned_to = $1
-                ORDER BY l.id DESC
-            `, [req.user.id]);
-        }
+        const total = await db.query(`SELECT COUNT(*) FROM leads ${whereClause}`, params);
+        const hot = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} priority='HOT'`, params);
+        const warm = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} priority='WARM'`, params);
+        const cold = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} priority='COLD'`, params);
+        const enquiry = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} action_type='ENQUIRY'`, params);
+        const testdrive = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} action_type='TEST_DRIVE'`, params);
+        const closed = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} status='CLOSED'`, params);
 
-        res.json(result.rows);
+        res.json({
+            total: Number(total.rows[0].count),
+            hot: Number(hot.rows[0].count),
+            warm: Number(warm.rows[0].count),
+            cold: Number(cold.rows[0].count),
+            enquiry: Number(enquiry.rows[0].count),
+            testdrive: Number(testdrive.rows[0].count),
+            closed: Number(closed.rows[0].count)
+        });
 
     } catch (err) {
-        console.error("Fetch Error:", err);
-        res.status(500).json({ message: "Error fetching leads" });
+        console.error("Analytics Error:", err);
+        res.status(500).json({ message: "Analytics failed" });
     }
 });
-
 // 🔐 UPDATE STATUS
 router.put("/lead/:id/status", auth, async (req, res) => {
     const { id } = req.params;

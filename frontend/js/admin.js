@@ -63,10 +63,12 @@ function renderPipeline(leads) {
         new: document.getElementById("new"),
         contacted: document.getElementById("contacted"),
         followup: document.getElementById("followup"),
-        closed: document.getElementById("closed")
+        closed: document.getElementById("closedZone")
     };
 
-    Object.values(zones).forEach(z => z.innerHTML = "");
+    Object.values(zones).forEach(z => {
+    if (z) z.innerHTML = "";
+});
 
     const statusMap = {
         "NEW": "new",
@@ -74,7 +76,6 @@ function renderPipeline(leads) {
         "FOLLOW-UP": "followup",
         "CLOSED": "closed"
     };
-
     const counters = {
         new: 0,
         contacted: 0,
@@ -84,7 +85,14 @@ function renderPipeline(leads) {
 
     leads.forEach(lead => {
 
-        const statusKey = statusMap[lead.status || "NEW"];
+        const normalizedStatus = (lead.status || "NEW").toUpperCase();
+        const statusMap = {
+            "NEW": "new",
+            "CONTACTED": "contacted",
+            "FOLLOW-UP": "followup",
+            "CLOSED": "closed"
+        };
+        const statusKey = statusMap[normalizedStatus] || "new";
         counters[statusKey]++;
 
         const card = document.createElement("div");
@@ -173,7 +181,7 @@ async function loadLeads() {
         if (filtered.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align:center;padding:40px;">
+                    <td colspan="10" style="text-align:center;padding:40px;">
                         <div style="font-size:18px;color:#777;">
                             📭 No leads found
                         </div>
@@ -336,7 +344,11 @@ window.onload = async () => {
 
     document.getElementById("userInfo").innerText =
         `👤 ${user.name} (${user.role})`;
+    const userInfo = document.getElementById("userInfo");
 
+if (userInfo) {
+    userInfo.innerText = `👤 ${user.name || "User"} (${user.role || "sales"})`;
+}
     await loadUsers();
     initDragDrop();   // 🔥 important
     loadLeads();
