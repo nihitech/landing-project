@@ -1,32 +1,29 @@
-const calculateScore = (lead) => {
+function calculateScore(lead) {
     let score = 0;
-
     const tracking = lead.tracking || {};
+    const action = String(lead.action_type || "").toUpperCase();
 
-    // Time spent
-    if (tracking.time_spent > 60) score += 10;
+    if (lead.name) score += 5;
+    if (lead.phone) score += 10;
+    if (lead.email) score += 5;
+    if (lead.area || lead.district) score += 5;
+    if (lead.car_interest && lead.car_interest !== "Not Selected") score += 10;
 
-    // Scroll depth
-    if (tracking.scroll_depth > 50) score += 10;
+    if (action === "TEST_DRIVE") score += 35;
+    if (action === "ENQUIRY") score += 15;
 
-    // Clicks
-    if (tracking.clicks && tracking.clicks.length > 5) score += 5;
+    if (Number(tracking.time_spent || 0) > 60) score += 10;
+    if (Number(tracking.scroll_depth || 0) > 50) score += 10;
+    if ((tracking.clicks || []).length > 4) score += 5;
+    if ((tracking.car_views || []).length > 0) score += 10;
 
-    // Car views
-    if (tracking.car_views && tracking.car_views.length > 0) score += 15;
+    return Math.min(score, 100);
+}
 
-    // Action type
-    if (lead.action_type === "test_drive") score += 25;
-    if (lead.action_type === "enquiry") score += 10;
-
-    return score;
-};
-
-// 🔹 Lead Category
-const getLeadPriority = (score) => {
-    if (score >= 40) return "HOT";
-    if (score >= 20) return "WARM";
+function getLeadPriority(score) {
+    if (score >= 60) return "HOT";
+    if (score >= 35) return "WARM";
     return "COLD";
-};
+}
 
 module.exports = { calculateScore, getLeadPriority };

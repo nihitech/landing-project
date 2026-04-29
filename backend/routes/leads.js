@@ -1,226 +1,209 @@
 const express = require("express");
+const db = require("../config/db");
+const { calculateScore, getLeadPriority } = require("../services/scoring");
+const auth = require("../middleware/auth");
+
 const router = express.Router();
 
-const db = require("../config/db");
-const sendWhatsApp = require("../services/whatsapp");
-const { calculateScore, getLeadPriority } = require("../services/scoring");
-const auth = require("../middleware/auth"); // 🔐 NEW
+const STATUSES = ["NEW", "CONTACTED", "FOLLOW-UP", "TEST-DRIVE", "BOOKED", "CLOSED", "LOST"];
+const ACTIONS = ["ENQUIRY", "TEST_DRIVE", "CALL", "WHATSAPP"];
 
-// 🔹 POST: Save Lead (PUBLIC - no auth)
+function normalizePhone(phone) {
+    return String(phone || "").replace(/\D/g, "").slice(-10);
+}
+
+function requireAdmin(req, res, next) {
+    if (req.user?.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+    next();
+}
+
 router.post("/lead", async (req, res) => {
     try {
-        const data = req.body;
+        const data = req.body || {};
+        const phone = normalizePhone(data.phone);
+        const action = String(data.action_type || "ENQUIRY").toUpperCase();
 
-        console.log("Incoming Lead:", data);
-
-        if (!data.name || !data.phone) {
-            return res.status(400).json({ message: "Name & Phone required" });
-        }
+        if (!data.name || !phone) return res.status(400).json({ message: "Name and valid phone are required" });
 
         const tracking = data.tracking || {};
-
-        const score = calculateScore({ ...data, tracking });
+        const score = calculateScore({ ...data, phone, action_type: action, tracking });
         const priority = getLeadPriority(score);
-
         const now = new Date();
-        const f1 = new Date(now.getTime() + 5 * 60 * 1000);
-        const f2 = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        const f3 = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-        const sql = `
-            INSERT INTO leads 
-            (name, phone, email, area, district, profession, car_interest, action_type, tracking, score, priority, status, followup_1, followup_2, followup_3)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        const result = await db.query(`
+            INSERT INTO leads
+            (name, phone, email, area, district, profession, car_interest, action_type, tracking, score, priority, status,
+             followup_1, followup_2, followup_3, source, assigned_to)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'NEW',$12,$13,$14,$15,$16)
             RETURNING id
-        `;
-
-        const values = [
-            data.name,
-            data.phone,
-            data.email || "",
-            data.area || "",
-            data.district || "",
-            data.profession || "",
-            data.car_interest || "Not Selected",
-            data.action_type || "ENQUIRY",
-            tracking,
+        `, [
+            String(data.name).trim(),
+            phone,
+            String(data.email || "").trim(),
+            String(data.area || "").trim(),
+            String(data.district || "").trim(),
+            String(data.profession || "").trim(),
+            String(data.car_interest || "Not Selected").trim(),
+            ACTIONS.includes(action) ? action : "ENQUIRY",
+            JSON.stringify(tracking),
             score,
             priority,
-            "NEW",
-            f1,
-            f2,
-            f3
-        ];
+            new Date(now.getTime() + 5 * 60 * 1000),
+            new Date(now.getTime() + 24 * 60 * 60 * 1000),
+            new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+            String(data.source || tracking.utm_source || "Website"),
+            data.assigned_to || null
+        ]);
 
-        const result = await db.query(sql, values);
-        const leadId = result.rows[0].id;
-
-        console.log("✅ Lead saved:", leadId);
-
-        // 🔹 WhatsApp (non-blocking)
-        sendWhatsApp(
-            `whatsapp:+91${data.phone}`,
-            `Hi ${data.name},
-
-Thanks for your interest in ${data.car_interest || "Mahindra"}.
-
-Our team will contact you shortly.
-
-- Shiva Automobiles`
-        ).catch(err => console.error("WA Customer Error:", err.message));
-
-        sendWhatsApp(
-            process.env.SALES_WHATSAPP_NUMBER,
-            `New Lead 🚗
-
-Name: ${data.name}
-Phone: ${data.phone}
-Car: ${data.car_interest || "Not Selected"}
-Action: ${data.action_type || "ENQUIRY"}
-
-🔥 Score: ${score}
-Priority: ${priority}`
-        ).catch(err => console.error("WA Sales Error:", err.message));
-
-        res.json({
-            message: "Lead saved successfully",
-            id: leadId,
-            score,
-            priority
-        });
-
-    } catch (error) {
-        console.error("Server Error:", error);
+        res.status(201).json({ message: "Lead saved", id: result.rows[0].id, score, priority });
+    } catch (err) {
+        console.error("SAVE LEAD ERROR:", err);
         res.status(500).json({ message: "Server error" });
     }
 });
 
-// 🔐 GET: All Leads / Assigned Leads
 router.get("/leads", auth, async (req, res) => {
     try {
-        let result;
+        const clauses = [];
+        const values = [];
 
-        if (req.user.role === "admin") {
-            result = await db.query(`
-                SELECT l.*, u.name AS assigned_name
-                FROM leads l
-                LEFT JOIN users u ON l.assigned_to = u.id
-                ORDER BY l.id DESC
-            `);
-        } else {
-            result = await db.query(`
-                SELECT l.*, u.name AS assigned_name
-                FROM leads l
-                LEFT JOIN users u ON l.assigned_to = u.id
-                WHERE l.assigned_to = $1
-                ORDER BY l.id DESC
-            `, [req.user.id]);
+        if (req.user.role !== "admin") {
+            values.push(req.user.id);
+            clauses.push(`l.assigned_to = $${values.length}`);
+        }
+        if (req.query.priority) {
+            values.push(String(req.query.priority).toUpperCase());
+            clauses.push(`l.priority = $${values.length}`);
+        }
+        if (req.query.status) {
+            values.push(String(req.query.status).toUpperCase());
+            clauses.push(`l.status = $${values.length}`);
+        }
+        if (req.query.search) {
+            values.push(`%${String(req.query.search).toLowerCase()}%`);
+            clauses.push(`(LOWER(l.name) LIKE $${values.length} OR l.phone LIKE $${values.length} OR LOWER(l.car_interest) LIKE $${values.length})`);
         }
 
+        const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+        const result = await db.query(`
+            SELECT l.*, u.name AS assigned_name
+            FROM leads l
+            LEFT JOIN users u ON l.assigned_to = u.id
+            ${where}
+            ORDER BY l.created_at DESC, l.id DESC
+        `, values);
+
         res.json(result.rows);
-
     } catch (err) {
-        console.error("Fetch Error:", err);
-        res.status(500).json({ message: "Error fetching leads" });
+        console.error("FETCH LEADS ERROR:", err);
+        res.status(500).json({ message: "Fetch error" });
     }
 });
 
-// 🔐 GET: All Leads (PROTECTED)
-router.get("/analytics", auth, async (req, res) => {
-    try {
-        const whereClause = req.user.role === "admin"
-            ? ""
-            : "WHERE assigned_to = $1";
-
-        const params = req.user.role === "admin"
-            ? []
-            : [req.user.id];
-
-        const total = await db.query(`SELECT COUNT(*) FROM leads ${whereClause}`, params);
-        const hot = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} priority='HOT'`, params);
-        const warm = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} priority='WARM'`, params);
-        const cold = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} priority='COLD'`, params);
-        const enquiry = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} action_type='ENQUIRY'`, params);
-        const testdrive = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} action_type='TEST_DRIVE'`, params);
-        const closed = await db.query(`SELECT COUNT(*) FROM leads ${whereClause ? whereClause + " AND" : "WHERE"} status='CLOSED'`, params);
-
-        res.json({
-            total: Number(total.rows[0].count),
-            hot: Number(hot.rows[0].count),
-            warm: Number(warm.rows[0].count),
-            cold: Number(cold.rows[0].count),
-            enquiry: Number(enquiry.rows[0].count),
-            testdrive: Number(testdrive.rows[0].count),
-            closed: Number(closed.rows[0].count)
-        });
-
-    } catch (err) {
-        console.error("Analytics Error:", err);
-        res.status(500).json({ message: "Analytics failed" });
-    }
-});
-// 🔐 UPDATE STATUS
 router.put("/lead/:id/status", auth, async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const allowedStatus = ["NEW", "CONTACTED", "FOLLOW-UP", "CLOSED"];
-
-    if (!allowedStatus.includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
-    }
-
     try {
-        await db.query(
-            "UPDATE leads SET status = $1 WHERE id = $2",
-            [status, id]
-        );
+        const status = String(req.body.status || "").toUpperCase();
+        if (!STATUSES.includes(status)) return res.status(400).json({ message: "Invalid status" });
 
-        res.json({ message: "Status updated successfully" });
+        const values = [status, req.params.id];
+        let ownerClause = "";
+        if (req.user.role !== "admin") {
+            values.push(req.user.id);
+            ownerClause = `AND assigned_to = $3`;
+        }
 
+        const result = await db.query(`
+            UPDATE leads SET status=$1, updated_at=NOW()
+            WHERE id=$2 ${ownerClause}
+            RETURNING id, status
+        `, values);
+
+        if (!result.rows.length) return res.status(404).json({ message: "Lead not found or not assigned to you" });
+        res.json({ message: "Status updated", lead: result.rows[0] });
     } catch (err) {
-        console.error("Status Update Error:", err);
-        res.status(500).json({ message: "Update failed" });
+        console.error("STATUS ERROR:", err);
+        res.status(500).json({ message: "Status update failed" });
     }
 });
 
-
-// 🔐 ASSIGN LEAD TO USER
-router.put("/lead/:id/assign", auth, async (req, res) => {
-    const { id } = req.params;
-    const { user_id } = req.body;
-
+router.put("/lead/:id/assign", auth, requireAdmin, async (req, res) => {
     try {
-        await db.query(
-            "UPDATE leads SET assigned_to = $1 WHERE id = $2",
-            [user_id, id]
-        );
+        const userId = req.body.user_id || null;
+        if (userId) {
+            const user = await db.query("SELECT id FROM users WHERE id=$1 AND role='sales'", [userId]);
+            if (!user.rows.length) return res.status(400).json({ message: "Select a valid sales user" });
+        }
 
-        res.json({ message: "Lead assigned successfully" });
+        const result = await db.query(`
+            UPDATE leads SET assigned_to=$1, updated_at=NOW()
+            WHERE id=$2
+            RETURNING id, assigned_to
+        `, [userId, req.params.id]);
 
+        if (!result.rows.length) return res.status(404).json({ message: "Lead not found" });
+        res.json({ message: userId ? "Lead assigned" : "Lead unassigned", lead: result.rows[0] });
     } catch (err) {
-        console.error("Assign Error:", err);
+        console.error("ASSIGN ERROR:", err);
         res.status(500).json({ message: "Assign failed" });
     }
 });
 
-
-// 🔐 ADD / UPDATE NOTES
 router.put("/lead/:id/notes", auth, async (req, res) => {
-    const { id } = req.params;
-    const { notes } = req.body;
-
     try {
-        await db.query(
-            "UPDATE leads SET notes = $1 WHERE id = $2",
-            [notes, id]
-        );
+        const values = [String(req.body.notes || ""), req.params.id];
+        let ownerClause = "";
+        if (req.user.role !== "admin") {
+            values.push(req.user.id);
+            ownerClause = `AND assigned_to = $3`;
+        }
 
-        res.json({ message: "Notes updated successfully" });
+        const result = await db.query(`
+            UPDATE leads SET notes=$1, updated_at=NOW()
+            WHERE id=$2 ${ownerClause}
+            RETURNING id
+        `, values);
 
+        if (!result.rows.length) return res.status(404).json({ message: "Lead not found or not assigned to you" });
+        res.json({ message: "Notes saved" });
     } catch (err) {
-        console.error("Notes Error:", err);
+        console.error("NOTES ERROR:", err);
         res.status(500).json({ message: "Notes update failed" });
+    }
+});
+
+router.get("/analytics", auth, async (req, res) => {
+    try {
+        const values = [];
+        let where = "";
+        if (req.user.role !== "admin") {
+            values.push(req.user.id);
+            where = "WHERE assigned_to=$1";
+        }
+
+        const result = await db.query(`
+            SELECT
+                COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE priority='HOT')::int AS hot,
+                COUNT(*) FILTER (WHERE priority='WARM')::int AS warm,
+                COUNT(*) FILTER (WHERE priority='COLD')::int AS cold,
+                COUNT(*) FILTER (WHERE action_type='ENQUIRY')::int AS enquiry,
+                COUNT(*) FILTER (WHERE action_type='TEST_DRIVE')::int AS testdrive,
+                COUNT(*) FILTER (WHERE status='NEW')::int AS new,
+                COUNT(*) FILTER (WHERE status='CONTACTED')::int AS contacted,
+                COUNT(*) FILTER (WHERE status='FOLLOW-UP')::int AS followup,
+                COUNT(*) FILTER (WHERE status='TEST-DRIVE')::int AS test_drive_stage,
+                COUNT(*) FILTER (WHERE status='BOOKED')::int AS booked,
+                COUNT(*) FILTER (WHERE status='CLOSED')::int AS closed,
+                COUNT(*) FILTER (WHERE status='LOST')::int AS lost,
+                COUNT(*) FILTER (WHERE assigned_to IS NULL)::int AS unassigned
+            FROM leads
+            ${where}
+        `, values);
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error("ANALYTICS ERROR:", err);
+        res.status(500).json({ message: "Analytics failed" });
     }
 });
 

@@ -1,36 +1,28 @@
-const twilio = require("twilio");
+let client = null;
 
-// Initialize client using environment variables
-const client = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-);
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    const twilio = require("twilio");
+    client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+}
 
-// 🔹 Send WhatsApp Message
-const sendWhatsApp = async (to, message) => {
+async function sendWhatsApp(to, message) {
+    if (!client || !process.env.TWILIO_WHATSAPP_NUMBER) {
+        console.log("WhatsApp skipped: Twilio env not configured", { to, message });
+        return { skipped: true };
+    }
+
     try {
-        console.log("📤 Sending to:", to);
-        console.log("📲 From:", process.env.TWILIO_WHATSAPP_NUMBER);
-
         const res = await client.messages.create({
             from: process.env.TWILIO_WHATSAPP_NUMBER,
-            to: to,
+            to,
             body: message
         });
-    
-        console.log("✅ WhatsApp sent:", res.sid);
+        console.log("WhatsApp sent:", res.sid);
+        return res;
+    } catch (error) {
+        console.error("WhatsApp failed:", error.message);
+        throw error;
     }
-        catch (error) 
-        {
-        console.error("❌ FULL ERROR:", error);
-
-        if (error.response) {
-            console.error("🔴 Twilio Response:", error.response.data);
-        }
-
-        console.error("Message:", error.message);
-        console.error("Code:", error.code);
-        }
-};
+}
 
 module.exports = sendWhatsApp;

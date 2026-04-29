@@ -1237,3 +1237,24 @@ tr.cold {
     border: none;
     border-radius: 6px;
 }
+/* CRM next-level improvements */
+.admin-header input, .admin-header select, .table-card select, .user-form input, .user-form select, textarea {
+    min-height: 42px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.08);
+    color: #fff;
+    outline: none;
+    padding: 10px 12px;
+}
+.table-card select option, .admin-header select option, .user-form select option { color: #111; }
+.table-card small { display: block; color: #8f97a3; font-size: 11px; margin-top: 4px; }
+.empty-state { text-align: center; padding: 42px !important; color: #9aa3af; font-size: 17px; }
+.crm-toast { position: fixed; right: 22px; bottom: 22px; z-index: 9999; transform: translateY(30px); opacity: 0; pointer-events: none; background: #111827; color: #fff; border: 1px solid rgba(255,255,255,.18); padding: 12px 18px; border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,.35); transition: .25s ease; }
+.crm-toast.show { transform: translateY(0); opacity: 1; }
+.crm-toast.error { background: #7f1d1d; }
+.role-pill { padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); text-transform: uppercase; font-size: 12px; }
+.delete-user-btn:disabled { opacity: .45; cursor: not-allowed; }
+.lead-card { cursor: grab; }
+.lead-card:active { cursor: grabbing; }
+.dropzone { min-height: 120px; }
