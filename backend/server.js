@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
+const cron = require("node-cron");
 const cors = require("cors");
 
 const app = express();
@@ -24,3 +25,35 @@ require("./services/followupCron");
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+cron.schedule("*/5 * * * *", async () => {
+  console.log("⏱ Checking follow-ups...");
+
+  try {
+    await db.query(`
+      UPDATE leads
+      SET status = 'FOLLOW-UP'
+      WHERE 
+        status IN ('NEW','CONTACTED')
+        AND followup_1 <= NOW()
+    `);
+
+    await db.query(`
+      UPDATE leads
+      SET status = 'FOLLOW-UP'
+      WHERE 
+        status = 'FOLLOW-UP'
+        AND followup_2 <= NOW()
+    `);
+
+    await db.query(`
+      UPDATE leads
+      SET status = 'LOST'
+      WHERE 
+        status != 'CLOSED'
+        AND followup_3 <= NOW()
+    `);
+
+  } catch (err) {
+    console.error("FOLLOWUP CRON ERROR:", err);
+  }
+});

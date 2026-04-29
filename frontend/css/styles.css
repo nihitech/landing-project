@@ -1309,3 +1309,12 @@ tr.cold {
 .csv-btn:hover {
   background: #15803d;
 }
+tr.overdue {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { background-color: #fff1f0; }
+  50% { background-color: #ffd6d6; }
+  100% { background-color: #fff1f0; }
+}
