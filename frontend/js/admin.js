@@ -24,20 +24,22 @@ async function loadUsers() {
     }
 }
 async function assignLead(id, userId) {
-    if (!userId) return;
+    try {
+        await fetch(`${API}/lead/${id}/assign`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: token
+            },
+            body: JSON.stringify({ user_id: userId })
+        });
 
-    await fetch(`${API}/lead/${id}/assign`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: token
-        },
-        body: JSON.stringify({ user_id: userId })
-    });
+        console.log("Assigned:", id, userId);
 
-    await loadLeads();
+    } catch (e) {
+        console.error("Assign error:", e);
+    }
 }
-
 async function saveNotes(id, notes) {
     try {
         await fetch(`${API}/lead/${id}/notes`, {
@@ -223,13 +225,11 @@ async function loadLeads() {
                         ? `
                         <select onchange="assignLead(${lead.id}, this.value)">
                             <option value="">Assign</option>
-                            ${users
-                                .filter(u => u.role === "sales")
-                                .map(u => `
-                                    <option value="${u.id}" ${lead.assigned_to == u.id ? "selected" : ""}>
-                                        ${u.name}
-                                    </option>
-                                `).join("")}
+                            ${users.map(u => `
+                                <option value="${u.id}" ${lead.assigned_to == u.id ? "selected" : ""}>
+                                    ${u.name}
+                                </option>
+                            `).join("")}
                         </select>
                         `
                         : (lead.assigned_name || "Unassigned")
