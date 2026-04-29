@@ -2,8 +2,8 @@ let users = [];
 let priorityChart, actionChart;
 
 const API = "https://landing-backend-8gvq.onrender.com/api";
-const token = localStorage.getItem("token");
-const user = JSON.parse(localStorage.getItem("user") || "{}");
+const token = sessionStorage.getItem("token");
+const user = JSON.parse(sessionStorage.getItem("user") || "{}");
 
 if (!token) {
     window.location.href = "login.html";
@@ -24,22 +24,20 @@ async function loadUsers() {
     }
 }
 async function assignLead(id, userId) {
-    try {
-        await fetch(`${API}/lead/${id}/assign`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: token
-            },
-            body: JSON.stringify({ user_id: userId })
-        });
+    if (!userId) return;
 
-        console.log("Assigned:", id, userId);
+    await fetch(`${API}/lead/${id}/assign`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: token
+        },
+        body: JSON.stringify({ user_id: userId })
+    });
 
-    } catch (e) {
-        console.error("Assign error:", e);
-    }
+    await loadLeads();
 }
+
 async function saveNotes(id, notes) {
     try {
         await fetch(`${API}/lead/${id}/notes`, {
@@ -225,11 +223,13 @@ async function loadLeads() {
                         ? `
                         <select onchange="assignLead(${lead.id}, this.value)">
                             <option value="">Assign</option>
-                            ${users.map(u => `
-                                <option value="${u.id}" ${lead.assigned_to == u.id ? "selected" : ""}>
-                                    ${u.name}
-                                </option>
-                            `).join("")}
+                            ${users
+                                .filter(u => u.role === "sales")
+                                .map(u => `
+                                    <option value="${u.id}" ${lead.assigned_to == u.id ? "selected" : ""}>
+                                        ${u.name}
+                                    </option>
+                                `).join("")}
                         </select>
                         `
                         : (lead.assigned_name || "Unassigned")
@@ -412,9 +412,10 @@ async function deleteUser(id) {
     loadLeads();
 }
 function logout() {
-    localStorage.removeItem("token");
-    window.location.href = "login.html";
-}
+    sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+        window.location.href = "login.html";
+        }
 // 🚀 INITIAL LOAD
 window.onload = async () => {
     if (!token) return logout();

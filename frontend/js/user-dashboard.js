@@ -1,7 +1,7 @@
 const API = "https://landing-backend-8gvq.onrender.com/api";
 
-const token = localStorage.getItem("token");
-const user = JSON.parse(localStorage.getItem("user") || "{}");
+const token = sessionStorage.getItem("token");
+const user = JSON.parse(sessionStorage.getItem("user") || "{}");
 
 if (!token) {
     window.location.href = "login.html";
@@ -242,10 +242,10 @@ async function loadAnalytics() {
 }
 
 function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "login.html";
-}
+    sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+        window.location.href = "login.html";
+        }
 
 window.onload = () => {
     if (!token) return logout();
