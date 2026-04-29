@@ -1258,3 +1258,37 @@ tr.cold {
 .lead-card { cursor: grab; }
 .lead-card:active { cursor: grabbing; }
 .dropzone { min-height: 120px; }
+
+/* ✅ Dashboard chart visibility fix */
+.chart-card {
+    min-height: 360px;
+    position: relative;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.chart-card h3 {
+    color: #111827;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.chart-card canvas {
+    width: 100% !important;
+    height: 280px !important;
+    display: block;
+}
+
+.chart-fallback {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #fff7ed;
+    color: #9a3412;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.sales-chart-grid {
+    margin-top: 8px;
+}

@@ -2,6 +2,7 @@ const API = window.CRM_API || "https://landing-backend-8gvq.onrender.com/api";
 const token = sessionStorage.getItem("token");
 const user = JSON.parse(sessionStorage.getItem("user") || "{}");
 const STATUSES = ["NEW", "CONTACTED", "FOLLOW-UP", "TEST-DRIVE", "BOOKED", "CLOSED", "LOST"];
+let priorityChart, actionChart;
 if (!token) window.location.href = "login.html";
 if (user.role === "admin") window.location.href = "admin.html";
 function authHeaders(json=false){ const h={Authorization:`Bearer ${token}`}; if(json) h["Content-Type"]="application/json"; return h; }
@@ -14,6 +15,88 @@ function renderPipeline(leads){ const zones={NEW:'new',CONTACTED:'contacted','FO
 function initDragDrop(){ document.querySelectorAll('.dropzone').forEach(z=>{ z.addEventListener('dragover',e=>e.preventDefault()); z.addEventListener('drop',async e=>{e.preventDefault(); await updateStatus(e.dataTransfer.getData('id'),z.parentElement.dataset.status);});});}
 async function updateStatus(id,status){ try{ await request(`${API}/lead/${id}/status`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({status})}); toast('Status updated'); await Promise.all([loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
 async function saveNotes(id,notes){ try{ await request(`${API}/lead/${id}/notes`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({notes})}); toast('Notes saved'); }catch(e){toast(e.message,true);} }
-async function loadAnalytics(){ const d=await request(`${API}/analytics`,{headers:authHeaders()}); ['total','hot','warm','cold','enquiry','testdrive','closed'].forEach(id=>{const e=document.getElementById(id); if(e)e.innerText=d[id]||0;}); }
+function chartNumber(value) { return Number(value || 0); }
+function showChartFallback(canvas, message) {
+    if (!canvas) return;
+    const box = canvas.closest('.chart-card');
+    if (!box) return;
+    let fallback = box.querySelector('.chart-fallback');
+    if (!fallback) {
+        fallback = document.createElement('div');
+        fallback.className = 'chart-fallback';
+        box.appendChild(fallback);
+    }
+    fallback.textContent = message;
+}
+async function loadAnalytics(){
+    const d = await request(`${API}/analytics`, { headers: authHeaders() });
+    ['total','hot','warm','cold','enquiry','testdrive','closed'].forEach(id => {
+        const e = document.getElementById(id);
+        if (e) e.innerText = chartNumber(d[id]);
+    });
+
+    const c1 = document.getElementById('priorityChart');
+    const c2 = document.getElementById('actionChart');
+    if (!c1 && !c2) return;
+
+    if (typeof Chart === 'undefined') {
+        showChartFallback(c1, 'Chart library not loaded. Check internet/CDN access.');
+        showChartFallback(c2, 'Chart library not loaded. Check internet/CDN access.');
+        return;
+    }
+
+    if (priorityChart) priorityChart.destroy();
+    if (actionChart) actionChart.destroy();
+
+    const commonText = '#1f2937';
+    const gridColor = 'rgba(31, 41, 55, 0.12)';
+
+    if (c1) {
+        priorityChart = new Chart(c1, {
+            type: 'doughnut',
+            data: {
+                labels: ['HOT', 'WARM', 'COLD'],
+                datasets: [{
+                    data: [chartNumber(d.hot), chartNumber(d.warm), chartNumber(d.cold)],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#38bdf8'],
+                    borderColor: '#ffffff',
+                    borderWidth: 3,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: { legend: { position: 'bottom', labels: { color: commonText, usePointStyle: true, padding: 18, font: { weight: '600' } } } }
+            }
+        });
+    }
+
+    if (c2) {
+        actionChart = new Chart(c2, {
+            type: 'bar',
+            data: {
+                labels: ['Enquiry', 'Test Drive', 'Call', 'WhatsApp', 'Closed', 'Unassigned'],
+                datasets: [{
+                    label: 'Leads',
+                    data: [chartNumber(d.enquiry), chartNumber(d.testdrive), chartNumber(d.call), chartNumber(d.whatsapp), chartNumber(d.closed), chartNumber(d.unassigned)],
+                    backgroundColor: ['#2563eb', '#7c3aed', '#f97316', '#22c55e', '#111827', '#94a3b8'],
+                    borderRadius: 10,
+                    maxBarThickness: 54
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: commonText, font: { weight: '600' } }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { color: commonText, precision: 0 }, grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+}
 function logout(){ sessionStorage.removeItem('token'); sessionStorage.removeItem('user'); window.location.href='login.html'; }
 window.onload=async()=>{ document.getElementById('userInfo').innerText=`👤 ${user.name||'Sales User'} (${user.role||'sales'})`; initDragDrop(); try{ await Promise.all([loadLeads(),loadAnalytics()]); setInterval(()=>Promise.all([loadLeads(),loadAnalytics()]).catch(console.error),50000); }catch(e){toast(e.message,true);} };

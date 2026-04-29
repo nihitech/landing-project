@@ -31,7 +31,112 @@ function initDragDrop(){ document.querySelectorAll('.dropzone').forEach(z=>{ z.a
 async function assignLead(id,userId){ try{ await request(`${API}/lead/${id}/assign`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({user_id:userId||null})}); toast(userId?'Lead assigned':'Lead unassigned'); await Promise.all([loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
 async function updateStatus(id,status){ try{ await request(`${API}/lead/${id}/status`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({status})}); toast('Status updated'); await Promise.all([loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
 async function saveNotes(id,notes){ try{ await request(`${API}/lead/${id}/notes`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({notes})}); toast('Notes saved'); }catch(e){toast(e.message,true);} }
-async function loadAnalytics(){ const d=await request(`${API}/analytics`,{headers:authHeaders()}); ['total','hot','warm','cold','enquiry','testdrive','closed'].forEach(id=>{const e=document.getElementById(id); if(e)e.innerText=d[id]||0;}); if(priorityChart)priorityChart.destroy(); if(actionChart)actionChart.destroy(); const c1=document.getElementById('priorityChart'); if(c1)priorityChart=new Chart(c1,{type:'doughnut',data:{labels:['HOT','WARM','COLD'],datasets:[{data:[d.hot||0,d.warm||0,d.cold||0]}]},options:{plugins:{legend:{labels:{color:'#fff'}}}}}); const c2=document.getElementById('actionChart'); if(c2)actionChart=new Chart(c2,{type:'bar',data:{labels:['Enquiry','Test Drive','Closed','Unassigned'],datasets:[{label:'Leads',data:[d.enquiry||0,d.testdrive||0,d.closed||0,d.unassigned||0]}]},options:{plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#fff'}},y:{ticks:{color:'#fff'}}}}}); }
+function chartNumber(value) {
+    return Number(value || 0);
+}
+
+function showChartFallback(canvas, message) {
+    if (!canvas) return;
+    const box = canvas.closest('.chart-card');
+    if (!box) return;
+    let fallback = box.querySelector('.chart-fallback');
+    if (!fallback) {
+        fallback = document.createElement('div');
+        fallback.className = 'chart-fallback';
+        box.appendChild(fallback);
+    }
+    fallback.textContent = message;
+}
+
+async function loadAnalytics(){
+    const d = await request(`${API}/analytics`, { headers: authHeaders() });
+
+    ['total','hot','warm','cold','enquiry','testdrive','closed'].forEach(id => {
+        const e = document.getElementById(id);
+        if (e) e.innerText = chartNumber(d[id]);
+    });
+
+    const c1 = document.getElementById('priorityChart');
+    const c2 = document.getElementById('actionChart');
+
+    if (typeof Chart === 'undefined') {
+        showChartFallback(c1, 'Chart library not loaded. Check internet/CDN access.');
+        showChartFallback(c2, 'Chart library not loaded. Check internet/CDN access.');
+        return;
+    }
+
+    if (priorityChart) priorityChart.destroy();
+    if (actionChart) actionChart.destroy();
+
+    const priorityData = [chartNumber(d.hot), chartNumber(d.warm), chartNumber(d.cold)];
+    const actionData = [
+        chartNumber(d.enquiry),
+        chartNumber(d.testdrive),
+        chartNumber(d.call),
+        chartNumber(d.whatsapp),
+        chartNumber(d.closed),
+        chartNumber(d.unassigned)
+    ];
+
+    const commonText = '#1f2937';
+    const gridColor = 'rgba(31, 41, 55, 0.12)';
+
+    if (c1) {
+        priorityChart = new Chart(c1, {
+            type: 'doughnut',
+            data: {
+                labels: ['HOT', 'WARM', 'COLD'],
+                datasets: [{
+                    data: priorityData,
+                    backgroundColor: ['#ef4444', '#f59e0b', '#38bdf8'],
+                    borderColor: '#ffffff',
+                    borderWidth: 3,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: commonText, usePointStyle: true, padding: 18, font: { weight: '600' } }
+                    },
+                    tooltip: { enabled: true }
+                }
+            }
+        });
+    }
+
+    if (c2) {
+        actionChart = new Chart(c2, {
+            type: 'bar',
+            data: {
+                labels: ['Enquiry', 'Test Drive', 'Call', 'WhatsApp', 'Closed', 'Unassigned'],
+                datasets: [{
+                    label: 'Leads',
+                    data: actionData,
+                    backgroundColor: ['#2563eb', '#7c3aed', '#f97316', '#22c55e', '#111827', '#94a3b8'],
+                    borderRadius: 10,
+                    maxBarThickness: 54
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: true }
+                },
+                scales: {
+                    x: { ticks: { color: commonText, font: { weight: '600' } }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { color: commonText, precision: 0 }, grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+}
 function renderUsersTable(){ const tb=document.querySelector('#userTable tbody'); if(!tb)return; tb.innerHTML=users.map(u=>`<tr><td>${safe(u.name)}</td><td>${safe(u.email)}</td><td><span class="role-pill">${safe(u.role)}</span></td><td><button onclick="deleteUser(${u.id})" class="delete-user-btn" ${Number(u.id)===Number(user.id)?'disabled':''}>Delete</button></td></tr>`).join(''); }
 async function createUser(){ const p={name:document.getElementById('uname').value.trim(),email:document.getElementById('uemail').value.trim(),password:document.getElementById('upassword').value.trim(),role:document.getElementById('urole').value}; if(!p.name||!p.email||!p.password)return toast('All user fields required',true); try{ await request(`${API}/auth/register`,{method:'POST',headers:authHeaders(true),body:JSON.stringify(p)}); ['uname','uemail','upassword'].forEach(id=>document.getElementById(id).value=''); toast('User added'); await loadUsers(); }catch(e){toast(e.message,true);} }
 async function deleteUser(id){ if(!confirm('Delete this user? Assigned leads will become unassigned.'))return; try{ await request(`${API}/auth/user/${id}`,{method:'DELETE',headers:authHeaders()}); toast('User deleted'); await Promise.all([loadUsers(),loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
