@@ -3,13 +3,14 @@ let priorityChart, actionChart;
 
 const API = "https://landing-backend-8gvq.onrender.com/api";
 const token = localStorage.getItem("token");
-const user = JSON.parse(localStorage.getItem("user"));
+const user = JSON.parse(localStorage.getItem("user") || "{}");
+
 if (!token) {
     window.location.href = "login.html";
 }
 async function loadUsers() {
     try {
-        const res = await fetch(`${API}/users`, {
+        const res = await fetch(`${API}/auth/users`, {
             headers: { Authorization: token }
         });
 
@@ -334,6 +335,82 @@ async function loadAnalytics() {
         console.error("Analytics error:", error);
     }
 }
+
+// 🔹 LOAD USERS
+async function loadUsersTable() {
+    try {
+        const res = await fetch(`${API}/auth/users`, {
+            headers: { Authorization: token }
+        });
+
+        if (res.status === 401) return logout();
+
+        const data = await res.json();
+
+        const tbody = document.querySelector("#userTable tbody");
+        if (!tbody) return;
+
+        tbody.innerHTML = "";
+
+        data.forEach(u => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${u.name}</td>
+                    <td>${u.email}</td>
+                    <td>${u.role}</td>
+                    <td>
+                        <button onclick="deleteUser(${u.id})" class="delete-user-btn">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+    } catch (err) {
+        console.error("Users load error:", err);
+    }
+}
+
+async function createUser() {
+    const name = document.getElementById("uname").value.trim();
+    const email = document.getElementById("uemail").value.trim();
+    const password = document.getElementById("upassword").value.trim();
+    const role = document.getElementById("urole").value;
+
+    if (!name || !email || !password) {
+        alert("All fields required");
+        return;
+    }
+
+    await fetch(`${API}/auth/register`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: token
+        },
+        body: JSON.stringify({ name, email, password, role })
+    });
+
+    document.getElementById("uname").value = "";
+    document.getElementById("uemail").value = "";
+    document.getElementById("upassword").value = "";
+
+    await loadUsers();
+    loadUsersTable();
+    loadLeads();
+}
+
+async function deleteUser(id) {
+    if (!confirm("Delete this user?")) return;
+
+    await fetch(`${API}/auth/user/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: token }
+    });
+
+    await loadUsers();
+    loadUsersTable();
+    loadLeads();
+}
 function logout() {
     localStorage.removeItem("token");
     window.location.href = "login.html";
@@ -342,15 +419,15 @@ function logout() {
 window.onload = async () => {
     if (!token) return logout();
 
-    document.getElementById("userInfo").innerText =
-        `👤 ${user.name} (${user.role})`;
     const userInfo = document.getElementById("userInfo");
 
-if (userInfo) {
-    userInfo.innerText = `👤 ${user.name || "User"} (${user.role || "sales"})`;
-}
+    if (userInfo) {
+        userInfo.innerText = `👤 ${user.name || "User"} (${user.role || "sales"})`;
+    }
+
     await loadUsers();
-    initDragDrop();   // 🔥 important
+    loadUsersTable();
+    initDragDrop();
     loadLeads();
     loadAnalytics();
 };
@@ -360,4 +437,4 @@ setInterval(() => {
         loadLeads();
         loadAnalytics();
     }
-}, 10000);
+}, 100000);

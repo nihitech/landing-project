@@ -12,28 +12,32 @@
 <body class="admin-page">
 
     <div class="admin-header">
-        <div class="admin-user-box">
-            <span id="userInfo"></span>
-            <button onclick="logout()" class="logout-btn">Logout</button>
+
+    <div>
+        <span class="tag">Mahindra Lead CRM</span>
+        <h1>Leads Dashboard</h1>
     </div>
-        <div id="userInfo"></div>
-        <div>
-            <span class="tag">Mahindra Lead CRM</span>
-            <h1>Leads Dashboard</h1>
-        </div>
-        <input 
-            type="text" 
-            id="searchInput" 
-            placeholder="🔍 Search name or phone..." 
-            oninput="loadLeads()"
-        />
-        <select id="filter" onchange="loadLeads()">
-            <option value="">All Leads</option>
-            <option value="HOT">🔥 HOT</option>
-            <option value="WARM">🟡 WARM</option>
-            <option value="COLD">⚪ COLD</option>
-        </select>
+
+    <input 
+        type="text" 
+        id="searchInput" 
+        placeholder="🔍 Search name or phone..." 
+        oninput="loadLeads()"
+    />
+
+    <select id="filter" onchange="loadLeads()">
+        <option value="">All Leads</option>
+        <option value="HOT">🔥 HOT</option>
+        <option value="WARM">🟡 WARM</option>
+        <option value="COLD">⚪ COLD</option>
+    </select>
+
+    <div class="admin-user-box">
+        <span id="userInfo"></span>
+        <button onclick="logout()" class="logout-btn">Logout</button>
     </div>
+
+</div>
 
     <div class="dashboard-stats">
         <div class="dash-card">Total <span id="total">0</span></div>
@@ -98,7 +102,34 @@
             <tbody></tbody>
         </table>
     </div>
+    <div class="user-section">
+    <h2>👥 User Management</h2>
 
+    <div class="user-form">
+        <input type="text" id="uname" placeholder="Name">
+        <input type="email" id="uemail" placeholder="Email">
+        <input type="password" id="upassword" placeholder="Password">
+
+        <select id="urole">
+            <option value="sales">Sales</option>
+            <option value="admin">Admin</option>
+        </select>
+
+        <button onclick="createUser()">Add User</button>
+    </div>
+
+    <table id="userTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    </div>
     <script src="./js/admin.js"></script>
 </body>
 </html>
