@@ -66,5 +66,27 @@ router.post("/login", async (req, res) => {
 
     res.json({ token, user });
 });
+// 🔹 GET ALL USERS
+router.get("/users", async (req, res) => {
+    try {
+        const result = await db.query(
+            "SELECT id, name, email, role FROM users ORDER BY id DESC"
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error("Users fetch error:", err);
+        res.status(500).json({ message: "Failed to fetch users" });
+    }
+});
 
+// 🔹 DELETE USER
+router.delete("/user/:id", async (req, res) => {
+    try {
+        await db.query("DELETE FROM users WHERE id = $1", [req.params.id]);
+        res.json({ message: "User deleted" });
+    } catch (err) {
+        console.error("Delete error:", err);
+        res.status(500).json({ message: "Delete failed" });
+    }
+});
 module.exports = router;
