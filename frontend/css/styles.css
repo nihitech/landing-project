@@ -506,6 +506,8 @@ img {
     border-radius: 10px;
     border: 1px solid #ddd;
     width: 260px;
+    color: #000 !important;
+    background-color: #fff;
 }
 
 /* VARIANTS */
@@ -966,6 +968,8 @@ tr.cold {
     border-radius: 6px;
     border: 1px solid #ccc;
     resize: none;
+    color: #000 !important;
+    background-color: #fff;
 }
 
 #leadTable textarea:focus {
@@ -1242,8 +1246,8 @@ tr.cold {
     min-height: 42px;
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.08);
-    color: #fff;
+    background: rgb(255, 255, 255);
+    color: #ffffff56;
     outline: none;
     padding: 10px 12px;
 }
