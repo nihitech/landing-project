@@ -1296,3 +1296,16 @@ tr.cold {
 .sales-chart-grid {
     margin-top: 8px;
 }
+.csv-btn {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.csv-btn:hover {
+  background: #15803d;
+}

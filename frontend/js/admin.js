@@ -122,4 +122,60 @@ function renderUsersTable(){ const tb=document.querySelector('#userTable tbody')
 async function createUser(){ const p={name:document.getElementById('uname').value.trim(),email:document.getElementById('uemail').value.trim(),password:document.getElementById('upassword').value.trim(),role:document.getElementById('urole').value}; if(!p.name||!p.email||!p.password)return toast('All user fields required',true); try{ await request(`${API}/auth/register`,{method:'POST',headers:authHeaders(true),body:JSON.stringify(p)}); ['uname','uemail','upassword'].forEach(id=>document.getElementById(id).value=''); toast('User added'); await loadUsers(); }catch(e){toast(e.message,true);} }
 async function deleteUser(id){ if(!confirm('Delete this user? Assigned leads will become unassigned.'))return; try{ await request(`${API}/auth/user/${id}`,{method:'DELETE',headers:authHeaders()}); toast('User deleted'); await Promise.all([loadUsers(),loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
 function logout(){ sessionStorage.removeItem('token'); sessionStorage.removeItem('user'); window.location.href='login.html'; }
+function downloadLeadsCSV() {
+  if (!allLeads || !allLeads.length) {
+    toast("No leads available to download", true);
+    return;
+  }
+
+  const headers = [
+    "Name",
+    "Phone",
+    "Email",
+    "Car Interest",
+    "Action Type",
+    "Priority",
+    "Score",
+    "Status",
+    "Assigned To",
+    "Notes",
+    "Created At"
+  ];
+
+  const rows = allLeads.map(l => [
+    l.name || "",
+    l.phone || "",
+    l.email || "",
+    l.car_interest || "",
+    l.action_type || "",
+    l.priority || "",
+    l.score || 0,
+    l.status || "",
+    l.assigned_name || "Unassigned",
+    l.notes || "",
+    l.created_at || ""
+  ]);
+
+  const csv = [
+    headers.join(","),
+    ...rows.map(row =>
+      row.map(value =>
+        `"${String(value).replace(/"/g, '""')}"`
+      ).join(",")
+    )
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+  toast("CSV downloaded");
+}
 window.onload=async()=>{ document.getElementById('userInfo').innerText=`👤 ${user.name||'Admin'} (${user.role||'admin'})`; initDragDrop(); try{ await loadUsers(); await Promise.all([loadLeads(),loadAnalytics()]); setInterval(()=>Promise.all([loadLeads(),loadAnalytics()]).catch(console.error),50000); }catch(e){toast(e.message,true);} };
