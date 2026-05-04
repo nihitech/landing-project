@@ -156,23 +156,7 @@ router.post("/lead", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
-router.get("/lead/:id/followups", auth, async (req, res) => {
-    try {
-        const result = await db.query(`
-            SELECT f.*, u.name AS user_name
-            FROM lead_followups f
-            LEFT JOIN users u ON f.user_id = u.id
-            WHERE f.lead_id = $1
-            ORDER BY f.created_at DESC
-        `, [req.params.id]);
 
-        res.json(result.rows);
-
-    } catch (err) {
-        console.error("Followup fetch error:", err);
-        res.status(500).json({ message: "Followup fetch failed" });
-    }
-});
 router.get("/leads", auth, async (req, res) => {
     try {
         const clauses = [];
@@ -223,7 +207,6 @@ router.get("/leads", auth, async (req, res) => {
         res.status(500).json({ message: "Fetch error" });
     }
 });
-
 router.get("/lead/:id/followups", auth, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
