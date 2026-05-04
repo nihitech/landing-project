@@ -1251,7 +1251,7 @@ tr.cold {
     outline: none;
     padding: 10px 12px;
 }
-.table-card select option, .admin-header select option, .user-form select option { color: #111; }
+.table-card select option, .admin-header select option, .user-form select option { color: #ffffff00; }
 .table-card small { display: block; color: #8f97a3; font-size: 11px; margin-top: 4px; }
 .empty-state { text-align: center; padding: 42px !important; color: #9aa3af; font-size: 17px; }
 .crm-toast { position: fixed; right: 22px; bottom: 22px; z-index: 9999; transform: translateY(30px); opacity: 0; pointer-events: none; background: #111827; color: #fff; border: 1px solid rgba(255,255,255,.18); padding: 12px 18px; border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,.35); transition: .25s ease; }
@@ -1542,4 +1542,181 @@ tr.overdue {
 .followup-btn {
     padding: 7px 12px;
     font-size: 13px;
+}
+/* 🔥 Fix form text visibility */
+input,
+select,
+textarea {
+    color: #111 !important;
+    background-color: #fff !important;
+}
+
+/* Placeholder color */
+input::placeholder,
+textarea::placeholder {
+    color: #777 !important;
+}
+
+/* Dropdown text color fix */
+select option {
+    color: #111;
+    background: #fff;
+}
+.followup-modal-card input,
+.followup-modal-card select,
+.followup-modal-card textarea {
+    color: #111 !important;
+    background: #fff !important;
+}
+.user-form input,
+.user-form select {
+    color: #111 !important;
+    background: #fff !important;
+}
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border: 1px solid #d32f2f;
+    box-shadow: 0 0 0 2px rgba(211,47,47,0.1);
+}
+/* 🔥 Fix select box text */
+select {
+    color: #111 !important;
+    background-color: #fff !important;
+}
+
+/* 🔥 Fix dropdown options (important for Windows/Chrome) */
+select option {
+    color: #000 !important;
+    background-color: #fff !important;
+}
+
+/* 🔥 Fix when option is selected */
+select option:checked {
+    background-color: #e6f0ff !important;
+    color: #000 !important;
+}
+
+/* 🔥 Fix focus/active state */
+select:focus {
+    color: #111 !important;
+    background-color: #fff !important;
+}
+
+.view-btn {
+    border: none;
+    background: #111;
+    color: #fff;
+    padding: 7px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.lead-detail-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.lead-detail-modal.show {
+    display: flex;
+}
+
+.lead-detail-card {
+    width: 720px;
+    max-width: 94%;
+    max-height: 88vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 22px;
+    padding: 28px;
+    position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.28);
+}
+
+.modal-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    border: none;
+    background: #f1f1f1;
+    font-size: 24px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.detail-grid div,
+.detail-notes {
+    background: #f8fafc;
+    padding: 14px;
+    border-radius: 14px;
+}
+
+.detail-grid strong,
+.detail-notes strong {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.detail-grid span,
+.detail-notes p {
+    color: #111;
+    font-weight: 600;
+}
+.followup-history {
+    margin-top: 22px;
+}
+
+.followup-history h3 {
+    color: #111;
+    margin-bottom: 12px;
+}
+
+.history-item {
+    background: #f8fafc;
+    border-left: 4px solid #d32f2f;
+    padding: 14px;
+    border-radius: 14px;
+    margin-bottom: 10px;
+}
+
+.history-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.history-top strong {
+    color: #111;
+}
+
+.history-top span,
+.history-item small {
+    display: block;
+    color: #666;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.history-item p {
+    margin: 8px 0;
+    color: #111;
+    font-weight: 600;
 }

@@ -232,12 +232,76 @@ function renderTable(leads) {
                     <small>Count: ${lead.followup_count || 0}</small>
                 </td>
                 <td class="actions">
+                    <button onclick="openLeadDetails(${l.id})" class="view-btn">View</button>
                     <a href="tel:${phone}" title="Call">📞</a>
                     <a href="https://wa.me/91${phone}" target="_blank" title="WhatsApp">💬</a>
                 </td>
             </tr>
         `;
     }).join("");
+}
+
+async function openLeadDetails(id) {
+    const lead = allLeads.find(l => Number(l.id) === Number(id));
+    if (!lead) {
+        toast("Lead not found", true);
+        return;
+    }
+
+    let followups = [];
+
+    try {
+        followups = await request(`${API}/lead/${id}/followups`, {
+            headers: authHeaders()
+        });
+    } catch (e) {
+        console.error("Follow-up history error:", e);
+    }
+
+    document.getElementById("leadDetailContent").innerHTML = `
+        <div class="detail-grid">
+            <div><strong>Name</strong><span>${safe(lead.name)}</span></div>
+            <div><strong>Phone</strong><span>${safe(lead.phone)}</span></div>
+            <div><strong>Email</strong><span>${safe(lead.email)}</span></div>
+            <div><strong>Car</strong><span>${safe(lead.car_interest)}</span></div>
+            <div><strong>Action</strong><span>${safe(lead.action_type)}</span></div>
+            <div><strong>Priority</strong><span>${safe(lead.priority)}</span></div>
+            <div><strong>Status</strong><span>${safe(lead.status)}</span></div>
+            <div><strong>Assigned To</strong><span>${safe(lead.assigned_name || "Unassigned")}</span></div>
+            <div><strong>Next Follow-up</strong><span>${lead.next_followup_at ? new Date(lead.next_followup_at).toLocaleString() : "-"}</span></div>
+            <div><strong>Follow-up Count</strong><span>${lead.followup_count || 0}</span></div>
+        </div>
+
+        <div class="detail-notes">
+            <strong>Notes</strong>
+            <p>${safe(lead.notes || "No notes added")}</p>
+        </div>
+
+        <div class="followup-history">
+            <h3>📞 Follow-up History</h3>
+            ${
+                followups.length
+                ? followups.map(f => `
+                    <div class="history-item">
+                        <div class="history-top">
+                            <strong>${safe(f.call_status || "-")}</strong>
+                            <span>${f.created_at ? new Date(f.created_at).toLocaleString() : ""}</span>
+                        </div>
+                        <p>${safe(f.customer_response || "-")}</p>
+                        <small>Next: ${f.next_followup_at ? new Date(f.next_followup_at).toLocaleString() : "-"}</small>
+                        <small>By: ${safe(f.user_name || "User")}</small>
+                        <div>${safe(f.remarks || "")}</div>
+                    </div>
+                `).join("")
+                : `<div class="empty-state">No follow-up history yet</div>`
+            }
+        </div>
+    `;
+
+    document.getElementById("leadDetailModal").classList.add("show");
+}
+function closeLeadDetails() {
+    document.getElementById("leadDetailModal").classList.remove("show");
 }
 
 function initDragDrop() {
