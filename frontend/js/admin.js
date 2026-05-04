@@ -223,16 +223,15 @@ function renderTable(leads) {
                 </td>
                 <td><select onchange="assignLead(${lead.id}, this.value)">${salesOptions(lead)}</select></td>
                 <td>
-                    <td>
-                        <button onclick="openFollowup(${l.id})" class="followup-btn">
-                            📞 Follow-up
-                        </button>
-                    </td>
+                    <button onclick="openFollowup(${lead.id})" class="followup-btn">
+                        📞 Follow-up
+                    </button>
                     <small>Next: ${fmtDate(lead.next_followup_at)}</small>
                     <small>Count: ${lead.followup_count || 0}</small>
                 </td>
+
                 <td class="actions">
-                    <button onclick="openLeadDetails(${l.id})" class="view-btn">View</button>
+                    <button onclick="openLeadDetails(${lead.id})" class="view-btn">View</button>
                     <a href="tel:${phone}" title="Call">📞</a>
                     <a href="https://wa.me/91${phone}" target="_blank" title="WhatsApp">💬</a>
                 </td>
