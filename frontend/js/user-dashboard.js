@@ -200,32 +200,56 @@ async function updateStatus(id, status) {
     }
 }
 
-async function openFollowup(id) {
-    const nextDate = prompt("Next follow-up date/time (YYYY-MM-DD HH:MM). Leave blank if not needed:");
-    const callStatus = prompt("Call status: CONNECTED / NOT_CONNECTED / BUSY / SWITCHED_OFF", "CONNECTED") || "CONNECTED";
-    const customerResponse = prompt("Customer response:", "Interested") || "";
-    const remarks = prompt("Remarks / next action:", "") || "";
-    const nextStatus = prompt("Lead status after follow-up:", "FOLLOW-UP") || "FOLLOW-UP";
+function openFollowup(id) {
+    document.getElementById("followupLeadId").value = id;
+    document.getElementById("callStatus").value = "CONNECTED";
+    document.getElementById("customerResponse").value = "INTERESTED";
+    document.getElementById("nextFollowupAt").value = "";
+    document.getElementById("followupRemarks").value = "";
+
+    document.getElementById("followupModal").classList.add("show");
+}
+
+function closeFollowupModal() {
+    document.getElementById("followupModal").classList.remove("show");
+}
+
+async function submitFollowup() {
+    const id = document.getElementById("followupLeadId").value;
+    const call_status = document.getElementById("callStatus").value;
+    const customer_response = document.getElementById("customerResponse").value;
+    const next_followup_at = document.getElementById("nextFollowupAt").value;
+    const remarks = document.getElementById("followupRemarks").value;
+
+    if (!next_followup_at) {
+        toast("Please select next follow-up date", true);
+        return;
+    }
 
     try {
         await request(`${API}/lead/${id}/followup`, {
             method: "POST",
             headers: authHeaders(true),
             body: JSON.stringify({
-                call_status: callStatus,
-                customer_response: customerResponse,
-                next_followup_at: nextDate || null,
-                remarks,
-                next_status: nextStatus
+                call_status,
+                customer_response,
+                next_followup_at,
+                remarks
             })
         });
+
         toast("Follow-up saved");
-        await Promise.all([loadLeads(), loadAnalytics()]);
-    } catch (error) {
-        toast(error.message, true);
+        closeFollowupModal();
+
+        await Promise.all([
+            loadLeads(),
+            loadAnalytics()
+        ]);
+
+    } catch (e) {
+        toast(e.message, true);
     }
 }
-
 async function loadAnalytics() {
     const data = await request(`${API}/analytics`, { headers: authHeaders() });
 
@@ -242,7 +266,7 @@ async function loadAnalytics() {
     if (priorityCanvas) {
         priorityChart = new Chart(priorityCanvas, {
             type: "doughnut",
-            data: { labels: ["HOT", "WARM", "COLD"], datasets: [{ data: [data.hot || 0, data.warm || 0, data.cold || 0] }] },
+            data: { labels: ["COLD", "HOT", "WARM"], datasets: [{ data: [data.cold || 0, data.hot || 0, data.warm || 0] }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }

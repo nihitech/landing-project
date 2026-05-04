@@ -1247,7 +1247,7 @@ tr.cold {
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,.14);
     background: rgb(255, 255, 255);
-    color: #ffffff56;
+    color: #ffffff00;
     outline: none;
     padding: 10px 12px;
 }
@@ -1459,4 +1459,87 @@ tr.overdue {
     .admin-header select,
     .csv-btn,
     .admin-user-box { width: 100%; }
+}
+
+.followup-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.followup-modal.show {
+    display: flex;
+}
+
+.followup-modal-card {
+    width: 420px;
+    max-width: 92%;
+    background: #fff;
+    border-radius: 20px;
+    padding: 26px;
+    box-shadow: 0 25px 70px rgba(0,0,0,0.25);
+}
+
+.followup-modal-card h2 {
+    margin-bottom: 18px;
+    color: #111;
+}
+
+.followup-modal-card label {
+    display: block;
+    margin: 12px 0 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+}
+
+.followup-modal-card input,
+.followup-modal-card select,
+.followup-modal-card textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-family: inherit;
+}
+
+.followup-modal-card textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.followup-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.cancel-btn {
+    background: #eee;
+    color: #111;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.save-btn,
+.followup-btn {
+    background: #d32f2f;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.followup-btn {
+    padding: 7px 12px;
+    font-size: 13px;
 }

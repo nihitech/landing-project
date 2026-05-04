@@ -79,7 +79,43 @@
             <tbody></tbody>
         </table>
     </div>
+    <div id="followupModal" class="followup-modal">
+    <div class="followup-modal-card">
+        <h2>📞 Add Follow-up</h2>
 
+        <input type="hidden" id="followupLeadId">
+
+        <label>Call Status</label>
+        <select id="callStatus">
+            <option value="CONNECTED">Connected</option>
+            <option value="NOT_CONNECTED">Not Connected</option>
+            <option value="BUSY">Busy</option>
+            <option value="SWITCHED_OFF">Switched Off</option>
+            <option value="WRONG_NUMBER">Wrong Number</option>
+        </select>
+
+        <label>Customer Response</label>
+        <select id="customerResponse">
+            <option value="INTERESTED">Interested</option>
+            <option value="NEED_TIME">Need Time</option>
+            <option value="TEST_DRIVE">Test Drive</option>
+            <option value="SHOWROOM_VISIT">Showroom Visit</option>
+            <option value="BOOKING_EXPECTED">Booking Expected</option>
+            <option value="NOT_INTERESTED">Not Interested</option>
+        </select>
+
+        <label>Next Follow-up Date & Time</label>
+        <input type="datetime-local" id="nextFollowupAt">
+
+        <label>Remarks</label>
+        <textarea id="followupRemarks" placeholder="Customer discussion details..."></textarea>
+
+        <div class="followup-modal-actions">
+            <button onclick="closeFollowupModal()" class="cancel-btn">Cancel</button>
+            <button onclick="submitFollowup()" class="save-btn">Save Follow-up</button>
+        </div>
+    </div>
+</div>
     <script src="./js/user-dashboard.js"></script>
 </body>
 </html>

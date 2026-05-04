@@ -77,7 +77,7 @@ router.post("/lead", async (req, res) => {
 
         const tracking = data.tracking || {};
         const score = calculateScore({ ...data, phone, action_type: action, tracking });
-        const priority = getLeadPriority(score);
+        const priority = getLeadPriority(score).toUpperCase();;
         const now = new Date();
 
         const requestedAssign = parseId(data.assigned_to || data.user_id);
