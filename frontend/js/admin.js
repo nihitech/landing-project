@@ -1,181 +1,435 @@
 const API = window.CRM_API || "https://landing-backend-8gvq.onrender.com/api";
 const token = sessionStorage.getItem("token");
 const user = JSON.parse(sessionStorage.getItem("user") || "{}");
-let users = [], allLeads = [], priorityChart, actionChart;
+
+let users = [];
+let allLeads = [];
+let priorityChart;
+let actionChart;
+
 const STATUSES = ["NEW", "CONTACTED", "FOLLOW-UP", "TEST-DRIVE", "BOOKED", "CLOSED", "LOST"];
+const ZONE_IDS = {
+    "NEW": "zone-new",
+    "CONTACTED": "zone-contacted",
+    "FOLLOW-UP": "zone-follow-up",
+    "TEST-DRIVE": "zone-test-drive",
+    "BOOKED": "zone-booked",
+    "CLOSED": "zone-closed",
+    "LOST": "zone-lost"
+};
 
 if (!token) window.location.href = "login.html";
 if (user.role && user.role !== "admin") window.location.href = "user-dashboard.html";
 
-function authHeaders(json=false){ const h={Authorization:`Bearer ${token}`}; if(json) h["Content-Type"]="application/json"; return h; }
-function safe(v){ return String(v ?? "-").replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
-function toast(msg,err=false){ let e=document.getElementById('crmToast'); if(!e){e=document.createElement('div');e.id='crmToast';document.body.appendChild(e);} e.textContent=msg; e.className=`crm-toast show ${err?'error':''}`; setTimeout(()=>e.className='crm-toast',2200); }
-async function request(url,opt={}){ const r=await fetch(url,opt); let d={}; try{d=await r.json()}catch{} if(r.status===401) return logout(); if(!r.ok) throw new Error(d.message||'Request failed'); return d; }
-
-async function loadUsers(){ users=await request(`${API}/auth/users`,{headers:authHeaders()}); renderUsersTable(); }
-async function loadLeads(){ const p=new URLSearchParams(); const f=document.getElementById('filter')?.value||''; const s=document.getElementById('searchInput')?.value.trim()||''; if(f)p.set('priority',f); if(s)p.set('search',s); allLeads=await request(`${API}/leads?${p}`,{headers:authHeaders()}); renderPipeline(allLeads); renderTable(allLeads); }
-
-function renderTable(leads){
- const tb=document.querySelector('#leadTable tbody'); if(!tb)return;
- if(!leads.length){tb.innerHTML='<tr><td colspan="10" class="empty-state">📭 No leads found</td></tr>';return;}
- tb.innerHTML=leads.map(l=>{ const pc=String(l.priority||'COLD').toLowerCase(); const phone=safe(l.phone).replace(/\D/g,''); const opts=`<option value="">Unassigned</option>`+users.filter(u=>u.role==='sales').map(u=>`<option value="${u.id}" ${Number(l.assigned_to)===Number(u.id)?'selected':''}>${safe(u.name)}</option>`).join('');
- return `<tr class="${pc}"><td><strong>${safe(l.name)}</strong><small>${l.created_at?new Date(l.created_at).toLocaleString():''}</small></td><td>${safe(l.phone)}</td><td>${safe(l.car_interest)}</td><td>${safe(l.action_type)}</td><td>${l.score||0}</td><td><span class="badge ${pc}">${safe(l.priority||'COLD')}</span></td><td><select onchange="updateStatus(${l.id}, this.value)">${STATUSES.map(s=>`<option value="${s}" ${l.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><select onchange="assignLead(${l.id}, this.value)">${opts}</select></td><td><textarea placeholder="Next follow-up / customer response" onblur="saveNotes(${l.id}, this.value)">${safe(l.notes||'')}</textarea></td><td class="actions"><a href="tel:${phone}" title="Call">📞</a><a href="https://wa.me/91${phone}" target="_blank" title="WhatsApp">💬</a></td></tr>`; }).join('');
+function authHeaders(json = false) {
+    const headers = { Authorization: `Bearer ${token}` };
+    if (json) headers["Content-Type"] = "application/json";
+    return headers;
 }
 
-function renderPipeline(leads){
- const zones={NEW:document.getElementById('new'),CONTACTED:document.getElementById('contacted'),'FOLLOW-UP':document.getElementById('followup'),CLOSED:document.getElementById('closedZone')}; Object.values(zones).forEach(z=>{if(z)z.innerHTML=''}); const c={NEW:0,CONTACTED:0,'FOLLOW-UP':0,CLOSED:0};
- leads.forEach(l=>{ const st=c.hasOwnProperty(l.status)?l.status:'NEW'; c[st]++; const card=document.createElement('div'); card.className=`lead-card ${String(l.priority||'COLD').toLowerCase()}`; card.draggable=true; card.dataset.id=l.id; card.innerHTML=`<strong>${safe(l.name)}</strong><div class="lead-meta">${safe(l.phone)} • ${safe(l.car_interest)}</div><div class="lead-meta">${safe(l.assigned_name||'Unassigned')}</div>`; card.addEventListener('dragstart',e=>e.dataTransfer.setData('id',l.id)); zones[st]?.appendChild(card); });
- document.querySelector('[data-status="NEW"] h3').innerText=`NEW (${c.NEW})`; document.querySelector('[data-status="CONTACTED"] h3').innerText=`CONTACTED (${c.CONTACTED})`; document.querySelector('[data-status="FOLLOW-UP"] h3').innerText=`FOLLOW-UP (${c['FOLLOW-UP']})`; document.querySelector('[data-status="CLOSED"] h3').innerText=`CLOSED (${c.CLOSED})`;
+function safe(value) {
+    return String(value ?? "-").replace(/[&<>'"]/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+    }[char]));
 }
-function initDragDrop(){ document.querySelectorAll('.dropzone').forEach(z=>{ z.addEventListener('dragover',e=>e.preventDefault()); z.addEventListener('drop',async e=>{e.preventDefault(); await updateStatus(e.dataTransfer.getData('id'), z.parentElement.dataset.status);});});}
-async function assignLead(id,userId){ try{ await request(`${API}/lead/${id}/assign`,{method:'PUT',headers:authHeaders(true),body: JSON.stringify({ user_id: userId || null })}); toast(userId?'Lead assigned':'Lead unassigned'); await Promise.all([loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
-async function updateStatus(id,status){ try{ await request(`${API}/lead/${id}/status`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({status})}); toast('Status updated'); await Promise.all([loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
-async function saveNotes(id,notes){ try{ await request(`${API}/lead/${id}/notes`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({notes})}); toast('Notes saved'); }catch(e){toast(e.message,true);} }
-async function loadAnalytics(){
-  const d = await request(`${API}/analytics`, { headers: authHeaders() });
 
-  ['total','hot','warm','cold','enquiry','testdrive','closed'].forEach(id => {
-    const e = document.getElementById(id);
-    if (e) e.innerText = d[id] || 0;
-  });
+function fmtDate(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString();
+}
 
-  if (priorityChart) priorityChart.destroy();
-  if (actionChart) actionChart.destroy();
+function cleanPhone(phone) {
+    return String(phone || "").replace(/\D/g, "").slice(-10);
+}
 
-  const c1 = document.getElementById('priorityChart');
-  if (c1) {
-    priorityChart = new Chart(c1, {
-      type: 'doughnut',
-      data: {
-        labels: ['Hot', 'Warm', 'Cold'],
-        datasets: [{
-          data: [d.hot || 0, d.warm || 0, d.cold || 0],
-          backgroundColor: ['#ff4d4f', '#faad14', '#1890ff'],
-          borderColor: '#ffffff',
-          borderWidth: 3,
-          hoverOffset: 8
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '62%',
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: {
-              color: '#111827',
-              font: { size: 13, weight: 'bold' },
-              boxWidth: 18,
-              padding: 18
-            }
-          }
-        }
-      }
+function toast(message, error = false) {
+    let el = document.getElementById("crmToast");
+    if (!el) {
+        el = document.createElement("div");
+        el.id = "crmToast";
+        document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.className = `crm-toast show ${error ? "error" : ""}`;
+    setTimeout(() => { el.className = "crm-toast"; }, 2400);
+}
+
+async function request(url, options = {}) {
+    const response = await fetch(url, options);
+    let data = {};
+    try { data = await response.json(); } catch { data = {}; }
+    if (response.status === 401) return logout();
+    if (!response.ok) throw new Error(data.message || "Request failed");
+    return data;
+}
+
+async function loadUsers() {
+    users = await request(`${API}/auth/users`, { headers: authHeaders() });
+    renderUsersTable();
+}
+
+async function loadLeads() {
+    const params = new URLSearchParams();
+    const priority = document.getElementById("filter")?.value || "";
+    const source = document.getElementById("sourceFilter")?.value || "";
+    const search = document.getElementById("searchInput")?.value.trim() || "";
+
+    if (priority) params.set("priority", priority);
+    if (source) params.set("source", source);
+    if (search) params.set("search", search);
+
+    const query = params.toString();
+    allLeads = await request(`${API}/leads${query ? `?${query}` : ""}`, { headers: authHeaders() });
+
+    renderWorkload(allLeads);
+    renderTodayFollowups(allLeads);
+    renderPipeline(allLeads);
+    renderTable(allLeads);
+}
+
+function renderWorkload(leads) {
+    const box = document.getElementById("workloadCards");
+    if (!box) return;
+
+    const salesUsers = users.filter(u => u.role === "sales");
+    if (!salesUsers.length) {
+        box.innerHTML = `<div class="empty-state">No sales users created yet</div>`;
+        return;
+    }
+
+    box.innerHTML = salesUsers.map(sales => {
+        const assigned = leads.filter(lead => Number(lead.assigned_to) === Number(sales.id));
+        const hot = assigned.filter(lead => lead.priority === "HOT").length;
+        const due = assigned.filter(lead => lead.next_followup_at && new Date(lead.next_followup_at) <= new Date()).length;
+        return `
+            <div class="workload-card">
+                <h3>${safe(sales.name)}</h3>
+                <p>${safe(sales.email)}</p>
+                <strong>${assigned.length}</strong>
+                <span>Assigned Leads</span>
+                <small>🔥 ${hot} hot • 📞 ${due} due</small>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderTodayFollowups(leads) {
+    const box = document.getElementById("todayFollowups");
+    if (!box) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const due = leads.filter(lead => lead.next_followup_at && String(lead.next_followup_at).startsWith(today));
+
+    if (!due.length) {
+        box.innerHTML = `<div class="empty-state">No follow-ups scheduled for today</div>`;
+        return;
+    }
+
+    box.innerHTML = due.map(lead => `
+        <div class="followup-card">
+            <strong>${safe(lead.name)}</strong>
+            <span>${safe(lead.phone)} • ${safe(lead.car_interest || "Not Selected")}</span>
+            <small>Assigned: ${safe(lead.assigned_name || "Unassigned")} • ${fmtDate(lead.next_followup_at)}</small>
+        </div>
+    `).join("");
+}
+
+function renderPipeline(leads) {
+    const counters = Object.fromEntries(STATUSES.map(status => [status, 0]));
+
+    STATUSES.forEach(status => {
+        const zone = document.getElementById(ZONE_IDS[status]);
+        if (zone) zone.innerHTML = "";
     });
-  }
 
-  const c2 = document.getElementById('actionChart');
-  if (c2) {
-    actionChart = new Chart(c2, {
-      type: 'bar',
-      data: {
-        labels: ['Enquiry', 'Test Drive', 'Closed', 'Unassigned'],
-        datasets: [{
-          label: 'Customer Actions',
-          data: [d.enquiry || 0, d.testdrive || 0, d.closed || 0, d.unassigned || 0],
-          backgroundColor: ['#1890ff', '#13c2c2', '#52c41a', '#ff7875'],
-          borderRadius: 10,
-          barThickness: 42
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: '#111827',
-              font: { size: 12, weight: 'bold' }
-            },
-            grid: { display: false }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              color: '#374151',
-              precision: 0
-            },
-            grid: {
-              color: 'rgba(0,0,0,0.06)'
-            }
-          }
-        }
-      }
+    leads.forEach(lead => {
+        const status = STATUSES.includes(lead.status) ? lead.status : "NEW";
+        counters[status]++;
+        const zone = document.getElementById(ZONE_IDS[status]);
+        if (!zone) return;
+
+        const card = document.createElement("div");
+        card.className = `lead-card ${String(lead.priority || "COLD").toLowerCase()}`;
+        card.draggable = true;
+        card.dataset.id = lead.id;
+        card.innerHTML = `
+            <strong>${safe(lead.name)}</strong>
+            <div class="lead-meta">${safe(lead.phone)} • ${safe(lead.car_interest || "Not Selected")}</div>
+            <div class="lead-meta">${safe(lead.source || "WEBSITE")} • ${safe(lead.assigned_name || "Unassigned")}</div>
+        `;
+        card.addEventListener("dragstart", event => event.dataTransfer.setData("id", lead.id));
+        zone.appendChild(card);
     });
-  }
+
+    STATUSES.forEach(status => {
+        const title = document.querySelector(`[data-status="${status}"] h3`);
+        if (title) title.innerText = `${status} (${counters[status]})`;
+    });
 }
-function renderUsersTable(){ const tb=document.querySelector('#userTable tbody'); if(!tb)return; tb.innerHTML=users.map(u=>`<tr><td>${safe(u.name)}</td><td>${safe(u.email)}</td><td><span class="role-pill">${safe(u.role)}</span></td><td><button onclick="deleteUser(${u.id})" class="delete-user-btn" ${Number(u.id)===Number(user.id)?'disabled':''}>Delete</button></td></tr>`).join(''); }
-async function createUser(){ const p={name:document.getElementById('uname').value.trim(),email:document.getElementById('uemail').value.trim(),password:document.getElementById('upassword').value.trim(),role:document.getElementById('urole').value}; if(!p.name||!p.email||!p.password)return toast('All user fields required',true); try{ await request(`${API}/auth/register`,{method:'POST',headers:authHeaders(true),body:JSON.stringify(p)}); ['uname','uemail','upassword'].forEach(id=>document.getElementById(id).value=''); toast('User added'); await loadUsers(); }catch(e){toast(e.message,true);} }
-async function deleteUser(id){ if(!confirm('Delete this user? Assigned leads will become unassigned.'))return; try{ await request(`${API}/auth/user/${id}`,{method:'DELETE',headers:authHeaders()}); toast('User deleted'); await Promise.all([loadUsers(),loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
-function logout(){ sessionStorage.removeItem('token'); sessionStorage.removeItem('user'); window.location.href='login.html'; }
+
+function renderTable(leads) {
+    const tbody = document.querySelector("#leadTable tbody");
+    if (!tbody) return;
+
+    if (!leads.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-state">📭 No leads found</td></tr>`;
+        return;
+    }
+
+    const salesOptions = lead => `<option value="">Unassigned</option>` + users
+        .filter(u => u.role === "sales")
+        .map(u => `<option value="${u.id}" ${Number(lead.assigned_to) === Number(u.id) ? "selected" : ""}>${safe(u.name)}</option>`)
+        .join("");
+
+    tbody.innerHTML = leads.map(lead => {
+        const priorityClass = String(lead.priority || "COLD").toLowerCase();
+        const phone = cleanPhone(lead.phone);
+        return `
+            <tr class="${priorityClass}">
+                <td>
+                    <strong>${safe(lead.name)}</strong>
+                    <small>${fmtDate(lead.created_at)}</small>
+                    <small>Family: ${safe(lead.family_members || "-")}</small>
+                </td>
+                <td>
+                    ${safe(lead.phone)}
+                    <small>Alt: ${safe(lead.alternate_phone || "-")}</small>
+                    <small>${safe(lead.area || "")} ${safe(lead.district || "")}</small>
+                </td>
+                <td>
+                    ${safe(lead.car_interest || "Not Selected")}
+                    <small>Variant: ${safe(lead.variant_interest || "-")}</small>
+                    <small>Budget: ${safe(lead.budget_range || "-")}</small>
+                </td>
+                <td>
+                    ${safe(lead.source || "WEBSITE")}
+                    <small>${safe(lead.action_type || lead.lead_type || "ENQUIRY")}</small>
+                    <small>${safe(lead.campaign_name || "-")}</small>
+                </td>
+                <td>
+                    <span class="badge ${priorityClass}">${safe(lead.priority || "COLD")}</span>
+                    <small>Score: ${Number(lead.score || 0)}</small>
+                </td>
+                <td>
+                    <select onchange="updateStatus(${lead.id}, this.value)">
+                        ${STATUSES.map(status => `<option value="${status}" ${lead.status === status ? "selected" : ""}>${status}</option>`).join("")}
+                    </select>
+                </td>
+                <td><select onchange="assignLead(${lead.id}, this.value)">${salesOptions(lead)}</select></td>
+                <td>
+                    <button onclick="openFollowup(${lead.id})" class="followup-btn">📞 Follow-up</button>
+                    <small>Next: ${fmtDate(lead.next_followup_at)}</small>
+                    <small>Count: ${lead.followup_count || 0}</small>
+                </td>
+                <td class="actions">
+                    <a href="tel:${phone}" title="Call">📞</a>
+                    <a href="https://wa.me/91${phone}" target="_blank" title="WhatsApp">💬</a>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function initDragDrop() {
+    document.querySelectorAll(".dropzone").forEach(zone => {
+        zone.addEventListener("dragover", event => event.preventDefault());
+        zone.addEventListener("drop", async event => {
+            event.preventDefault();
+            const id = event.dataTransfer.getData("id");
+            const status = zone.parentElement.dataset.status;
+            await updateStatus(id, status);
+        });
+    });
+}
+
+async function assignLead(id, userId) {
+    try {
+        await request(`${API}/lead/${id}/assign`, {
+            method: "PUT",
+            headers: authHeaders(true),
+            body: JSON.stringify({ user_id: userId || null })
+        });
+        toast(userId ? "Lead assigned" : "Lead unassigned");
+        await Promise.all([loadLeads(), loadAnalytics()]);
+    } catch (error) {
+        toast(error.message, true);
+    }
+}
+
+async function updateStatus(id, status) {
+    try {
+        await request(`${API}/lead/${id}/status`, {
+            method: "PUT",
+            headers: authHeaders(true),
+            body: JSON.stringify({ status })
+        });
+        toast("Status updated");
+        await Promise.all([loadLeads(), loadAnalytics()]);
+    } catch (error) {
+        toast(error.message, true);
+    }
+}
+
+async function openFollowup(id) {
+    const nextDate = prompt("Next follow-up date/time (YYYY-MM-DD HH:MM). Leave blank if not needed:");
+    const callStatus = prompt("Call status: CONNECTED / NOT_CONNECTED / BUSY / SWITCHED_OFF", "CONNECTED") || "CONNECTED";
+    const customerResponse = prompt("Customer response:", "Interested") || "";
+    const remarks = prompt("Remarks / next action:", "") || "";
+    const nextStatus = prompt("Lead status after follow-up:", "FOLLOW-UP") || "FOLLOW-UP";
+
+    try {
+        await request(`${API}/lead/${id}/followup`, {
+            method: "POST",
+            headers: authHeaders(true),
+            body: JSON.stringify({
+                call_status: callStatus,
+                customer_response: customerResponse,
+                next_followup_at: nextDate || null,
+                remarks,
+                next_status: nextStatus
+            })
+        });
+        toast("Follow-up saved");
+        await Promise.all([loadLeads(), loadAnalytics()]);
+    } catch (error) {
+        toast(error.message, true);
+    }
+}
+
+function renderUsersTable() {
+    const tbody = document.querySelector("#userTable tbody");
+    if (!tbody) return;
+
+    if (!users.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No users found</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = users.map(u => `
+        <tr>
+            <td>${safe(u.name)}</td>
+            <td>${safe(u.email)}</td>
+            <td><span class="role-pill">${safe(u.role)}</span></td>
+            <td><button onclick="deleteUser(${u.id})" class="delete-user-btn" ${Number(u.id) === Number(user.id) ? "disabled" : ""}>Delete</button></td>
+        </tr>
+    `).join("");
+}
+
+async function createUser() {
+    const payload = {
+        name: document.getElementById("uname").value.trim(),
+        email: document.getElementById("uemail").value.trim(),
+        password: document.getElementById("upassword").value.trim(),
+        role: document.getElementById("urole").value
+    };
+
+    if (!payload.name || !payload.email || !payload.password) {
+        return toast("All user fields are required", true);
+    }
+
+    try {
+        await request(`${API}/auth/register`, {
+            method: "POST",
+            headers: authHeaders(true),
+            body: JSON.stringify(payload)
+        });
+        ["uname", "uemail", "upassword"].forEach(id => document.getElementById(id).value = "");
+        toast("User added");
+        await loadUsers();
+    } catch (error) {
+        toast(error.message, true);
+    }
+}
+
+async function deleteUser(id) {
+    if (!confirm("Delete this user? Assigned leads will become unassigned.")) return;
+    try {
+        await request(`${API}/auth/user/${id}`, { method: "DELETE", headers: authHeaders() });
+        toast("User deleted");
+        await Promise.all([loadUsers(), loadLeads(), loadAnalytics()]);
+    } catch (error) {
+        toast(error.message, true);
+    }
+}
+
+async function loadAnalytics() {
+    const data = await request(`${API}/analytics`, { headers: authHeaders() });
+
+    ["total", "hot", "warm", "cold", "enquiry", "testdrive", "booked", "closed", "today_followups", "overdue_followups"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = Number(data[id] || 0);
+    });
+
+    if (typeof Chart === "undefined") return;
+    if (priorityChart) priorityChart.destroy();
+    if (actionChart) actionChart.destroy();
+
+    const priorityCanvas = document.getElementById("priorityChart");
+    if (priorityCanvas) {
+        priorityChart = new Chart(priorityCanvas, {
+            type: "doughnut",
+            data: {
+                labels: ["HOT", "WARM", "COLD"],
+                datasets: [{ data: [data.hot || 0, data.warm || 0, data.cold || 0] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    const actionCanvas = document.getElementById("actionChart");
+    if (actionCanvas) {
+        actionChart = new Chart(actionCanvas, {
+            type: "bar",
+            data: {
+                labels: ["Enquiry", "Test Drive", "Call", "WhatsApp", "Booked", "Closed"],
+                datasets: [{ label: "Leads", data: [data.enquiry || 0, data.testdrive || 0, data.call || 0, data.whatsapp || 0, data.booked || 0, data.closed || 0] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+}
+
 function downloadLeadsCSV() {
-  if (!allLeads || !allLeads.length) {
-    toast("No leads available to download", true);
-    return;
-  }
-
-  const headers = [
-    "Name",
-    "Phone",
-    "Email",
-    "Car Interest",
-    "Action Type",
-    "Priority",
-    "Score",
-    "Status",
-    "Assigned To",
-    "Notes",
-    "Created At"
-  ];
-
-  const rows = allLeads.map(l => [
-    l.name || "",
-    l.phone || "",
-    l.email || "",
-    l.car_interest || "",
-    l.action_type || "",
-    l.priority || "",
-    l.score || 0,
-    l.status || "",
-    l.assigned_name || "Unassigned",
-    l.notes || "",
-    l.created_at || ""
-  ]);
-
-  const csv = [
-    headers.join(","),
-    ...rows.map(row =>
-      row.map(value =>
-        `"${String(value).replace(/"/g, '""')}"`
-      ).join(",")
-    )
-  ].join("\n");
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-
-  URL.revokeObjectURL(url);
-  toast("CSV downloaded");
+    if (!allLeads.length) return toast("No leads available to download", true);
+    const headers = ["Name", "Phone", "Alt Phone", "Email", "Car", "Variant", "Source", "Campaign", "Priority", "Score", "Status", "Assigned To", "Next Follow-up", "Created At"];
+    const rows = allLeads.map(l => [
+        l.name, l.phone, l.alternate_phone, l.email, l.car_interest, l.variant_interest,
+        l.source, l.campaign_name, l.priority, l.score, l.status, l.assigned_name || "Unassigned", l.next_followup_at, l.created_at
+    ]);
+    const csv = [headers, ...rows].map(row => row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast("CSV downloaded");
 }
-window.onload=async()=>{ document.getElementById('userInfo').innerText=`👤 ${user.name||'Admin'} (${user.role||'admin'})`; initDragDrop(); try{ await loadUsers(); await Promise.all([loadLeads(),loadAnalytics()]); setInterval(()=>Promise.all([loadLeads(),loadAnalytics()]).catch(console.error),50000); }catch(e){toast(e.message,true);} };
+
+function logout() {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    window.location.href = "login.html";
+}
+
+window.onload = async () => {
+    const userInfo = document.getElementById("userInfo");
+    if (userInfo) userInfo.innerText = `👤 ${user.name || "Admin"} (${user.role || "admin"})`;
+    initDragDrop();
+    try {
+        await loadUsers();
+        await Promise.all([loadLeads(), loadAnalytics()]);
+        setInterval(() => Promise.all([loadLeads(), loadAnalytics()]).catch(console.error), 50000);
+    } catch (error) {
+        toast(error.message, true);
+    }
+};

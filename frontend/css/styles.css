@@ -1318,3 +1318,145 @@ tr.overdue {
   50% { background-color: #ffd6d6; }
   100% { background-color: #fff1f0; }
 }
+/* ===== Multipurpose CRM additions ===== */
+.crm-toast {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    background: #111827;
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.18);
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: 0.25s ease;
+    z-index: 99999;
+}
+.crm-toast.show { opacity: 1; transform: translateY(0); }
+.crm-toast.error { background: #dc2626; }
+
+.admin-header select,
+.admin-header input,
+.user-form input,
+.user-form select,
+#leadTable select {
+    min-height: 40px;
+}
+
+.csv-btn,
+.followup-btn,
+.user-form button {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 700;
+}
+.csv-btn { background: #111827; color: #fff; }
+.followup-btn,
+.user-form button { background: #d32f2f; color: #fff; }
+.followup-btn:hover,
+.csv-btn:hover,
+.user-form button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.workload-section,
+.followup-alert,
+.user-section {
+    background: #fff;
+    border-radius: 18px;
+    padding: 22px;
+    margin: 24px 0;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+    color: #111;
+}
+
+.workload-section h2,
+.followup-alert h2,
+.user-section h2 {
+    margin-bottom: 16px;
+    color: #111;
+}
+
+.workload-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.workload-card {
+    background: #f8fafc;
+    padding: 18px;
+    border-radius: 16px;
+    border-left: 5px solid #d32f2f;
+}
+.workload-card h3 { color: #111; margin-bottom: 4px; }
+.workload-card p,
+.workload-card span,
+.workload-card small { color: #64748b; display: block; }
+.workload-card strong { display: block; font-size: 34px; color: #d32f2f; margin: 10px 0 0; }
+
+.followup-card {
+    display: grid;
+    gap: 4px;
+    background: #f8fafc;
+    border-left: 4px solid #d32f2f;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+}
+.followup-card strong { color: #111; }
+.followup-card span,
+.followup-card small { color: #64748b; }
+
+.empty-state {
+    text-align: center;
+    color: #64748b !important;
+    padding: 26px !important;
+}
+
+.role-pill,
+.badge {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 800;
+}
+.role-pill { background: #eef2ff; color: #3730a3; }
+
+#leadTable small {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.delete-user-btn {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.delete-user-btn:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.pipeline {
+    align-items: stretch;
+}
+.column[data-status="TEST-DRIVE"] { border-top: 4px solid #7c3aed; }
+.column[data-status="BOOKED"] { border-top: 4px solid #059669; }
+.column[data-status="LOST"] { border-top: 4px solid #64748b; }
+
+@media (max-width: 900px) {
+    .admin-header { align-items: stretch; }
+    .admin-header input,
+    .admin-header select,
+    .csv-btn,
+    .admin-user-box { width: 100%; }
+}

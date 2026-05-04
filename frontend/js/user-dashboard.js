@@ -1,102 +1,279 @@
 const API = window.CRM_API || "https://landing-backend-8gvq.onrender.com/api";
 const token = sessionStorage.getItem("token");
 const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+
+let allLeads = [];
+let priorityChart;
+let actionChart;
+
 const STATUSES = ["NEW", "CONTACTED", "FOLLOW-UP", "TEST-DRIVE", "BOOKED", "CLOSED", "LOST"];
-let priorityChart, actionChart;
+const ZONE_IDS = {
+    "NEW": "zone-new",
+    "CONTACTED": "zone-contacted",
+    "FOLLOW-UP": "zone-follow-up",
+    "TEST-DRIVE": "zone-test-drive",
+    "BOOKED": "zone-booked",
+    "CLOSED": "zone-closed",
+    "LOST": "zone-lost"
+};
+
 if (!token) window.location.href = "login.html";
 if (user.role === "admin") window.location.href = "admin.html";
-function authHeaders(json=false){ const h={Authorization:`Bearer ${token}`}; if(json) h["Content-Type"]="application/json"; return h; }
-function safe(v){ return String(v ?? "-").replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
-function toast(msg,err=false){ let e=document.getElementById('crmToast'); if(!e){e=document.createElement('div');e.id='crmToast';document.body.appendChild(e);} e.textContent=msg; e.className=`crm-toast show ${err?'error':''}`; setTimeout(()=>e.className='crm-toast',2200); }
-async function request(url,opt={}){ const r=await fetch(url,opt); let d={}; try{d=await r.json()}catch{} if(r.status===401) return logout(); if(!r.ok) throw new Error(d.message||'Request failed'); return d; }
-async function loadLeads(){ const p=new URLSearchParams(); const f=document.getElementById('filter')?.value||''; const s=document.getElementById('searchInput')?.value.trim()||''; if(f)p.set('priority',f); if(s)p.set('search',s); const leads=await request(`${API}/leads?${p}`,{headers:authHeaders()}); renderPipeline(leads); renderTable(leads); }
-function renderTable(leads){ const tb=document.querySelector('#leadTable tbody'); if(!tb)return; if(!leads.length){tb.innerHTML='<tr><td colspan="9" class="empty-state">📭 No assigned leads yet. Ask admin to assign leads.</td></tr>';return;} tb.innerHTML=leads.map(l=>{const pc=String(l.priority||'COLD').toLowerCase(); const phone=safe(l.phone).replace(/\D/g,''); return `<tr class="${pc}"><td><strong>${safe(l.name)}</strong><small>${l.created_at?new Date(l.created_at).toLocaleString():''}</small></td><td>${safe(l.phone)}</td><td>${safe(l.car_interest)}</td><td>${safe(l.action_type)}</td><td>${l.score||0}</td><td><span class="badge ${pc}">${safe(l.priority||'COLD')}</span></td><td><select onchange="updateStatus(${l.id}, this.value)">${STATUSES.map(s=>`<option value="${s}" ${l.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><textarea placeholder="Customer response / next follow-up" onblur="saveNotes(${l.id}, this.value)">${safe(l.notes||'')}</textarea></td><td class="actions"><a href="tel:${phone}">📞</a><a href="https://wa.me/91${phone}" target="_blank">💬</a></td></tr>`;}).join(''); }
-function renderPipeline(leads){ const zones={NEW:'new',CONTACTED:'contacted','FOLLOW-UP':'followup',CLOSED:'closedZone'}; Object.values(zones).forEach(id=>{const z=document.getElementById(id); if(z)z.innerHTML=''}); const c={NEW:0,CONTACTED:0,'FOLLOW-UP':0,CLOSED:0}; leads.forEach(l=>{const st=c.hasOwnProperty(l.status)?l.status:'NEW'; c[st]++; const card=document.createElement('div'); card.className=`lead-card ${String(l.priority||'COLD').toLowerCase()}`; card.draggable=true; card.dataset.id=l.id; card.innerHTML=`<strong>${safe(l.name)}</strong><div class="lead-meta">${safe(l.phone)} • ${safe(l.car_interest)}</div>`; card.addEventListener('dragstart',e=>e.dataTransfer.setData('id',l.id)); document.getElementById(zones[st])?.appendChild(card);}); document.querySelector('[data-status="NEW"] h3').innerText=`NEW (${c.NEW})`; document.querySelector('[data-status="CONTACTED"] h3').innerText=`CONTACTED (${c.CONTACTED})`; document.querySelector('[data-status="FOLLOW-UP"] h3').innerText=`FOLLOW-UP (${c['FOLLOW-UP']})`; document.querySelector('[data-status="CLOSED"] h3').innerText=`CLOSED (${c.CLOSED})`; }
-function initDragDrop(){ document.querySelectorAll('.dropzone').forEach(z=>{ z.addEventListener('dragover',e=>e.preventDefault()); z.addEventListener('drop',async e=>{e.preventDefault(); await updateStatus(e.dataTransfer.getData('id'),z.parentElement.dataset.status);});});}
-async function updateStatus(id,status){ try{ await request(`${API}/lead/${id}/status`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({status})}); toast('Status updated'); await Promise.all([loadLeads(),loadAnalytics()]); }catch(e){toast(e.message,true);} }
-async function saveNotes(id,notes){ try{ await request(`${API}/lead/${id}/notes`,{method:'PUT',headers:authHeaders(true),body:JSON.stringify({notes})}); toast('Notes saved'); }catch(e){toast(e.message,true);} }
-function chartNumber(value) { return Number(value || 0); }
-function showChartFallback(canvas, message) {
-    if (!canvas) return;
-    const box = canvas.closest('.chart-card');
-    if (!box) return;
-    let fallback = box.querySelector('.chart-fallback');
-    if (!fallback) {
-        fallback = document.createElement('div');
-        fallback.className = 'chart-fallback';
-        box.appendChild(fallback);
-    }
-    fallback.textContent = message;
+
+function authHeaders(json = false) {
+    const headers = { Authorization: `Bearer ${token}` };
+    if (json) headers["Content-Type"] = "application/json";
+    return headers;
 }
-async function loadAnalytics(){
-    const d = await request(`${API}/analytics`, { headers: authHeaders() });
-    ['total','hot','warm','cold','enquiry','testdrive','closed'].forEach(id => {
-        const e = document.getElementById(id);
-        if (e) e.innerText = chartNumber(d[id]);
-    });
 
-    const c1 = document.getElementById('priorityChart');
-    const c2 = document.getElementById('actionChart');
-    if (!c1 && !c2) return;
+function safe(value) {
+    return String(value ?? "-").replace(/[&<>'"]/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+    }[char]));
+}
 
-    if (typeof Chart === 'undefined') {
-        showChartFallback(c1, 'Chart library not loaded. Check internet/CDN access.');
-        showChartFallback(c2, 'Chart library not loaded. Check internet/CDN access.');
+function fmtDate(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString();
+}
+
+function cleanPhone(phone) {
+    return String(phone || "").replace(/\D/g, "").slice(-10);
+}
+
+function toast(message, error = false) {
+    let el = document.getElementById("crmToast");
+    if (!el) {
+        el = document.createElement("div");
+        el.id = "crmToast";
+        document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.className = `crm-toast show ${error ? "error" : ""}`;
+    setTimeout(() => { el.className = "crm-toast"; }, 2400);
+}
+
+async function request(url, options = {}) {
+    const response = await fetch(url, options);
+    let data = {};
+    try { data = await response.json(); } catch { data = {}; }
+    if (response.status === 401) return logout();
+    if (!response.ok) throw new Error(data.message || "Request failed");
+    return data;
+}
+
+async function loadLeads() {
+    const params = new URLSearchParams();
+    const priority = document.getElementById("filter")?.value || "";
+    const search = document.getElementById("searchInput")?.value.trim() || "";
+    if (priority) params.set("priority", priority);
+    if (search) params.set("search", search);
+
+    const query = params.toString();
+    allLeads = await request(`${API}/leads${query ? `?${query}` : ""}`, { headers: authHeaders() });
+
+    renderTodayFollowups(allLeads);
+    renderPipeline(allLeads);
+    renderTable(allLeads);
+}
+
+function renderTodayFollowups(leads) {
+    const box = document.getElementById("todayFollowups");
+    if (!box) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const due = leads.filter(lead => lead.next_followup_at && String(lead.next_followup_at).startsWith(today));
+
+    if (!due.length) {
+        box.innerHTML = `<div class="empty-state">No follow-ups scheduled for today</div>`;
         return;
     }
 
+    box.innerHTML = due.map(lead => `
+        <div class="followup-card">
+            <strong>${safe(lead.name)}</strong>
+            <span>${safe(lead.phone)} • ${safe(lead.car_interest || "Not Selected")}</span>
+            <small>${fmtDate(lead.next_followup_at)}</small>
+        </div>
+    `).join("");
+}
+
+function renderPipeline(leads) {
+    const counters = Object.fromEntries(STATUSES.map(status => [status, 0]));
+    STATUSES.forEach(status => {
+        const zone = document.getElementById(ZONE_IDS[status]);
+        if (zone) zone.innerHTML = "";
+    });
+
+    leads.forEach(lead => {
+        const status = STATUSES.includes(lead.status) ? lead.status : "NEW";
+        counters[status]++;
+        const zone = document.getElementById(ZONE_IDS[status]);
+        if (!zone) return;
+
+        const card = document.createElement("div");
+        card.className = `lead-card ${String(lead.priority || "COLD").toLowerCase()}`;
+        card.draggable = true;
+        card.dataset.id = lead.id;
+        card.innerHTML = `
+            <strong>${safe(lead.name)}</strong>
+            <div class="lead-meta">${safe(lead.phone)} • ${safe(lead.car_interest || "Not Selected")}</div>
+            <div class="lead-meta">${safe(lead.source || "WEBSITE")}</div>
+        `;
+        card.addEventListener("dragstart", event => event.dataTransfer.setData("id", lead.id));
+        zone.appendChild(card);
+    });
+
+    STATUSES.forEach(status => {
+        const title = document.querySelector(`[data-status="${status}"] h3`);
+        if (title) title.innerText = `${status} (${counters[status]})`;
+    });
+}
+
+function renderTable(leads) {
+    const tbody = document.querySelector("#leadTable tbody");
+    if (!tbody) return;
+
+    if (!leads.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">📭 No assigned leads found</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = leads.map(lead => {
+        const priorityClass = String(lead.priority || "COLD").toLowerCase();
+        const phone = cleanPhone(lead.phone);
+        return `
+            <tr class="${priorityClass}">
+                <td><strong>${safe(lead.name)}</strong><small>${fmtDate(lead.created_at)}</small></td>
+                <td>${safe(lead.phone)}<small>Alt: ${safe(lead.alternate_phone || "-")}</small></td>
+                <td>${safe(lead.car_interest || "Not Selected")}<small>Variant: ${safe(lead.variant_interest || "-")}</small></td>
+                <td>${safe(lead.source || "WEBSITE")}<small>${safe(lead.action_type || lead.lead_type || "ENQUIRY")}</small></td>
+                <td><span class="badge ${priorityClass}">${safe(lead.priority || "COLD")}</span><small>Score: ${Number(lead.score || 0)}</small></td>
+                <td>
+                    <select onchange="updateStatus(${lead.id}, this.value)">
+                        ${STATUSES.map(status => `<option value="${status}" ${lead.status === status ? "selected" : ""}>${status}</option>`).join("")}
+                    </select>
+                </td>
+                <td>
+                    <button onclick="openFollowup(${lead.id})" class="followup-btn">📞 Follow-up</button>
+                    <small>Next: ${fmtDate(lead.next_followup_at)}</small>
+                    <small>Count: ${lead.followup_count || 0}</small>
+                </td>
+                <td class="actions">
+                    <a href="tel:${phone}" title="Call">📞</a>
+                    <a href="https://wa.me/91${phone}" target="_blank" title="WhatsApp">💬</a>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function initDragDrop() {
+    document.querySelectorAll(".dropzone").forEach(zone => {
+        zone.addEventListener("dragover", event => event.preventDefault());
+        zone.addEventListener("drop", async event => {
+            event.preventDefault();
+            const id = event.dataTransfer.getData("id");
+            const status = zone.parentElement.dataset.status;
+            await updateStatus(id, status);
+        });
+    });
+}
+
+async function updateStatus(id, status) {
+    try {
+        await request(`${API}/lead/${id}/status`, {
+            method: "PUT",
+            headers: authHeaders(true),
+            body: JSON.stringify({ status })
+        });
+        toast("Status updated");
+        await Promise.all([loadLeads(), loadAnalytics()]);
+    } catch (error) {
+        toast(error.message, true);
+    }
+}
+
+async function openFollowup(id) {
+    const nextDate = prompt("Next follow-up date/time (YYYY-MM-DD HH:MM). Leave blank if not needed:");
+    const callStatus = prompt("Call status: CONNECTED / NOT_CONNECTED / BUSY / SWITCHED_OFF", "CONNECTED") || "CONNECTED";
+    const customerResponse = prompt("Customer response:", "Interested") || "";
+    const remarks = prompt("Remarks / next action:", "") || "";
+    const nextStatus = prompt("Lead status after follow-up:", "FOLLOW-UP") || "FOLLOW-UP";
+
+    try {
+        await request(`${API}/lead/${id}/followup`, {
+            method: "POST",
+            headers: authHeaders(true),
+            body: JSON.stringify({
+                call_status: callStatus,
+                customer_response: customerResponse,
+                next_followup_at: nextDate || null,
+                remarks,
+                next_status: nextStatus
+            })
+        });
+        toast("Follow-up saved");
+        await Promise.all([loadLeads(), loadAnalytics()]);
+    } catch (error) {
+        toast(error.message, true);
+    }
+}
+
+async function loadAnalytics() {
+    const data = await request(`${API}/analytics`, { headers: authHeaders() });
+
+    ["total", "hot", "warm", "cold", "enquiry", "testdrive", "booked", "closed", "today_followups", "overdue_followups"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = Number(data[id] || 0);
+    });
+
+    if (typeof Chart === "undefined") return;
     if (priorityChart) priorityChart.destroy();
     if (actionChart) actionChart.destroy();
 
-    const commonText = '#1f2937';
-    const gridColor = 'rgba(31, 41, 55, 0.12)';
-
-    if (c1) {
-        priorityChart = new Chart(c1, {
-            type: 'doughnut',
-            data: {
-                labels: ['HOT', 'WARM', 'COLD'],
-                datasets: [{
-                    data: [chartNumber(d.hot), chartNumber(d.warm), chartNumber(d.cold)],
-                    backgroundColor: ['#ef4444', '#f59e0b', '#38bdf8'],
-                    borderColor: '#ffffff',
-                    borderWidth: 3,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: { legend: { position: 'bottom', labels: { color: commonText, usePointStyle: true, padding: 18, font: { weight: '600' } } } }
-            }
+    const priorityCanvas = document.getElementById("priorityChart");
+    if (priorityCanvas) {
+        priorityChart = new Chart(priorityCanvas, {
+            type: "doughnut",
+            data: { labels: ["HOT", "WARM", "COLD"], datasets: [{ data: [data.hot || 0, data.warm || 0, data.cold || 0] }] },
+            options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-    if (c2) {
-        actionChart = new Chart(c2, {
-            type: 'bar',
+    const actionCanvas = document.getElementById("actionChart");
+    if (actionCanvas) {
+        actionChart = new Chart(actionCanvas, {
+            type: "bar",
             data: {
-                labels: ['Enquiry', 'Test Drive', 'Call', 'WhatsApp', 'Closed', 'Unassigned'],
-                datasets: [{
-                    label: 'Leads',
-                    data: [chartNumber(d.enquiry), chartNumber(d.testdrive), chartNumber(d.call), chartNumber(d.whatsapp), chartNumber(d.closed), chartNumber(d.unassigned)],
-                    backgroundColor: ['#2563eb', '#7c3aed', '#f97316', '#22c55e', '#111827', '#94a3b8'],
-                    borderRadius: 10,
-                    maxBarThickness: 54
-                }]
+                labels: ["Enquiry", "Test Drive", "Call", "WhatsApp", "Booked", "Closed"],
+                datasets: [{ label: "Leads", data: [data.enquiry || 0, data.testdrive || 0, data.call || 0, data.whatsapp || 0, data.booked || 0, data.closed || 0] }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { color: commonText, font: { weight: '600' } }, grid: { display: false } },
-                    y: { beginAtZero: true, ticks: { color: commonText, precision: 0 }, grid: { color: gridColor } }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
     }
 }
-function logout(){ sessionStorage.removeItem('token'); sessionStorage.removeItem('user'); window.location.href='login.html'; }
-window.onload=async()=>{ document.getElementById('userInfo').innerText=`👤 ${user.name||'Sales User'} (${user.role||'sales'})`; initDragDrop(); try{ await Promise.all([loadLeads(),loadAnalytics()]); setInterval(()=>Promise.all([loadLeads(),loadAnalytics()]).catch(console.error),50000); }catch(e){toast(e.message,true);} };
+
+function logout() {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    window.location.href = "login.html";
+}
+
+window.onload = async () => {
+    const userInfo = document.getElementById("userInfo");
+    if (userInfo) userInfo.innerText = `👤 ${user.name || "Sales User"} (${user.role || "sales"})`;
+    initDragDrop();
+    try {
+        await Promise.all([loadLeads(), loadAnalytics()]);
+        setInterval(() => Promise.all([loadLeads(), loadAnalytics()]).catch(console.error), 50000);
+    } catch (error) {
+        toast(error.message, true);
+    }
+};

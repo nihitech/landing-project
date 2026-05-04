@@ -1,12 +1,14 @@
 const express = require("express");
 const db = require("../config/db");
+const sendWhatsApp = require("../services/whatsapp");
 const { calculateScore, getLeadPriority } = require("../services/scoring");
 const auth = require("../middleware/auth");
 
 const router = express.Router();
 
 const STATUSES = ["NEW", "CONTACTED", "FOLLOW-UP", "TEST-DRIVE", "BOOKED", "CLOSED", "LOST"];
-const ACTIONS = ["ENQUIRY", "TEST_DRIVE", "CALL", "WHATSAPP"];
+const ACTIONS = ["ENQUIRY", "QUICK_ENQUIRY", "COMPLETE_ENQUIRY", "TEST_DRIVE", "CALL", "WHATSAPP", "VISIT", "BOOKING"];
+const SOURCES = ["WEBSITE", "CALL_NOW", "WHATSAPP", "FACEBOOK", "INSTAGRAM", "GOOGLE_ADS", "MANUAL", "SHOWROOM"];
 
 function normalizePhone(phone) {
     return String(phone || "").replace(/\D/g, "").slice(-10);
@@ -29,11 +31,45 @@ function parseId(value) {
     return Number.isInteger(id) && id > 0 ? id : NaN;
 }
 
+function cleanText(value, fallback = "") {
+    return String(value ?? fallback).trim();
+}
+
+function normalizeAction(value) {
+    const action = String(value || "ENQUIRY").trim().toUpperCase().replace(/[\s-]+/g, "_");
+    return ACTIONS.includes(action) ? action : "ENQUIRY";
+}
+
+function normalizeSource(value) {
+    const source = String(value || "WEBSITE").trim().toUpperCase().replace(/[\s-]+/g, "_");
+    return SOURCES.includes(source) ? source : source || "WEBSITE";
+}
+
+function nullableDate(value) {
+    if (!value) return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function getLeastLoadedSalesUser() {
+    const result = await db.query(`
+        SELECT u.id, COUNT(l.id)::int AS lead_count
+        FROM users u
+        LEFT JOIN leads l ON l.assigned_to = u.id AND l.status NOT IN ('CLOSED','LOST')
+        WHERE u.role = 'sales'
+        GROUP BY u.id
+        ORDER BY lead_count ASC, u.id ASC
+        LIMIT 1
+    `);
+    return result.rows[0]?.id || null;
+}
+
 router.post("/lead", async (req, res) => {
     try {
         const data = req.body || {};
         const phone = normalizePhone(data.phone);
-        const action = String(data.action_type || "ENQUIRY").toUpperCase().replace("-", "_");
+        const action = normalizeAction(data.action_type || data.lead_type);
+        const source = normalizeSource(data.source || data.tracking?.utm_source || "WEBSITE");
 
         if (!data.name || phone.length !== 10) {
             return res.status(400).json({ message: "Name and valid phone are required" });
@@ -44,40 +80,74 @@ router.post("/lead", async (req, res) => {
         const priority = getLeadPriority(score);
         const now = new Date();
 
-        const assignedTo = parseId(data.assigned_to || data.user_id);
-        const finalAssignedTo = Number.isNaN(assignedTo) ? null : assignedTo;
+        const requestedAssign = parseId(data.assigned_to || data.user_id);
+        const assignedTo = Number.isNaN(requestedAssign)
+            ? null
+            : (requestedAssign || (data.auto_assign ? await getLeastLoadedSalesUser() : null));
 
         const result = await db.query(`
             INSERT INTO leads
             (
-                name, phone, email, area, district, profession,
-                car_interest, action_type, tracking, score, priority, status,
-                followup_1, followup_2, followup_3, source, assigned_to
+                name, phone, alternate_phone, email, area, district, profession, family_members,
+                car_interest, variant_interest, budget_range, purchase_timeline, exchange_vehicle,
+                finance_required, action_type, lead_type, source, campaign_name, tracking,
+                score, priority, status, assigned_to, notes,
+                test_drive_date, showroom_visit_date, booking_expected_date,
+                next_followup_at, followup_1, followup_2, followup_3
             )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'NEW',$12,$13,$14,$15,$16)
-            RETURNING id
+            VALUES
+            ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'NEW',$22,$23,$24,$25,$26,$27,$28,$29,$30)
+            RETURNING id, assigned_to
         `, [
-            String(data.name).trim(),
+            cleanText(data.name),
             phone,
-            String(data.email || "").trim(),
-            String(data.area || "").trim(),
-            String(data.district || "").trim(),
-            String(data.profession || "").trim(),
-            String(data.car_interest || "Not Selected").trim(),
-            ACTIONS.includes(action) ? action : "ENQUIRY",
+            normalizePhone(data.alternate_phone),
+            cleanText(data.email),
+            cleanText(data.area),
+            cleanText(data.district),
+            cleanText(data.profession),
+            cleanText(data.family_members),
+            cleanText(data.car_interest, "Not Selected"),
+            cleanText(data.variant_interest),
+            cleanText(data.budget_range),
+            cleanText(data.purchase_timeline),
+            cleanText(data.exchange_vehicle),
+            cleanText(data.finance_required),
+            action,
+            cleanText(data.lead_type, action),
+            source,
+            cleanText(data.campaign_name || tracking.utm_campaign),
             JSON.stringify(tracking),
             score,
             priority,
+            assignedTo,
+            cleanText(data.notes),
+            nullableDate(data.test_drive_date),
+            nullableDate(data.showroom_visit_date),
+            nullableDate(data.booking_expected_date),
+            nullableDate(data.next_followup_at),
             new Date(now.getTime() + 5 * 60 * 1000),
             new Date(now.getTime() + 24 * 60 * 60 * 1000),
-            new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-            String(data.source || tracking.utm_source || "Website"),
-            finalAssignedTo
+            new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
         ]);
+
+        // Non-blocking WhatsApp notifications.
+        sendWhatsApp(
+            `whatsapp:+91${phone}`,
+            `Hi ${cleanText(data.name)},\n\nThanks for your interest in ${cleanText(data.car_interest, "Mahindra")}. Our team will contact you shortly.\n\n- Shiva Automobiles`
+        ).catch(err => console.error("WA Customer Error:", err.message));
+
+        if (process.env.SALES_WHATSAPP_NUMBER) {
+            sendWhatsApp(
+                process.env.SALES_WHATSAPP_NUMBER,
+                `New Lead 🚗\n\nName: ${cleanText(data.name)}\nPhone: ${phone}\nSource: ${source}\nType: ${action}\nCar: ${cleanText(data.car_interest, "Not Selected")}\nScore: ${score}\nPriority: ${priority}`
+            ).catch(err => console.error("WA Sales Error:", err.message));
+        }
 
         res.status(201).json({
             message: "Lead saved",
             id: result.rows[0].id,
+            assigned_to: result.rows[0].assigned_to,
             score,
             priority
         });
@@ -107,21 +177,24 @@ router.get("/leads", auth, async (req, res) => {
             clauses.push(`l.status = $${values.length}`);
         }
 
+        if (req.query.source) {
+            values.push(String(req.query.source).toUpperCase());
+            clauses.push(`UPPER(l.source) = $${values.length}`);
+        }
+
         if (req.query.search) {
             values.push(`%${String(req.query.search).toLowerCase()}%`);
-            clauses.push(`
-                (
-                    LOWER(l.name) LIKE $${values.length}
-                    OR l.phone LIKE $${values.length}
-                    OR LOWER(l.car_interest) LIKE $${values.length}
-                )
-            `);
+            clauses.push(`(
+                LOWER(l.name) LIKE $${values.length}
+                OR l.phone LIKE $${values.length}
+                OR LOWER(l.car_interest) LIKE $${values.length}
+                OR LOWER(COALESCE(l.campaign_name,'')) LIKE $${values.length}
+            )`);
         }
 
         const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-
         const result = await db.query(`
-            SELECT l.*, u.name AS assigned_name
+            SELECT l.*, u.name AS assigned_name, u.email AS assigned_email
             FROM leads l
             LEFT JOIN users u ON l.assigned_to = u.id
             ${where}
@@ -135,20 +208,91 @@ router.get("/leads", auth, async (req, res) => {
     }
 });
 
+router.get("/lead/:id/followups", auth, async (req, res) => {
+    try {
+        const leadId = parseId(req.params.id);
+        if (!leadId) return res.status(400).json({ message: "Invalid lead id" });
+
+        const values = [leadId];
+        let ownerClause = "";
+        if (normalizeRole(req.user.role) !== "admin") {
+            values.push(req.user.id);
+            ownerClause = "AND l.assigned_to=$2";
+        }
+
+        const access = await db.query(`SELECT id FROM leads l WHERE l.id=$1 ${ownerClause}`, values);
+        if (!access.rows.length) return res.status(404).json({ message: "Lead not found or not assigned to you" });
+
+        const result = await db.query(`
+            SELECT f.*, u.name AS user_name
+            FROM lead_followups f
+            LEFT JOIN users u ON f.user_id = u.id
+            WHERE f.lead_id=$1
+            ORDER BY f.created_at DESC
+        `, [leadId]);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error("FOLLOWUP HISTORY ERROR:", err);
+        res.status(500).json({ message: "Failed to load follow-ups" });
+    }
+});
+
+router.post("/lead/:id/followup", auth, async (req, res) => {
+    try {
+        const leadId = parseId(req.params.id);
+        if (!leadId) return res.status(400).json({ message: "Invalid lead id" });
+
+        const callStatus = cleanText(req.body.call_status, "CONNECTED").toUpperCase().replace(/[\s-]+/g, "_");
+        const response = cleanText(req.body.customer_response);
+        const remarks = cleanText(req.body.remarks || req.body.followup_notes);
+        const nextDate = nullableDate(req.body.next_followup_at);
+        const nextStatus = String(req.body.next_status || req.body.status || "FOLLOW-UP").toUpperCase();
+        const safeStatus = STATUSES.includes(nextStatus) ? nextStatus : "FOLLOW-UP";
+
+        const values = [leadId];
+        let ownerClause = "";
+        if (normalizeRole(req.user.role) !== "admin") {
+            values.push(req.user.id);
+            ownerClause = `AND assigned_to = $2`;
+        }
+        const leadAccess = await db.query(`SELECT id FROM leads WHERE id=$1 ${ownerClause}`, values);
+        if (!leadAccess.rows.length) return res.status(404).json({ message: "Lead not found or not assigned to you" });
+
+        await db.query(`
+            INSERT INTO lead_followups
+            (lead_id, user_id, followup_type, call_status, customer_response, next_followup_at, remarks)
+            VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `, [leadId, req.user.id, "MANUAL", callStatus, response, nextDate, remarks]);
+
+        await db.query(`
+            UPDATE leads
+            SET last_followup_at = NOW(),
+                next_followup_at = $1,
+                followup_count = COALESCE(followup_count,0) + 1,
+                followup_notes = $2,
+                status = $3,
+                updated_at = NOW()
+            WHERE id = $4
+        `, [nextDate, remarks, safeStatus, leadId]);
+
+        res.json({ message: "Follow-up saved" });
+    } catch (err) {
+        console.error("FOLLOWUP ERROR:", err);
+        res.status(500).json({ message: "Follow-up error" });
+    }
+});
+
 router.put("/lead/:id/status", auth, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
         if (!leadId) return res.status(400).json({ message: "Invalid lead id" });
 
         const status = String(req.body.status || "").toUpperCase();
-
-        if (!STATUSES.includes(status)) {
-            return res.status(400).json({ message: "Invalid status" });
-        }
+        if (!STATUSES.includes(status)) return res.status(400).json({ message: "Invalid status" });
 
         const values = [status, leadId];
         let ownerClause = "";
-
         if (normalizeRole(req.user.role) !== "admin") {
             values.push(req.user.id);
             ownerClause = `AND assigned_to = $3`;
@@ -161,10 +305,7 @@ router.put("/lead/:id/status", auth, async (req, res) => {
             RETURNING id, status
         `, values);
 
-        if (!result.rows.length) {
-            return res.status(404).json({ message: "Lead not found or not assigned to you" });
-        }
-
+        if (!result.rows.length) return res.status(404).json({ message: "Lead not found or not assigned to you" });
         res.json({ message: "Status updated", lead: result.rows[0] });
     } catch (err) {
         console.error("STATUS ERROR:", err);
@@ -179,30 +320,12 @@ router.put("/lead/:id/assign", auth, requireAdmin, async (req, res) => {
 
         const rawUserId = req.body.user_id ?? req.body.assigned_to ?? null;
         const userId = parseId(rawUserId);
-
-        if (Number.isNaN(userId)) {
-            return res.status(400).json({ message: "Invalid user selected" });
-        }
+        if (Number.isNaN(userId)) return res.status(400).json({ message: "Invalid user selected" });
 
         if (userId) {
-            const user = await db.query(
-                `
-                SELECT id, role
-                FROM users
-                WHERE id=$1
-                LIMIT 1
-                `,
-                [userId]
-            );
-
-            if (!user.rows.length) {
-                return res.status(400).json({ message: "Selected user not found" });
-            }
-
-            const role = normalizeRole(user.rows[0].role);
-            if (role !== "sales" && role !== "sale" && role !== "sales_user") {
-                return res.status(400).json({ message: "Please select only sales user" });
-            }
+            const user = await db.query("SELECT id, role FROM users WHERE id=$1 LIMIT 1", [userId]);
+            if (!user.rows.length) return res.status(400).json({ message: "Selected user not found" });
+            if (normalizeRole(user.rows[0].role) !== "sales") return res.status(400).json({ message: "Please select only sales user" });
         }
 
         const result = await db.query(`
@@ -212,14 +335,8 @@ router.put("/lead/:id/assign", auth, requireAdmin, async (req, res) => {
             RETURNING id, assigned_to
         `, [userId, leadId]);
 
-        if (!result.rows.length) {
-            return res.status(404).json({ message: "Lead not found" });
-        }
-
-        res.json({
-            message: userId ? "Lead assigned" : "Lead unassigned",
-            lead: result.rows[0]
-        });
+        if (!result.rows.length) return res.status(404).json({ message: "Lead not found" });
+        res.json({ message: userId ? "Lead assigned" : "Lead unassigned", lead: result.rows[0] });
     } catch (err) {
         console.error("ASSIGN ERROR:", err);
         res.status(500).json({ message: "Assign failed" });
@@ -231,9 +348,8 @@ router.put("/lead/:id/notes", auth, async (req, res) => {
         const leadId = parseId(req.params.id);
         if (!leadId) return res.status(400).json({ message: "Invalid lead id" });
 
-        const values = [String(req.body.notes || ""), leadId];
+        const values = [cleanText(req.body.notes), leadId];
         let ownerClause = "";
-
         if (normalizeRole(req.user.role) !== "admin") {
             values.push(req.user.id);
             ownerClause = `AND assigned_to = $3`;
@@ -246,10 +362,7 @@ router.put("/lead/:id/notes", auth, async (req, res) => {
             RETURNING id
         `, values);
 
-        if (!result.rows.length) {
-            return res.status(404).json({ message: "Lead not found or not assigned to you" });
-        }
-
+        if (!result.rows.length) return res.status(404).json({ message: "Lead not found or not assigned to you" });
         res.json({ message: "Notes saved" });
     } catch (err) {
         console.error("NOTES ERROR:", err);
@@ -261,7 +374,6 @@ router.get("/analytics", auth, async (req, res) => {
     try {
         const values = [];
         let where = "";
-
         if (normalizeRole(req.user.role) !== "admin") {
             values.push(req.user.id);
             where = "WHERE assigned_to=$1";
@@ -273,23 +385,29 @@ router.get("/analytics", auth, async (req, res) => {
                 COUNT(*) FILTER (WHERE priority='HOT')::int AS hot,
                 COUNT(*) FILTER (WHERE priority='WARM')::int AS warm,
                 COUNT(*) FILTER (WHERE priority='COLD')::int AS cold,
-                COUNT(*) FILTER (WHERE UPPER(REPLACE(COALESCE(action_type,''), '-', '_'))='ENQUIRY')::int AS enquiry,
-                COUNT(*) FILTER (WHERE UPPER(REPLACE(COALESCE(action_type,''), '-', '_')) IN ('TEST_DRIVE','TESTDRIVE'))::int AS testdrive,
-                COUNT(*) FILTER (WHERE UPPER(COALESCE(action_type,''))='CALL')::int AS call,
-                COUNT(*) FILTER (WHERE UPPER(COALESCE(action_type,''))='WHATSAPP')::int AS whatsapp,
-                COUNT(*) FILTER (WHERE status='NEW')::int AS new,
-                COUNT(*) FILTER (WHERE status='CONTACTED')::int AS contacted,
-                COUNT(*) FILTER (WHERE status='FOLLOW-UP')::int AS followup,
-                COUNT(*) FILTER (WHERE status='TEST-DRIVE')::int AS test_drive_stage,
-                COUNT(*) FILTER (WHERE status='BOOKED')::int AS booked,
+                COUNT(*) FILTER (WHERE action_type IN ('ENQUIRY','QUICK_ENQUIRY','COMPLETE_ENQUIRY'))::int AS enquiry,
+                COUNT(*) FILTER (WHERE action_type='TEST_DRIVE')::int AS testdrive,
+                COUNT(*) FILTER (WHERE action_type='CALL')::int AS call,
+                COUNT(*) FILTER (WHERE action_type='WHATSAPP')::int AS whatsapp,
                 COUNT(*) FILTER (WHERE status='CLOSED')::int AS closed,
+                COUNT(*) FILTER (WHERE status='BOOKED')::int AS booked,
                 COUNT(*) FILTER (WHERE status='LOST')::int AS lost,
-                COUNT(*) FILTER (WHERE assigned_to IS NULL)::int AS unassigned
+                COUNT(*) FILTER (WHERE assigned_to IS NULL)::int AS unassigned,
+                COUNT(*) FILTER (WHERE next_followup_at::date = CURRENT_DATE)::int AS today_followups,
+                COUNT(*) FILTER (WHERE next_followup_at < NOW() AND status NOT IN ('CLOSED','LOST'))::int AS overdue_followups
             FROM leads
             ${where}
         `, values);
 
-        res.json(result.rows[0]);
+        const bySource = await db.query(`
+            SELECT COALESCE(source,'WEBSITE') AS source, COUNT(*)::int AS count
+            FROM leads
+            ${where}
+            GROUP BY COALESCE(source,'WEBSITE')
+            ORDER BY count DESC
+        `, values);
+
+        res.json({ ...result.rows[0], by_source: bySource.rows });
     } catch (err) {
         console.error("ANALYTICS ERROR:", err);
         res.status(500).json({ message: "Analytics failed" });

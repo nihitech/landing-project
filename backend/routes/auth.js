@@ -5,31 +5,71 @@ const db = require("../config/db");
 const auth = require("../middleware/auth");
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
+
+function cleanRole(role) {
+    return String(role || "sales").trim().toLowerCase() === "admin" ? "admin" : "sales";
+}
 
 function requireAdmin(req, res, next) {
-    if (req.user?.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+    if (req.user?.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+    }
     next();
 }
 
-router.post("/register", auth, requireAdmin, async (req, res) => {
+async function optionalAdminForRegister(req, res, next) {
     try {
-        const { name, email, password, role = "sales" } = req.body;
-        const cleanEmail = String(email || "").trim().toLowerCase();
-        const cleanRole = role === "admin" ? "admin" : "sales";
+        const count = await db.query("SELECT COUNT(*)::int AS count FROM users");
+        const hasUsers = count.rows[0].count > 0;
 
-        if (!name || !cleanEmail || !password) return res.status(400).json({ message: "Name, email and password are required" });
-        if (password.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters" });
+        // First ever user can be created without login. Force it to admin.
+        if (!hasUsers) {
+            req.firstUser = true;
+            return next();
+        }
+
+        const header = req.headers.authorization || "";
+        const token = header.startsWith("Bearer ") ? header.slice(7) : header;
+        if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+        req.user = jwt.verify(token, JWT_SECRET);
+        if (req.user.role !== "admin") {
+            return res.status(403).json({ message: "Admin access required" });
+        }
+
+        next();
+    } catch (error) {
+        return res.status(401).json({ message: "Invalid or expired token" });
+    }
+}
+
+router.post("/register", optionalAdminForRegister, async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+        const role = req.firstUser ? "admin" : cleanRole(req.body.role);
+        const cleanEmail = String(email || "").trim().toLowerCase();
+        const cleanName = String(name || "").trim();
+
+        if (!cleanName || !cleanEmail || !password) {
+            return res.status(400).json({ message: "Name, email and password are required" });
+        }
+
+        if (String(password).length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters" });
+        }
 
         const existing = await db.query("SELECT id FROM users WHERE LOWER(email)=LOWER($1)", [cleanEmail]);
-        if (existing.rows.length) return res.status(409).json({ message: "User already exists" });
+        if (existing.rows.length) {
+            return res.status(409).json({ message: "User already exists" });
+        }
 
         const hash = await bcrypt.hash(password, 10);
-        const result = await db.query(
-            `INSERT INTO users (name, email, password, role)
-             VALUES ($1,$2,$3,$4)
-             RETURNING id, name, email, role`,
-            [name.trim(), cleanEmail, hash, cleanRole]
-        );
+        const result = await db.query(`
+            INSERT INTO users (name, email, password, role)
+            VALUES ($1,$2,$3,$4)
+            RETURNING id, name, email, role, created_at
+        `, [cleanName, cleanEmail, hash, role]);
 
         res.status(201).json({ message: "User created successfully", user: result.rows[0] });
     } catch (err) {
@@ -43,7 +83,9 @@ router.post("/login", async (req, res) => {
         const email = String(req.body.email || "").trim().toLowerCase();
         const password = String(req.body.password || "");
 
-        if (!email || !password) return res.status(400).json({ message: "Email and password required" });
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password required" });
+        }
 
         const result = await db.query("SELECT * FROM users WHERE LOWER(email)=LOWER($1)", [email]);
         const user = result.rows[0];
@@ -52,14 +94,15 @@ router.post("/login", async (req, res) => {
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return res.status(400).json({ message: "Invalid email or password" });
 
-        const token = jwt.sign(
-            { id: user.id, role: user.role, name: user.name },
-            process.env.JWT_SECRET || "dev_secret_change_me",
-            { expiresIn: "12h" }
-        );
+        const safeUser = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+        };
 
-        delete user.password;
-        res.json({ token, user });
+        const token = jwt.sign(safeUser, JWT_SECRET, { expiresIn: "12h" });
+        res.json({ token, user: safeUser });
     } catch (err) {
         console.error("LOGIN ERROR:", err);
         res.status(500).json({ message: "Login failed" });
@@ -67,14 +110,18 @@ router.post("/login", async (req, res) => {
 });
 
 router.get("/me", auth, async (req, res) => {
-    const result = await db.query("SELECT id, name, email, role FROM users WHERE id=$1", [req.user.id]);
-    if (!result.rows.length) return res.status(404).json({ message: "User not found" });
-    res.json(result.rows[0]);
+    try {
+        const result = await db.query("SELECT id, name, email, role FROM users WHERE id=$1", [req.user.id]);
+        if (!result.rows.length) return res.status(404).json({ message: "User not found" });
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ message: "Failed to load profile" });
+    }
 });
 
 router.get("/users", auth, requireAdmin, async (req, res) => {
     try {
-        const result = await db.query("SELECT id, name, email, role, created_at FROM users ORDER BY id DESC");
+        const result = await db.query("SELECT id, name, email, role, created_at FROM users ORDER BY role, name");
         res.json(result.rows);
     } catch (err) {
         console.error("Users fetch error:", err);
@@ -85,6 +132,7 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
 router.delete("/user/:id", auth, requireAdmin, async (req, res) => {
     try {
         const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid user" });
         if (id === Number(req.user.id)) return res.status(400).json({ message: "You cannot delete your own account" });
 
         await db.query("UPDATE leads SET assigned_to=NULL WHERE assigned_to=$1", [id]);
