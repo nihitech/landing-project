@@ -38,11 +38,21 @@ function safe(value) {
 
 function fmtDate(value) {
     if (!value) return "-";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleString();
-}
 
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "-";
+
+    return date.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+    });
+}
 function cleanPhone(phone) {
     return String(phone || "").replace(/\D/g, "").slice(-10);
 }
@@ -282,7 +292,8 @@ async function submitFollowup() {
     const id = document.getElementById("followupLeadId").value;
     const call_status = document.getElementById("callStatus").value;
     const customer_response = document.getElementById("customerResponse").value;
-    const next_followup_at = document.getElementById("nextFollowupAt").value;
+    const rawDateTime = document.getElementById("nextFollowupAt").value;
+    const next_followup_at = rawDateTime ? `${rawDateTime}:00+05:30` : "";
     const remarks = document.getElementById("followupRemarks").value;
 
     if (!next_followup_at) {
