@@ -157,6 +157,52 @@ router.post("/lead", async (req, res) => {
     }
 });
 
+router.post("/lead/:id/followup", auth, async (req, res) => {
+    try {
+        const leadId = parseId(req.params.id);
+        if (!leadId) return res.status(400).json({ message: "Invalid lead id" });
+
+        const callStatus = cleanText(req.body.call_status, "CONNECTED").toUpperCase().replace(/[\s-]+/g, "_");
+        const response = cleanText(req.body.customer_response);
+        const remarks = cleanText(req.body.remarks || req.body.followup_notes);
+        const nextDate = nullableDate(req.body.next_followup_at);
+        const nextStatus = String(req.body.next_status || req.body.status || "FOLLOW-UP").toUpperCase();
+        const safeStatus = STATUSES.includes(nextStatus) ? nextStatus : "FOLLOW-UP";
+
+        const values = [leadId];
+        let ownerClause = "";
+        if (normalizeRole(req.user.role) !== "admin") {
+            values.push(req.user.id);
+            ownerClause = `AND assigned_to = $2`;
+        }
+        const leadAccess = await db.query(`SELECT id FROM leads WHERE id=$1 ${ownerClause}`, values);
+        if (!leadAccess.rows.length) return res.status(404).json({ message: "Lead not found or not assigned to you" });
+
+        await db.query(`
+            INSERT INTO lead_followups
+            (lead_id, user_id, followup_type, call_status, customer_response, next_followup_at, remarks)
+            VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `, [leadId, req.user.id, "MANUAL", callStatus, response, nextDate, remarks]);
+
+        await db.query(`
+            UPDATE leads
+            SET last_followup_at = NOW(),
+                next_followup_at = $1,
+                followup_count = COALESCE(followup_count,0) + 1,
+                followup_notes = $2,
+                status = $3,
+                updated_at = NOW()
+            WHERE id = $4
+        `, [nextDate, remarks, safeStatus, leadId]);
+
+        res.json({ message: "Follow-up saved" });
+    } catch (err) {
+        console.error("FOLLOWUP ERROR:", err);
+        res.status(500).json({ message: "Follow-up error" });
+    }
+});
+
+
 router.get("/leads", auth, async (req, res) => {
     try {
         const clauses = [];
@@ -234,51 +280,6 @@ router.get("/lead/:id/followups", auth, async (req, res) => {
     } catch (err) {
         console.error("FOLLOWUP HISTORY ERROR:", err);
         res.status(500).json({ message: "Failed to load follow-ups" });
-    }
-});
-
-router.post("/lead/:id/followup", auth, async (req, res) => {
-    try {
-        const leadId = parseId(req.params.id);
-        if (!leadId) return res.status(400).json({ message: "Invalid lead id" });
-
-        const callStatus = cleanText(req.body.call_status, "CONNECTED").toUpperCase().replace(/[\s-]+/g, "_");
-        const response = cleanText(req.body.customer_response);
-        const remarks = cleanText(req.body.remarks || req.body.followup_notes);
-        const nextDate = nullableDate(req.body.next_followup_at);
-        const nextStatus = String(req.body.next_status || req.body.status || "FOLLOW-UP").toUpperCase();
-        const safeStatus = STATUSES.includes(nextStatus) ? nextStatus : "FOLLOW-UP";
-
-        const values = [leadId];
-        let ownerClause = "";
-        if (normalizeRole(req.user.role) !== "admin") {
-            values.push(req.user.id);
-            ownerClause = `AND assigned_to = $2`;
-        }
-        const leadAccess = await db.query(`SELECT id FROM leads WHERE id=$1 ${ownerClause}`, values);
-        if (!leadAccess.rows.length) return res.status(404).json({ message: "Lead not found or not assigned to you" });
-
-        await db.query(`
-            INSERT INTO lead_followups
-            (lead_id, user_id, followup_type, call_status, customer_response, next_followup_at, remarks)
-            VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `, [leadId, req.user.id, "MANUAL", callStatus, response, nextDate, remarks]);
-
-        await db.query(`
-            UPDATE leads
-            SET last_followup_at = NOW(),
-                next_followup_at = $1,
-                followup_count = COALESCE(followup_count,0) + 1,
-                followup_notes = $2,
-                status = $3,
-                updated_at = NOW()
-            WHERE id = $4
-        `, [nextDate, remarks, safeStatus, leadId]);
-
-        res.json({ message: "Follow-up saved" });
-    } catch (err) {
-        console.error("FOLLOWUP ERROR:", err);
-        res.status(500).json({ message: "Follow-up error" });
     }
 });
 

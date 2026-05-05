@@ -3,46 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin CRM Dashboard</title>
+    <title>Lead Dashboard</title>
+
     <link rel="stylesheet" href="./css/styles.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
+
 <body class="admin-page">
 
     <div class="admin-header">
-        <div>
-            <span class="tag">Multipurpose Lead CRM</span>
-            <h1>Admin Dashboard</h1>
-        </div>
 
-        <input type="text" id="searchInput" placeholder="🔍 Search name, phone, car, campaign..." oninput="loadLeads()" />
-
-        <select id="filter" onchange="loadLeads()">
-            <option value="">All Priorities</option>
-            <option value="HOT">🔥 HOT</option>
-            <option value="WARM">🟡 WARM</option>
-            <option value="COLD">⚪ COLD</option>
-        </select>
-
-        <select id="sourceFilter" onchange="loadLeads()">
-            <option value="">All Sources</option>
-            <option value="WEBSITE">Website</option>
-            <option value="CALL_NOW">Call Now</option>
-            <option value="WHATSAPP">WhatsApp</option>
-            <option value="FACEBOOK">Facebook</option>
-            <option value="INSTAGRAM">Instagram</option>
-            <option value="GOOGLE_ADS">Google Ads</option>
-            <option value="MANUAL">Manual</option>
-            <option value="SHOWROOM">Showroom</option>
-        </select>
-
-        <button onclick="downloadLeadsCSV()" class="csv-btn">⬇ CSV</button>
-
-        <div class="admin-user-box">
-            <span id="userInfo"></span>
-            <button onclick="logout()" class="logout-btn">Logout</button>
-        </div>
+    <div>
+        <span class="tag">Mahindra Lead CRM</span>
+        <h1>Leads Dashboard</h1>
     </div>
+
+    <input 
+        type="text" 
+        id="searchInput" 
+        placeholder="🔍 Search name or phone..." 
+        oninput="loadLeads()"
+    />
+
+    <select id="filter" onchange="loadLeads()">
+        <option value="">All Leads</option>
+        <option value="HOT">🔥 HOT</option>
+        <option value="WARM">🟡 WARM</option>
+        <option value="COLD">⚪ COLD</option>
+    </select>
+    <button onclick="downloadLeadsCSV()" class="csv-btn">
+    ⬇ Download CSV
+    </button>
+    <div class="admin-user-box">
+        <span id="userInfo"></span>
+        <button onclick="logout()" class="logout-btn">Logout</button>
+    </div>
+
+</div>
 
     <div class="dashboard-stats">
         <div class="dash-card">Total <span id="total">0</span></div>
@@ -51,52 +50,55 @@
         <div class="dash-card cold">COLD <span id="cold">0</span></div>
         <div class="dash-card">Enquiry <span id="enquiry">0</span></div>
         <div class="dash-card">Test Drive <span id="testdrive">0</span></div>
-        <div class="dash-card">Booked <span id="booked">0</span></div>
         <div class="dash-card">Closed <span id="closed">0</span></div>
-        <div class="dash-card">Today Follow-ups <span id="today_followups">0</span></div>
-        <div class="dash-card">Overdue <span id="overdue_followups">0</span></div>
-    </div>
-
-    <div class="workload-section">
-        <h2>👥 Sales Workload</h2>
-        <div id="workloadCards" class="workload-cards"></div>
-    </div>
-
-    <div class="followup-alert">
+        <div class="followup-alert">
         <h2>📞 Today's Follow-ups</h2>
         <div id="todayFollowups"></div>
+        </div>
     </div>
-
     <div class="chart-grid">
         <div class="chart-card">
             <h3>Lead Priority</h3>
             <canvas id="priorityChart"></canvas>
         </div>
+
         <div class="chart-card">
-            <h3>Lead Sources & Actions</h3>
+            <h3>Customer Actions</h3>
             <canvas id="actionChart"></canvas>
         </div>
     </div>
+    <div class="pipeline">
 
-    <div class="pipeline" id="pipelineBoard">
-        <div class="column" data-status="NEW"><h3>NEW</h3><div class="dropzone" id="zone-new"></div></div>
-        <div class="column" data-status="CONTACTED"><h3>CONTACTED</h3><div class="dropzone" id="zone-contacted"></div></div>
-        <div class="column" data-status="FOLLOW-UP"><h3>FOLLOW-UP</h3><div class="dropzone" id="zone-follow-up"></div></div>
-        <div class="column" data-status="TEST-DRIVE"><h3>TEST-DRIVE</h3><div class="dropzone" id="zone-test-drive"></div></div>
-        <div class="column" data-status="BOOKED"><h3>BOOKED</h3><div class="dropzone" id="zone-booked"></div></div>
-        <div class="column" data-status="CLOSED"><h3>CLOSED</h3><div class="dropzone" id="zone-closed"></div></div>
-        <div class="column" data-status="LOST"><h3>LOST</h3><div class="dropzone" id="zone-lost"></div></div>
+    <div class="column" data-status="NEW">
+        <h3>NEW</h3>
+        <div class="dropzone" id="zone-new"></div>
     </div>
 
+    <div class="column" data-status="CONTACTED">
+        <h3>CONTACTED</h3>
+        <div class="dropzone" id="zone-contacted"></div>
+    </div>
+
+    <div class="column" data-status="FOLLOW-UP">
+        <h3>FOLLOW-UP</h3>
+        <div class="dropzone" id="zone-followup"></div>
+    </div>
+
+    <div class="column" data-status="CLOSED">
+        <h3>CLOSED</h3>
+        <div class="dropzone" id="zone-closed"></div>
+    </div>
+
+</div>
     <div class="table-card">
         <table id="leadTable">
             <thead>
                 <tr>
                     <th>Customer</th>
                     <th>Contact</th>
-                    <th>Car / Variant</th>
-                    <th>Source / Type</th>
-                    <th>Quality</th>
+                    <th>Vehicle</th>
+                    <th>Source</th>
+                    <th>Priority</th>
                     <th>Status</th>
                     <th>Assign</th>
                     <th>Follow-up</th>
@@ -106,28 +108,71 @@
             <tbody></tbody>
         </table>
     </div>
-
     <div class="user-section">
-        <h2>👥 User Management</h2>
-        <div class="user-form">
-            <input type="text" id="uname" placeholder="Name">
-            <input type="email" id="uemail" placeholder="Email">
-            <input type="password" id="upassword" placeholder="Password">
-            <select id="urole">
-                <option value="sales">Sales</option>
-                <option value="admin">Admin</option>
-            </select>
-            <button onclick="createUser()">Add User</button>
-        </div>
+    <h2>👥 User Management</h2>
 
-        <table id="userTable">
-            <thead>
-                <tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+    <div class="user-form">
+        <input type="text" id="uname" placeholder="Name">
+        <input type="email" id="uemail" placeholder="Email">
+        <input type="password" id="upassword" placeholder="Password">
+
+        <select id="urole">
+            <option value="sales">Sales</option>
+            <option value="admin">Admin</option>
+        </select>
+
+        <button onclick="createUser()">Add User</button>
     </div>
 
+    <table id="userTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    </div>
+    <div id="leadDetailModal" class="lead-detail-modal">
+    <div class="lead-detail-card">
+        <button onclick="closeLeadDetails()" class="modal-close">×</button>
+        <h2>Lead Details</h2>
+        <div id="leadDetailContent"></div>
+    </div>
+</div>
+    <div id="followupModal" class="followup-modal">
+    <div class="followup-modal-card">
+        <h2>📞 Add Follow-up</h2>
+
+        <input type="hidden" id="followupLeadId">
+
+        <label>Call Status</label>
+        <select id="callStatus">
+            <option value="CONNECTED">Connected</option>
+            <option value="NOT_CONNECTED">Not Connected</option>
+        </select>
+
+        <label>Customer Response</label>
+        <select id="customerResponse">
+            <option value="INTERESTED">Interested</option>
+            <option value="NOT_INTERESTED">Not Interested</option>
+        </select>
+
+        <label>Next Follow-up</label>
+        <input type="datetime-local" id="nextFollowupAt">
+
+        <label>Remarks</label>
+        <textarea id="followupRemarks"></textarea>
+
+        <div>
+            <button onclick="closeFollowupModal()">Cancel</button>
+            <button onclick="submitFollowup()">Save</button>
+        </div>
+    </div>
+</div>
     <script src="./js/admin.js"></script>
 </body>
 </html>
