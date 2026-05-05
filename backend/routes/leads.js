@@ -412,5 +412,83 @@ router.get("/analytics", auth, async (req, res) => {
         res.status(500).json({ message: "Analytics failed" });
     }
 });
+// 🔐 UPDATE FULL LEAD DETAILS
+router.put("/lead/:id", auth, async (req, res) => {
+    try {
+        const leadId = parseId(req.params.id);
+        if (!leadId) {
+            return res.status(400).json({ message: "Invalid lead id" });
+        }
 
+        const data = req.body || {};
+
+        const values = [
+            cleanText(data.name),
+            normalizePhone(data.phone),
+            normalizePhone(data.alternate_phone),
+            cleanText(data.email),
+            cleanText(data.area),
+            cleanText(data.district),
+            cleanText(data.profession),
+            cleanText(data.family_members),
+            cleanText(data.car_interest),
+            cleanText(data.variant_interest),
+            cleanText(data.budget_range),
+            cleanText(data.purchase_timeline),
+            cleanText(data.exchange_vehicle),
+            cleanText(data.finance_required),
+            cleanText(data.notes),
+            nullableDate(data.test_drive_date),
+            nullableDate(data.showroom_visit_date),
+            nullableDate(data.booking_expected_date),
+            leadId
+        ];
+
+        let ownerClause = "";
+
+        if (normalizeRole(req.user.role) !== "admin") {
+            values.push(req.user.id);
+            ownerClause = `AND assigned_to = $${values.length}`;
+        }
+
+        const result = await db.query(`
+            UPDATE leads
+            SET
+                name = $1,
+                phone = $2,
+                alternate_phone = $3,
+                email = $4,
+                area = $5,
+                district = $6,
+                profession = $7,
+                family_members = $8,
+                car_interest = $9,
+                variant_interest = $10,
+                budget_range = $11,
+                purchase_timeline = $12,
+                exchange_vehicle = $13,
+                finance_required = $14,
+                notes = $15,
+                test_drive_date = $16,
+                showroom_visit_date = $17,
+                booking_expected_date = $18,
+                updated_at = NOW()
+            WHERE id = $19 ${ownerClause}
+            RETURNING *
+        `, values);
+
+        if (!result.rows.length) {
+            return res.status(404).json({ message: "Lead not found or not assigned to you" });
+        }
+
+        res.json({
+            message: "Lead updated successfully",
+            lead: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error("LEAD UPDATE ERROR:", err);
+        res.status(500).json({ message: "Lead update failed" });
+    }
+});
 module.exports = router;
