@@ -57,7 +57,11 @@
         <h2>📞 My Today's Follow-ups</h2>
         <div id="todayFollowups"></div>
     </div>
+    <div class="overdue-section">
+        <h2>⚠ Missed / Overdue Follow-ups</h2>
 
+        <div id="overdueFollowups" class="overdue-grid"></div>
+    </div>
     <!-- CHARTS -->
     <div class="chart-grid sales-chart-grid">
         <div class="chart-card">
@@ -175,7 +179,52 @@
             <div id="leadDetailContent"></div>
         </div>
     </div>
+<div id="enquiryModal" class="enquiry-modal">
+    <div class="enquiry-card">
 
+        <h2>📝 Detailed Enquiry</h2>
+        <input type="hidden" id="enquiryLeadId">
+
+        <div class="form-grid">
+
+            <input id="e_name" placeholder="Customer Name">
+            <input id="e_phone" placeholder="Phone">
+            <input id="e_alt_phone" placeholder="Alternate Phone">
+            <input id="e_email" placeholder="Email">
+
+            <input id="e_area" placeholder="Area">
+            <input id="e_district" placeholder="District">
+            <input id="e_profession" placeholder="Profession">
+            <input id="e_family" placeholder="Family Members">
+
+            <input id="e_car" placeholder="Car Interest">
+            <input id="e_variant" placeholder="Variant Interest">
+            <input id="e_budget" placeholder="Budget Range">
+            <input id="e_timeline" placeholder="Purchase Timeline">
+
+            <input id="e_exchange" placeholder="Exchange Vehicle">
+            <input id="e_finance" placeholder="Finance Required">
+
+            <label>Test Drive Date</label>
+            <input type="date" id="e_testdrive">
+
+            <label>Showroom Visit</label>
+            <input type="date" id="e_visit">
+
+            <label>Booking Expected</label>
+            <input type="date" id="e_booking">
+
+        </div>
+
+        <textarea id="e_notes" placeholder="Customer discussion notes..."></textarea>
+
+        <div class="modal-actions">
+            <button onclick="closeEnquiryModal()">Cancel</button>
+            <button onclick="saveEnquiry()">Save Enquiry</button>
+        </div>
+
+    </div>
+</div>
     <script src="./js/user-dashboard.js"></script>
 </body>
 </html>

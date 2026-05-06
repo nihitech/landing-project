@@ -77,7 +77,79 @@ async function request(url, options = {}) {
     if (!response.ok) throw new Error(data.message || "Request failed");
     return data;
 }
+function renderOverdueFollowups(leads) {
 
+    const box = document.getElementById("overdueFollowups");
+
+    if (!box) return;
+
+    const now = new Date();
+
+    const overdue = leads.filter(lead => {
+
+        if (!lead.next_followup_at) return false;
+
+        const next = new Date(lead.next_followup_at);
+
+        return (
+            next < now &&
+            !["CLOSED", "LOST"].includes(lead.status)
+        );
+    });
+
+    if (!overdue.length) {
+        box.innerHTML = `
+            <div class="empty-state">
+                ✅ No missed follow-ups
+            </div>
+        `;
+        return;
+    }
+
+    box.innerHTML = overdue.map(lead => {
+
+        const phone = cleanPhone(lead.phone);
+
+        const diffMs = now - new Date(lead.next_followup_at);
+
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+
+        return `
+            <div class="overdue-card">
+
+                <div class="overdue-top">
+                    <strong>${safe(lead.name)}</strong>
+                    <span>${hours} hrs overdue</span>
+                </div>
+
+                <p>${safe(lead.phone)}</p>
+
+                <small>
+                    ${safe(lead.car_interest || "Not Selected")}
+                </small>
+
+                <small>
+                    Follow-up was due:
+                    ${fmtDate(lead.next_followup_at)}
+                </small>
+
+                <div class="overdue-actions">
+                    <a href="tel:${phone}">📞 Call</a>
+
+                    <a href="https://wa.me/91${phone}"
+                       target="_blank">
+                       💬 WhatsApp
+                    </a>
+
+                    <button onclick="openFollowup(${lead.id})">
+                        Reschedule
+                    </button>
+                </div>
+
+            </div>
+        `;
+    }).join("");
+}
 async function loadLeads() {
     const params = new URLSearchParams();
     const priority = document.getElementById("filter")?.value || "";
@@ -89,6 +161,7 @@ async function loadLeads() {
     allLeads = await request(`${API}/leads${query ? `?${query}` : ""}`, { headers: authHeaders() });
 
     renderTodayFollowups(allLeads);
+    renderOverdueFollowups(allLeads);
     renderPipeline(allLeads);
     renderTable(allLeads);
 }
@@ -114,6 +187,89 @@ function renderTodayFollowups(leads) {
     `).join("");
 }
 
+function openEnquiryModal(id) {
+    const lead = allLeads.find(l => Number(l.id) === Number(id));
+
+    if (!lead) return toast("Lead not found", true);
+
+    document.getElementById("enquiryLeadId").value = id;
+
+    document.getElementById("e_name").value = lead.name || "";
+    document.getElementById("e_phone").value = lead.phone || "";
+    document.getElementById("e_alt_phone").value = lead.alternate_phone || "";
+    document.getElementById("e_email").value = lead.email || "";
+
+    document.getElementById("e_area").value = lead.area || "";
+    document.getElementById("e_district").value = lead.district || "";
+    document.getElementById("e_profession").value = lead.profession || "";
+    document.getElementById("e_family").value = lead.family_members || "";
+
+    document.getElementById("e_car").value = lead.car_interest || "";
+    document.getElementById("e_variant").value = lead.variant_interest || "";
+    document.getElementById("e_budget").value = lead.budget_range || "";
+    document.getElementById("e_timeline").value = lead.purchase_timeline || "";
+
+    document.getElementById("e_exchange").value = lead.exchange_vehicle || "";
+    document.getElementById("e_finance").value = lead.finance_required || "";
+
+    document.getElementById("e_notes").value = lead.notes || "";
+
+    document.getElementById("enquiryModal").classList.add("show");
+}
+function closeEnquiryModal() {
+    document.getElementById("enquiryModal").classList.remove("show");
+}
+async function saveEnquiry() {
+
+    const id = document.getElementById("enquiryLeadId").value;
+
+    const payload = {
+        name: document.getElementById("e_name").value,
+        phone: document.getElementById("e_phone").value,
+        alternate_phone: document.getElementById("e_alt_phone").value,
+        email: document.getElementById("e_email").value,
+
+        area: document.getElementById("e_area").value,
+        district: document.getElementById("e_district").value,
+        profession: document.getElementById("e_profession").value,
+        family_members: document.getElementById("e_family").value,
+
+        car_interest: document.getElementById("e_car").value,
+        variant_interest: document.getElementById("e_variant").value,
+        budget_range: document.getElementById("e_budget").value,
+        purchase_timeline: document.getElementById("e_timeline").value,
+
+        exchange_vehicle: document.getElementById("e_exchange").value,
+        finance_required: document.getElementById("e_finance").value,
+
+        test_drive_date: document.getElementById("e_testdrive").value,
+        showroom_visit_date: document.getElementById("e_visit").value,
+        booking_expected_date: document.getElementById("e_booking").value,
+
+        notes: document.getElementById("e_notes").value
+    };
+
+    try {
+
+        await request(`${API}/lead/${id}`, {
+            method: "PUT",
+            headers: authHeaders(true),
+            body: JSON.stringify(payload)
+        });
+
+        toast("Enquiry saved successfully");
+
+        closeEnquiryModal();
+
+        await Promise.all([
+            loadLeads(),
+            loadAnalytics()
+        ]);
+
+    } catch (e) {
+        toast(e.message, true);
+    }
+}
 function renderPipeline(leads) {
     const counters = Object.fromEntries(STATUSES.map(status => [status, 0]));
     STATUSES.forEach(status => {
@@ -176,7 +332,10 @@ function renderTable(leads) {
                     <small>Count: ${lead.followup_count || 0}</small>
                 </td>
                 <td class="actions">
-                    <button onclick="openLeadDetails(${l.id})" class="view-btn">View</button>
+                    <button onclick="openLeadDetails(${lead.id})" class="view-btn">View</button>
+                    <button onclick="openEnquiryModal(${lead.id})" class="enquiry-btn">
+                        📝 Enquiry
+                    </button>
                     <a href="tel:${phone}" title="Call">📞</a>
                     <a href="https://wa.me/91${phone}" target="_blank" title="WhatsApp">💬</a>
                 </td>
@@ -206,19 +365,43 @@ async function openLeadDetails(id) {
         <div class="detail-grid">
             <div><strong>Name</strong><span>${safe(lead.name)}</span></div>
             <div><strong>Phone</strong><span>${safe(lead.phone)}</span></div>
-            <div><strong>Email</strong><span>${safe(lead.email)}</span></div>
-            <div><strong>Car</strong><span>${safe(lead.car_interest)}</span></div>
-            <div><strong>Action</strong><span>${safe(lead.action_type)}</span></div>
-            <div><strong>Priority</strong><span>${safe(lead.priority)}</span></div>
-            <div><strong>Status</strong><span>${safe(lead.status)}</span></div>
+            <div><strong>Alternate Phone</strong><span>${safe(lead.alternate_phone || "-")}</span></div>
+            <div><strong>Email</strong><span>${safe(lead.email || "-")}</span></div>
+
+            <div><strong>Area</strong><span>${safe(lead.area || "-")}</span></div>
+            <div><strong>District</strong><span>${safe(lead.district || "-")}</span></div>
+            <div><strong>Profession</strong><span>${safe(lead.profession || "-")}</span></div>
+            <div><strong>Family Members</strong><span>${safe(lead.family_members || "-")}</span></div>
+
+            <div><strong>Car Interest</strong><span>${safe(lead.car_interest || "-")}</span></div>
+            <div><strong>Variant Interest</strong><span>${safe(lead.variant_interest || "-")}</span></div>
+            <div><strong>Budget Range</strong><span>${safe(lead.budget_range || "-")}</span></div>
+            <div><strong>Purchase Timeline</strong><span>${safe(lead.purchase_timeline || "-")}</span></div>
+
+            <div><strong>Exchange Vehicle</strong><span>${safe(lead.exchange_vehicle || "-")}</span></div>
+            <div><strong>Finance Required</strong><span>${safe(lead.finance_required || "-")}</span></div>
+            <div><strong>Test Drive Date</strong><span>${fmtDate(lead.test_drive_date)}</span></div>
+            <div><strong>Showroom Visit Date</strong><span>${fmtDate(lead.showroom_visit_date)}</span></div>
+
+            <div><strong>Booking Expected Date</strong><span>${fmtDate(lead.booking_expected_date)}</span></div>
+            <div><strong>Source</strong><span>${safe(lead.source || "WEBSITE")}</span></div>
+            <div><strong>Lead Type</strong><span>${safe(lead.lead_type || lead.action_type || "ENQUIRY")}</span></div>
+            <div><strong>Campaign</strong><span>${safe(lead.campaign_name || "-")}</span></div>
+
+            <div><strong>Priority</strong><span>${safe(lead.priority || "-")}</span></div>
+            <div><strong>Score</strong><span>${safe(lead.score || 0)}</span></div>
+            <div><strong>Status</strong><span>${safe(lead.status || "-")}</span></div>
             <div><strong>Assigned To</strong><span>${safe(lead.assigned_name || "Unassigned")}</span></div>
-            <div><strong>Next Follow-up</strong><span>${lead.next_followup_at ? new Date(lead.next_followup_at).toLocaleString() : "-"}</span></div>
+
+            <div><strong>Next Follow-up</strong><span>${fmtDate(lead.next_followup_at)}</span></div>
+            <div><strong>Last Follow-up</strong><span>${fmtDate(lead.last_followup_at)}</span></div>
             <div><strong>Follow-up Count</strong><span>${lead.followup_count || 0}</span></div>
+            <div><strong>Created At</strong><span>${fmtDate(lead.created_at)}</span></div>
         </div>
 
         <div class="detail-notes">
-            <strong>Notes</strong>
-            <p>${safe(lead.notes || "No notes added")}</p>
+            <strong>Latest Notes / Follow-up Remarks</strong>
+            <p>${safe(lead.notes || lead.followup_notes || "No notes added")}</p>
         </div>
 
         <div class="followup-history">

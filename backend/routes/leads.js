@@ -82,8 +82,8 @@ router.post("/lead", async (req, res) => {
 
         const requestedAssign = parseId(data.assigned_to || data.user_id);
         const assignedTo = Number.isNaN(requestedAssign)
-            ? null
-            : (requestedAssign || (data.auto_assign ? await getLeastLoadedSalesUser() : null));
+            ? await getLeastLoadedSalesUser()
+            : (requestedAssign || await getLeastLoadedSalesUser());
 
         const result = await db.query(`
             INSERT INTO leads
@@ -190,6 +190,7 @@ router.post("/lead/:id/followup", auth, async (req, res) => {
                 next_followup_at = $1,
                 followup_count = COALESCE(followup_count,0) + 1,
                 followup_notes = $2,
+                notes = $2,
                 status = $3,
                 updated_at = NOW()
             WHERE id = $4
@@ -490,6 +491,34 @@ router.put("/lead/:id", auth, async (req, res) => {
     } catch (err) {
         console.error("LEAD UPDATE ERROR:", err);
         res.status(500).json({ message: "Lead update failed" });
+    }
+});
+// 🔥 AUTO ESCALATE OVERDUE FOLLOW-UPS
+router.post("/followups/escalate", auth, requireAdmin, async (req, res) => {
+    try {
+        const result = await db.query(`
+            UPDATE leads
+            SET priority = CASE
+                WHEN next_followup_at < NOW() - INTERVAL '48 hours' THEN 'HOT'
+                WHEN next_followup_at < NOW() - INTERVAL '24 hours' THEN 'WARM'
+                ELSE priority
+            END,
+            updated_at = NOW()
+            WHERE next_followup_at IS NOT NULL
+            AND status NOT IN ('CLOSED', 'LOST')
+            AND next_followup_at < NOW()
+            RETURNING id, name, priority, next_followup_at
+        `);
+
+        res.json({
+            message: "Overdue follow-ups escalated",
+            updated: result.rows.length,
+            leads: result.rows
+        });
+
+    } catch (err) {
+        console.error("ESCALATION ERROR:", err);
+        res.status(500).json({ message: "Escalation failed" });
     }
 });
 module.exports = router;
