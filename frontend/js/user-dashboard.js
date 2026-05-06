@@ -17,7 +17,7 @@ const ZONE_IDS = {
     "LOST": "zone-lost"
 };
 const VEHICLE_DATA = {
-    ICE: {
+    AD: {
         fuelTypes: ["PETROL", "DIESEL"],
         models: {
             "XUV700": ["MX", "AX3", "AX5", "AX7", "AX7L"],
