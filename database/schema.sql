@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'sales' CHECK (role IN ('admin','sales')),
+    phone TEXT DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS leads (
     f1_sent BOOLEAN DEFAULT FALSE,
     f2_sent BOOLEAN DEFAULT FALSE,
     f3_sent BOOLEAN DEFAULT FALSE,
+    reminder_sent BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -83,6 +85,10 @@ CREATE TABLE IF NOT EXISTS communication_logs (
 );
 
 -- Safe upgrade commands for older databases
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE;
+UPDATE leads SET vehicle_category = 'AD' WHERE vehicle_category = 'ICE';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS alternate_phone TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS family_members TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS vehicle_category TEXT DEFAULT '';

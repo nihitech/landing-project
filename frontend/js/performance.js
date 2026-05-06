@@ -1,0 +1,10 @@
+async function loadPerformance() {
+  const data = await request(`${API}/sales-performance`, { headers: authHeaders() });
+  const box = document.getElementById("salesPerformance");
+  if (!box) return;
+  box.innerHTML = data.length ? data.map(u => {
+    const cls = u.overdue_followups > 10 ? "bad" : (u.overdue_followups > 3 ? "average" : "good");
+    return `<div class="performance-card ${cls}"><h3>${safe(u.name)}</h3><p>${safe(u.email)}</p><div class="performance-stats"><div><strong>${u.total_leads}</strong><span>Total</span></div><div><strong>${u.today_followups}</strong><span>Today</span></div><div><strong>${u.overdue_followups}</strong><span>Missed</span></div><div><strong>${u.test_drives}</strong><span>Test Drive</span></div><div><strong>${u.booked}</strong><span>Booked</span></div><div><strong>${u.closed}</strong><span>Closed</span></div></div></div>`;
+  }).join("") : `<div class="empty-state">No sales users found</div>`;
+}
+window.onload = () => loadPerformance().catch(console.error);

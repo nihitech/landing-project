@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body>
+
+<div class="crm-layout">
+
+    <!-- SIDEBAR -->
+    <div id="sidebarContainer"></div>
+
+    <!-- MAIN -->
+    <div class="main-content">
+
+        <div class="page-header">
+            <h1>📊 CRM Dashboard</h1>
+        </div>
+
+        <!-- KPI CARDS -->
+        <div class="dashboard-stats">
+            <div class="dash-card">
+                Total Leads
+                <span id="total">0</span>
+            </div>
+
+            <div class="dash-card hot">
+                HOT
+                <span id="hot">0</span>
+            </div>
+
+            <div class="dash-card warm">
+                WARM
+                <span id="warm">0</span>
+            </div>
+
+            <div class="dash-card cold">
+                COLD
+                <span id="cold">0</span>
+            </div>
+        </div>
+
+        <!-- TODAY FOLLOWUPS -->
+        <div class="followup-alert">
+            <h2>📞 Today's Follow-ups</h2>
+            <div id="todayFollowups"></div>
+        </div>
+
+        <!-- NOTIFICATIONS -->
+        <div class="overdue-section">
+            <h2>🔔 Notifications</h2>
+            <div id="notificationList"></div>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="./js/layout.js"></script>
+<script src="./js/dashboard.js"></script>
+
+</body>
+</html>
