@@ -250,8 +250,38 @@
             <input id="e_profession" placeholder="Profession">
             <input id="e_family" placeholder="Family Members">
 
-            <input id="e_car" placeholder="Car Interest">
-            <input id="e_variant" placeholder="Variant Interest">
+            <div class="field-group">
+                <label>Car Interest</label>
+
+                <div class="field-group">
+                <label>Vehicle Category</label>
+                <select id="e_vehicle_category" onchange="loadVehicleModels()">
+                    <option value="">Select Category</option>
+                    <option value="ICE">Fuel Vehicle</option>
+                    <option value="EV">Electric Vehicle</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Fuel Type</label>
+                <select id="e_fuel_type">
+                    <option value="">Select Fuel Type</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Model Interest</label>
+                <select id="e_car" onchange="loadVehicleVariants()">
+                    <option value="">Select Model</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Variant Interest</label>
+                <select id="e_variant">
+                    <option value="">Select Variant</option>
+                </select>
+            </div>
             <input id="e_budget" placeholder="Budget Range">
             <input id="e_timeline" placeholder="Purchase Timeline">
 

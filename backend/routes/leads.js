@@ -95,14 +95,14 @@ router.post("/lead", async (req, res) => {
             INSERT INTO leads
             (
                 name, phone, alternate_phone, email, area, district, profession, family_members,
-                car_interest, variant_interest, budget_range, purchase_timeline, exchange_vehicle,
-                finance_required, action_type, lead_type, source, campaign_name, tracking,
+                vehicle_category, fuel_type, car_interest, variant_interest, budget_range, purchase_timeline,
+                exchange_vehicle, finance_required, action_type, lead_type, source, campaign_name, tracking,
                 score, priority, status, assigned_to, notes,
                 test_drive_date, showroom_visit_date, booking_expected_date,
                 next_followup_at, followup_1, followup_2, followup_3
             )
             VALUES
-            ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'NEW',$22,$23,$24,$25,$26,$27,$28,$29,$30)
+            ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,'NEW',$24,$25,$26,$27,$28,$29,$30,$31,$32)
             RETURNING id, assigned_to
         `, [
             cleanText(data.name),
@@ -113,6 +113,8 @@ router.post("/lead", async (req, res) => {
             cleanText(data.district),
             cleanText(data.profession),
             cleanText(data.family_members),
+            cleanText(data.vehicle_category),
+            cleanText(data.fuel_type),
             cleanText(data.car_interest, "Not Selected"),
             cleanText(data.variant_interest),
             cleanText(data.budget_range),
@@ -431,25 +433,27 @@ router.put("/lead/:id", auth, async (req, res) => {
         const data = req.body || {};
 
         const values = [
-            cleanText(data.name),
-            normalizePhone(data.phone),
-            normalizePhone(data.alternate_phone),
-            cleanText(data.email),
-            cleanText(data.area),
-            cleanText(data.district),
-            cleanText(data.profession),
-            cleanText(data.family_members),
-            cleanText(data.car_interest),
-            cleanText(data.variant_interest),
-            cleanText(data.budget_range),
-            cleanText(data.purchase_timeline),
-            cleanText(data.exchange_vehicle),
-            cleanText(data.finance_required),
-            cleanText(data.notes),
-            nullableDate(data.test_drive_date),
-            nullableDate(data.showroom_visit_date),
-            nullableDate(data.booking_expected_date),
-            leadId
+            cleanText(data.name),                         // $1
+            normalizePhone(data.phone),                   // $2
+            normalizePhone(data.alternate_phone),         // $3
+            cleanText(data.email),                        // $4
+            cleanText(data.area),                         // $5
+            cleanText(data.district),                     // $6
+            cleanText(data.profession),                   // $7
+            cleanText(data.family_members),               // $8
+            cleanText(data.vehicle_category),             // $9
+            cleanText(data.fuel_type),                    // $10
+            cleanText(data.car_interest),                 // $11
+            cleanText(data.variant_interest),             // $12
+            cleanText(data.budget_range),                 // $13
+            cleanText(data.purchase_timeline),            // $14
+            cleanText(data.exchange_vehicle),             // $15
+            cleanText(data.finance_required),             // $16
+            cleanText(data.notes),                        // $17
+            nullableDate(data.test_drive_date),           // $18
+            nullableDate(data.showroom_visit_date),       // $19
+            nullableDate(data.booking_expected_date),     // $20
+            leadId                                        // $21
         ];
 
         let ownerClause = "";
@@ -470,18 +474,23 @@ router.put("/lead/:id", auth, async (req, res) => {
                 district = $6,
                 profession = $7,
                 family_members = $8,
-                car_interest = $9,
-                variant_interest = $10,
-                budget_range = $11,
-                purchase_timeline = $12,
-                exchange_vehicle = $13,
-                finance_required = $14,
-                notes = $15,
-                test_drive_date = $16,
-                showroom_visit_date = $17,
-                booking_expected_date = $18,
+                vehicle_category = $9,
+                fuel_type = $10,
+                car_interest = $11,
+                variant_interest = $12,
+                budget_range = $13,
+                purchase_timeline = $14,
+                exchange_vehicle = $15,
+                finance_required = $16,
+                notes = $17,
+                test_drive_date = $18,
+                showroom_visit_date = $19,
+                booking_expected_date = $20,
+                lead_type = 'COMPLETE_ENQUIRY',
+                action_type = 'COMPLETE_ENQUIRY',
+                status = CASE WHEN status = 'NEW' THEN 'CONTACTED' ELSE status END,
                 updated_at = NOW()
-            WHERE id = $19 ${ownerClause}
+            WHERE id = $21 ${ownerClause}
             RETURNING *
         `, values);
 

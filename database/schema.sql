@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS leads (
     district TEXT DEFAULT '',
     profession TEXT DEFAULT '',
     family_members TEXT DEFAULT '',
+    vehicle_category TEXT DEFAULT '',
+    fuel_type TEXT DEFAULT '',
     car_interest TEXT DEFAULT 'Not Selected',
     variant_interest TEXT DEFAULT '',
     budget_range TEXT DEFAULT '',
@@ -83,6 +85,8 @@ CREATE TABLE IF NOT EXISTS communication_logs (
 -- Safe upgrade commands for older databases
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS alternate_phone TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS family_members TEXT DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS vehicle_category TEXT DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS fuel_type TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS variant_interest TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS budget_range TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS purchase_timeline TEXT DEFAULT '';

@@ -16,7 +16,29 @@ const ZONE_IDS = {
     "CLOSED": "zone-closed",
     "LOST": "zone-lost"
 };
-
+const VEHICLE_DATA = {
+    ICE: {
+        fuelTypes: ["PETROL", "DIESEL"],
+        models: {
+            "XUV700": ["MX", "AX3", "AX5", "AX7", "AX7L"],
+            "Scorpio N": ["Z2", "Z4", "Z6", "Z8", "Z8L"],
+            "Scorpio Classic": ["S", "S11"],
+            "Thar": ["AX OPT", "LX"],
+            "Thar ROXX": ["MX1", "MX3", "AX3L", "MX5", "AX5L", "AX7L"],
+            "XUV 3XO": ["MX1", "MX2", "MX2 Pro", "MX3", "MX3 Pro", "AX5", "AX5L", "AX7", "AX7L"],
+            "Bolero": ["B4", "B6", "B6 OPT"],
+            "Bolero Neo": ["N4", "N8", "N10", "N10 OPT"]
+        }
+    },
+    EV: {
+        fuelTypes: ["ELECTRIC"],
+        models: {
+            "XUV400 EV": ["EC", "EL"],
+            "BE 6": ["Pack One", "Pack One Above", "Pack Two", "Pack Three"],
+            "XEV 9e": ["Pack One", "Pack Two", "Pack Three"]
+        }
+    }
+};
 if (!token) window.location.href = "login.html";
 if (user.role === "admin") window.location.href = "admin.html";
 
@@ -53,6 +75,20 @@ function fmtDate(value) {
         hour12: true
     });
 }
+function dateKeyIST(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).formatToParts(date);
+    const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    return `${map.year}-${map.month}-${map.day}`;
+}
+
 function cleanPhone(phone) {
     return String(phone || "").replace(/\D/g, "").slice(-10);
 }
@@ -170,8 +206,8 @@ function renderTodayFollowups(leads) {
     const box = document.getElementById("todayFollowups");
     if (!box) return;
 
-    const today = new Date().toISOString().slice(0, 10);
-    const due = leads.filter(lead => lead.next_followup_at && String(lead.next_followup_at).startsWith(today));
+    const today = dateKeyIST(new Date());
+    const due = leads.filter(lead => dateKeyIST(lead.next_followup_at) === today);
 
     if (!due.length) {
         box.innerHTML = `<div class="empty-state">No follow-ups scheduled for today</div>`;
@@ -204,15 +240,23 @@ function openEnquiryModal(id) {
     document.getElementById("e_profession").value = lead.profession || "";
     document.getElementById("e_family").value = lead.family_members || "";
 
-    document.getElementById("e_car").value = lead.car_interest || "";
-    document.getElementById("e_variant").value = lead.variant_interest || "";
     document.getElementById("e_budget").value = lead.budget_range || "";
     document.getElementById("e_timeline").value = lead.purchase_timeline || "";
-
     document.getElementById("e_exchange").value = lead.exchange_vehicle || "";
     document.getElementById("e_finance").value = lead.finance_required || "";
 
-    document.getElementById("e_notes").value = lead.notes || "";
+    document.getElementById("e_testdrive").value = dateKeyIST(lead.test_drive_date);
+    document.getElementById("e_visit").value = dateKeyIST(lead.showroom_visit_date);
+    document.getElementById("e_booking").value = dateKeyIST(lead.booking_expected_date);
+
+    document.getElementById("e_notes").value = lead.notes || lead.followup_notes || "";
+
+    document.getElementById("e_vehicle_category").value = lead.vehicle_category || "";
+    loadVehicleModels();
+    document.getElementById("e_fuel_type").value = lead.fuel_type || "";
+    document.getElementById("e_car").value = lead.car_interest || "";
+    loadVehicleVariants();
+    document.getElementById("e_variant").value = lead.variant_interest || "";
 
     document.getElementById("enquiryModal").classList.add("show");
 }
@@ -233,7 +277,8 @@ async function saveEnquiry() {
         district: document.getElementById("e_district").value,
         profession: document.getElementById("e_profession").value,
         family_members: document.getElementById("e_family").value,
-
+        vehicle_category: document.getElementById("e_vehicle_category").value,
+        fuel_type: document.getElementById("e_fuel_type").value,
         car_interest: document.getElementById("e_car").value,
         variant_interest: document.getElementById("e_variant").value,
         budget_range: document.getElementById("e_budget").value,
@@ -246,7 +291,9 @@ async function saveEnquiry() {
         showroom_visit_date: document.getElementById("e_visit").value,
         booking_expected_date: document.getElementById("e_booking").value,
 
-        notes: document.getElementById("e_notes").value
+        notes: document.getElementById("e_notes").value,
+        lead_type: "COMPLETE_ENQUIRY",
+        action_type: "COMPLETE_ENQUIRY"
     };
 
     try {
@@ -373,6 +420,8 @@ async function openLeadDetails(id) {
             <div><strong>Profession</strong><span>${safe(lead.profession || "-")}</span></div>
             <div><strong>Family Members</strong><span>${safe(lead.family_members || "-")}</span></div>
 
+            <div><strong>Vehicle Category</strong><span>${safe(lead.vehicle_category || "-")}</span></div>
+            <div><strong>Fuel Type</strong><span>${safe(lead.fuel_type || "-")}</span></div>
             <div><strong>Car Interest</strong><span>${safe(lead.car_interest || "-")}</span></div>
             <div><strong>Variant Interest</strong><span>${safe(lead.variant_interest || "-")}</span></div>
             <div><strong>Budget Range</strong><span>${safe(lead.budget_range || "-")}</span></div>
@@ -540,6 +589,43 @@ async function loadAnalytics() {
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
     }
+}
+
+function loadVehicleModels() {
+    const category = document.getElementById("e_vehicle_category").value;
+    const fuelSelect = document.getElementById("e_fuel_type");
+    const modelSelect = document.getElementById("e_car");
+    const variantSelect = document.getElementById("e_variant");
+
+    fuelSelect.innerHTML = `<option value="">Select Fuel Type</option>`;
+    modelSelect.innerHTML = `<option value="">Select Model</option>`;
+    variantSelect.innerHTML = `<option value="">Select Variant</option>`;
+
+    if (!category || !VEHICLE_DATA[category]) return;
+
+    VEHICLE_DATA[category].fuelTypes.forEach(fuel => {
+        fuelSelect.innerHTML += `<option value="${fuel}">${fuel}</option>`;
+    });
+
+    Object.keys(VEHICLE_DATA[category].models).forEach(model => {
+        modelSelect.innerHTML += `<option value="${model}">${model}</option>`;
+    });
+}
+
+function loadVehicleVariants() {
+    const category = document.getElementById("e_vehicle_category").value;
+    const model = document.getElementById("e_car").value;
+    const variantSelect = document.getElementById("e_variant");
+
+    variantSelect.innerHTML = `<option value="">Select Variant</option>`;
+
+    if (!category || !model) return;
+
+    const variants = VEHICLE_DATA[category]?.models?.[model] || [];
+
+    variants.forEach(variant => {
+        variantSelect.innerHTML += `<option value="${variant}">${variant}</option>`;
+    });
 }
 
 function logout() {

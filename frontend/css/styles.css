@@ -1247,11 +1247,11 @@ tr.cold {
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,.14);
     background: rgb(255, 255, 255);
-    color: #ffffff00;
+    color: #111827;
     outline: none;
     padding: 10px 12px;
 }
-.table-card select option, .admin-header select option, .user-form select option { color: #ffffff00; }
+.table-card select option, .admin-header select option, .user-form select option { color: #111827; }
 .table-card small { display: block; color: #8f97a3; font-size: 11px; margin-top: 4px; }
 .empty-state { text-align: center; padding: 42px !important; color: #9aa3af; font-size: 17px; }
 .crm-toast { position: fixed; right: 22px; bottom: 22px; z-index: 9999; transform: translateY(30px); opacity: 0; pointer-events: none; background: #111827; color: #fff; border: 1px solid rgba(255,255,255,.18); padding: 12px 18px; border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,.35); transition: .25s ease; }
@@ -1914,4 +1914,40 @@ select:focus {
 
 .danger-btn:hover {
     background: #991b1b;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.field-group input,
+.field-group select,
+.field-group textarea {
+    padding: 11px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #fff;
+    color: #111827;
+}
+
+.field-group select option {
+    color: #111;
+}
+
+/* FINAL FORM VISIBILITY OVERRIDE */
+input, select, textarea {
+    color: #111827 !important;
+    background-color: #ffffff !important;
+}
+select option, select option:checked {
+    color: #000000 !important;
+    background-color: #ffffff !important;
 }
