@@ -200,6 +200,7 @@ router.post("/lead/:id/followup", auth, async (req, res) => {
                 followup_notes = $2,
                 notes = $2,
                 status = $3,
+                reminder_sent = false,
                 updated_at = NOW()
             WHERE id = $4
         `, [nextDate, remarks, safeStatus, leadId]);
@@ -534,6 +535,60 @@ router.post("/followups/escalate", auth, requireAdmin, async (req, res) => {
     } catch (err) {
         console.error("ESCALATION ERROR:", err);
         res.status(500).json({ message: "Escalation failed" });
+    }
+});
+// 📊 SALES PERFORMANCE
+router.get("/sales-performance", auth, requireAdmin, async (req, res) => {
+    try {
+
+        const result = await db.query(`
+            SELECT
+                u.id,
+                u.name,
+                u.email,
+
+                COUNT(l.id)::int AS total_leads,
+
+                COUNT(*) FILTER (
+                    WHERE l.next_followup_at::date = CURRENT_DATE
+                )::int AS today_followups,
+
+                COUNT(*) FILTER (
+                    WHERE l.next_followup_at < NOW()
+                    AND l.status NOT IN ('CLOSED','LOST')
+                )::int AS overdue_followups,
+
+                COUNT(*) FILTER (
+                    WHERE l.status = 'TEST-DRIVE'
+                )::int AS test_drives,
+
+                COUNT(*) FILTER (
+                    WHERE l.status = 'BOOKED'
+                )::int AS booked,
+
+                COUNT(*) FILTER (
+                    WHERE l.status = 'CLOSED'
+                )::int AS closed
+
+            FROM users u
+
+            LEFT JOIN leads l
+            ON l.assigned_to = u.id
+
+            WHERE LOWER(u.role) = 'sales'
+
+            GROUP BY u.id
+
+            ORDER BY closed DESC, booked DESC
+        `);
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error("SALES PERFORMANCE ERROR:", err);
+        res.status(500).json({
+            message: "Performance fetch failed"
+        });
     }
 });
 module.exports = router;

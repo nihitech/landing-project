@@ -52,6 +52,16 @@
             <span id="userInfo"></span>
             <button onclick="logout()" class="logout-btn">Logout</button>
         </div>
+        <div class="notification-box">
+            <button onclick="toggleNotifications()" class="notification-btn">
+                🔔 <span id="notificationCount">0</span>
+            </button>
+
+            <div id="notificationPanel" class="notification-panel">
+                <h3>Notifications</h3>
+                <div id="notificationList"></div>
+            </div>
+        </div>
     </div>
 
     <!-- STATS -->
@@ -83,7 +93,11 @@
         <h2>👥 Sales Workload</h2>
         <div id="workloadCards" class="workload-cards"></div>
     </div>
+        <div class="performance-section">
+        <h2>📊 Sales Performance</h2>
 
+        <div id="salesPerformance" class="performance-grid"></div>
+    </div>
     <!-- CHARTS -->
     <div class="chart-grid">
         <div class="chart-card">
@@ -257,7 +271,7 @@
                 <label>Vehicle Category</label>
                 <select id="e_vehicle_category" onchange="loadVehicleModels()">
                     <option value="">Select Category</option>
-                    <option value="AD">Fuel Vehicle</option>
+                    <option value="AD">Diesel / Petrol Vehicle</option>
                     <option value="EV">Electric Vehicle</option>
                 </select>
             </div>

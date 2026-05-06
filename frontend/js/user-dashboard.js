@@ -186,6 +186,67 @@ function renderOverdueFollowups(leads) {
         `;
     }).join("");
 }
+
+function renderNotifications(leads) {
+    const list = document.getElementById("notificationList");
+    const count = document.getElementById("notificationCount");
+
+    if (!list || !count) return;
+
+    const now = new Date();
+    const today = new Date().toISOString().slice(0, 10);
+
+    const notifications = [];
+
+    leads.forEach(lead => {
+        const name = safe(lead.name || "Customer");
+
+        if (!lead.assigned_to) {
+            notifications.push({
+                type: "new",
+                text: `🆕 New unassigned lead: ${name}`
+            });
+        }
+
+        if (lead.next_followup_at) {
+            const followupDate = new Date(lead.next_followup_at);
+            const followupDay = String(lead.next_followup_at).slice(0, 10);
+
+            if (followupDay === today && !["CLOSED", "LOST"].includes(lead.status)) {
+                notifications.push({
+                    type: "today",
+                    text: `📞 Follow-up today: ${name}`
+                });
+            }
+
+            if (followupDate < now && !["CLOSED", "LOST"].includes(lead.status)) {
+                notifications.push({
+                    type: "overdue",
+                    text: `⚠ Missed follow-up: ${name}`
+                });
+            }
+        }
+    });
+
+    count.innerText = notifications.length;
+
+    if (!notifications.length) {
+        list.innerHTML = `<div class="empty-state">No notifications</div>`;
+        return;
+    }
+
+    list.innerHTML = notifications.map(n => `
+        <div class="notification-item ${n.type}">
+            ${n.text}
+        </div>
+    `).join("");
+}
+
+function toggleNotifications() {
+    const panel = document.getElementById("notificationPanel");
+    if (panel) panel.classList.toggle("show");
+}
+
 async function loadLeads() {
     const params = new URLSearchParams();
     const priority = document.getElementById("filter")?.value || "";
@@ -200,6 +261,7 @@ async function loadLeads() {
     renderOverdueFollowups(allLeads);
     renderPipeline(allLeads);
     renderTable(allLeads);
+    renderNotifications(allLeads);
 }
 
 function renderTodayFollowups(leads) {

@@ -29,6 +29,6 @@ app.get("/health", (req, res) => {
 
 // Background WhatsApp reminder cron. Keep this below routes so server boots first.
 require("./services/followupCron");
-
+require("./services/reminderCron");
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

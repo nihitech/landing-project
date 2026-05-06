@@ -138,6 +138,7 @@ async function loadLeads() {
     renderOverdueFollowups(allLeads);
     renderPipeline(allLeads);
     renderTable(allLeads);
+    renderNotifications(allLeads);
 }
 
 function renderWorkload(leads) {
@@ -292,6 +293,66 @@ function renderOverdueFollowups(leads) {
             </div>
         `;
     }).join("");
+}
+
+function renderNotifications(leads) {
+    const list = document.getElementById("notificationList");
+    const count = document.getElementById("notificationCount");
+
+    if (!list || !count) return;
+
+    const now = new Date();
+    const today = new Date().toISOString().slice(0, 10);
+
+    const notifications = [];
+
+    leads.forEach(lead => {
+        const name = safe(lead.name || "Customer");
+
+        if (!lead.assigned_to) {
+            notifications.push({
+                type: "new",
+                text: `🆕 New unassigned lead: ${name}`
+            });
+        }
+
+        if (lead.next_followup_at) {
+            const followupDate = new Date(lead.next_followup_at);
+            const followupDay = String(lead.next_followup_at).slice(0, 10);
+
+            if (followupDay === today && !["CLOSED", "LOST"].includes(lead.status)) {
+                notifications.push({
+                    type: "today",
+                    text: `📞 Follow-up today: ${name}`
+                });
+            }
+
+            if (followupDate < now && !["CLOSED", "LOST"].includes(lead.status)) {
+                notifications.push({
+                    type: "overdue",
+                    text: `⚠ Missed follow-up: ${name}`
+                });
+            }
+        }
+    });
+
+    count.innerText = notifications.length;
+
+    if (!notifications.length) {
+        list.innerHTML = `<div class="empty-state">No notifications</div>`;
+        return;
+    }
+
+    list.innerHTML = notifications.map(n => `
+        <div class="notification-item ${n.type}">
+            ${n.text}
+        </div>
+    `).join("");
+}
+
+function toggleNotifications() {
+    const panel = document.getElementById("notificationPanel");
+    if (panel) panel.classList.toggle("show");
 }
 
 function renderTable(leads) {
@@ -814,7 +875,87 @@ function loadVehicleVariants() {
         variantSelect.innerHTML += `<option value="${variant}">${variant}</option>`;
     });
 }
+async function loadSalesPerformance() {
 
+    try {
+
+        const data = await request(
+            `${API}/sales-performance`,
+            { headers: authHeaders() }
+        );
+
+        const box = document.getElementById("salesPerformance");
+
+        if (!box) return;
+
+        if (!data.length) {
+            box.innerHTML = `
+                <div class="empty-state">
+                    No sales users found
+                </div>
+            `;
+            return;
+        }
+
+        box.innerHTML = data.map(user => {
+
+            let statusClass = "good";
+
+            if (user.overdue_followups > 10) {
+                statusClass = "bad";
+            } else if (user.overdue_followups > 3) {
+                statusClass = "average";
+            }
+
+            return `
+                <div class="performance-card ${statusClass}">
+
+                    <h3>${safe(user.name)}</h3>
+
+                    <p>${safe(user.email)}</p>
+
+                    <div class="performance-stats">
+
+                        <div>
+                            <strong>${user.total_leads}</strong>
+                            <span>Total Leads</span>
+                        </div>
+
+                        <div>
+                            <strong>${user.today_followups}</strong>
+                            <span>Today's Follow-ups</span>
+                        </div>
+
+                        <div>
+                            <strong>${user.overdue_followups}</strong>
+                            <span>Missed</span>
+                        </div>
+
+                        <div>
+                            <strong>${user.test_drives}</strong>
+                            <span>Test Drives</span>
+                        </div>
+
+                        <div>
+                            <strong>${user.booked}</strong>
+                            <span>Booked</span>
+                        </div>
+
+                        <div>
+                            <strong>${user.closed}</strong>
+                            <span>Closed</span>
+                        </div>
+
+                    </div>
+
+                </div>
+            `;
+        }).join("");
+
+    } catch (error) {
+        console.error(error);
+    }
+}
 function logout() {
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
@@ -823,12 +964,30 @@ function logout() {
 
 window.onload = async () => {
     const userInfo = document.getElementById("userInfo");
-    if (userInfo) userInfo.innerText = `👤 ${user.name || "Admin"} (${user.role || "admin"})`;
+
+    if (userInfo) {
+        userInfo.innerText = `👤 ${user.name || "Admin"} (${user.role || "admin"})`;
+    }
+
     initDragDrop();
+
     try {
         await loadUsers();
-        await Promise.all([loadLeads(), loadAnalytics()]);
-        setInterval(() => Promise.all([loadLeads(), loadAnalytics()]).catch(console.error), 50000);
+        await loadSalesPerformance();
+
+        await Promise.all([
+            loadLeads(),
+            loadAnalytics()
+        ]);
+
+        setInterval(() => {
+            Promise.all([
+                loadLeads(),
+                loadAnalytics(),
+                loadSalesPerformance()
+            ]).catch(console.error);
+        }, 50000);
+
     } catch (error) {
         toast(error.message, true);
     }
