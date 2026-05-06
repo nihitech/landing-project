@@ -56,7 +56,7 @@ async function getLeastLoadedSalesUser() {
         SELECT u.id, COUNT(l.id)::int AS lead_count
         FROM users u
         LEFT JOIN leads l ON l.assigned_to = u.id AND l.status NOT IN ('CLOSED','LOST')
-        WHERE u.role = 'sales'
+        WHERE LOWER(u.role) = 'sales'
         GROUP BY u.id
         ORDER BY lead_count ASC, u.id ASC
         LIMIT 1
@@ -81,9 +81,15 @@ router.post("/lead", async (req, res) => {
         const now = new Date();
 
         const requestedAssign = parseId(data.assigned_to || data.user_id);
-        const assignedTo = Number.isNaN(requestedAssign)
-            ? await getLeastLoadedSalesUser()
-            : (requestedAssign || await getLeastLoadedSalesUser());
+
+        let assignedTo = null;
+
+        if (Number.isInteger(requestedAssign)) {
+            assignedTo = requestedAssign;
+        } else {
+            assignedTo = await getLeastLoadedSalesUser();
+        }
+        console.log("AUTO ASSIGNED TO:", assignedTo);
 
         const result = await db.query(`
             INSERT INTO leads
