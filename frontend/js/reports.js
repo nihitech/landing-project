@@ -1,7 +1,244 @@
+const API = window.CRM_API || "https://landing-backend-8gvq.onrender.com/api";
+const token = sessionStorage.getItem("token");
 
-let reportLeads=[];
-function rangeStart(type){ const now=new Date(); if(type==="weekly"){ const d=new Date(now); d.setDate(d.getDate()-6); return d;} if(type==="monthly"){ return new Date(now.getFullYear(), now.getMonth(), 1);} return new Date(now.getFullYear(), now.getMonth(), now.getDate()); }
-async function generateReport(){ const type=document.getElementById("reportRange").value; const leads=await request(`${API}/leads`,{headers:authHeaders()}); const start=rangeStart(type); reportLeads=leads.filter(l=>new Date(l.created_at)>=start); const total=reportLeads.length, hot=reportLeads.filter(l=>l.priority==='HOT').length, booked=reportLeads.filter(l=>l.status==='BOOKED').length, closed=reportLeads.filter(l=>l.status==='CLOSED').length, overdue=leads.filter(l=>l.next_followup_at&&new Date(l.next_followup_at)<new Date()&&!['CLOSED','LOST'].includes(l.status)).length; const byUser={}; reportLeads.forEach(l=>{const k=l.assigned_name||'Unassigned'; byUser[k]=(byUser[k]||0)+1}); const text=`${type.toUpperCase()} CRM REPORT\nDate: ${new Date().toLocaleDateString('en-IN')}\n\nLead Summary\nTotal Leads: ${total}\nHOT Leads: ${hot}\nBooked: ${booked}\nClosed: ${closed}\nMissed Follow-ups: ${overdue}\n\nUser-wise Leads\n${Object.entries(byUser).map(([k,v])=>`${k}: ${v}`).join('\n')||'No leads'}`; document.getElementById('reportText').textContent=text; const tb=document.querySelector('#reportTable tbody'); tb.innerHTML=reportLeads.map(l=>`<tr><td>${safe(l.name)}</td><td>${safe(l.phone)}</td><td>${safe(l.car_interest)}</td><td>${safe(l.source)}</td><td>${safe(l.status)}</td><td>${safe(l.priority)}</td><td>${safe(l.assigned_name||'Unassigned')}</td><td>${fmtDate(l.created_at)}</td></tr>`).join('')||`<tr><td colspan="8" class="empty-state">No leads in this period</td></tr>`; }
-function copyReport(){ navigator.clipboard?.writeText(document.getElementById('reportText').textContent); toast('Report copied'); }
-function downloadReportCSV(){ if(!reportLeads.length)return toast('Generate report first',true); const headers=['Name','Phone','Car','Source','Status','Priority','Assigned','Created']; const rows=reportLeads.map(l=>[l.name,l.phone,l.car_interest,l.source,l.status,l.priority,l.assigned_name||'Unassigned',l.created_at]); const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`crm-report-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(a.href); }
-window.onload=generateReport;
+let currentReport = null;
+
+if (!token) {
+    window.location.href = "login.html";
+}
+
+function authHeaders() {
+    return {
+        Authorization: `Bearer ${token}`
+    };
+}
+
+function safe(value) {
+    return String(value ?? "-").replace(/[&<>'"]/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+    }[char]));
+}
+
+async function request(url, options = {}) {
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => ({}));
+
+    if (response.status === 401) {
+        sessionStorage.clear();
+        window.location.href = "login.html";
+        return;
+    }
+
+    if (!response.ok) {
+        throw new Error(data.message || "Request failed");
+    }
+
+    return data;
+}
+
+function today() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function currentMonth() {
+    return new Date().toISOString().slice(0, 7);
+}
+
+function handleReportTypeChange() {
+    const type = document.getElementById("reportType").value;
+
+    document.getElementById("dailyBox").style.display =
+        type === "daily" ? "block" : "none";
+
+    document.getElementById("monthBox").style.display =
+        type === "monthly" ? "block" : "none";
+
+    document.querySelectorAll(".range-box").forEach(box => {
+        box.style.display =
+            type === "weekly" || type === "custom" ? "block" : "none";
+    });
+}
+
+function buildReportUrl() {
+    const type = document.getElementById("reportType").value;
+
+    if (type === "daily") {
+        const date = document.getElementById("reportDate").value || today();
+        return `${API}/reports/daily?date=${date}`;
+    }
+
+    if (type === "monthly") {
+        const month = document.getElementById("reportMonth").value || currentMonth();
+        return `${API}/reports/monthly?month=${month}`;
+    }
+
+    const from = document.getElementById("dateFrom").value;
+    const to = document.getElementById("dateTo").value;
+
+    if (!from || !to) {
+        alert("Please select from and to date");
+        return null;
+    }
+
+    return `${API}/reports/${type}?from=${from}&to=${to}`;
+}
+
+async function generateReport() {
+    try {
+        const url = buildReportUrl();
+
+        if (!url) return;
+
+        const data = await request(url, {
+            headers: authHeaders()
+        });
+
+        currentReport = data;
+
+        renderReport(data);
+
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function renderReport(report) {
+    document.getElementById("reportOutput").style.display = "block";
+
+    const o = report.overview || {};
+
+    document.getElementById("r_total").innerText = o.total_leads || 0;
+    document.getElementById("r_hot").innerText = o.hot || 0;
+    document.getElementById("r_warm").innerText = o.warm || 0;
+    document.getElementById("r_cold").innerText = o.cold || 0;
+    document.getElementById("r_booked").innerText = o.booked || 0;
+    document.getElementById("r_closed").innerText = o.closed || 0;
+    document.getElementById("r_missed").innerText =
+        report.followups?.missed_or_due_followups || 0;
+
+    document.getElementById("sourceReport").innerHTML =
+        (report.source_summary || []).map(row => `
+            <tr>
+                <td>${safe(row.source)}</td>
+                <td>${row.count}</td>
+            </tr>
+        `).join("");
+
+    document.getElementById("modelReport").innerHTML =
+        (report.model_summary || []).map(row => `
+            <tr>
+                <td>${safe(row.model)}</td>
+                <td>${row.count}</td>
+            </tr>
+        `).join("");
+
+    document.getElementById("userReport").innerHTML =
+        (report.user_performance || []).map(row => `
+            <tr>
+                <td>${safe(row.name)}</td>
+                <td>${row.assigned_leads}</td>
+                <td>${row.hot_leads}</td>
+                <td>${row.test_drives}</td>
+                <td>${row.booked}</td>
+                <td>${row.closed}</td>
+                <td>${row.missed_followups}</td>
+            </tr>
+        `).join("");
+
+    document.getElementById("leadReport").innerHTML =
+        (report.recent_leads || []).map(row => `
+            <tr>
+                <td>${safe(row.name)}</td>
+                <td>${safe(row.phone)}</td>
+                <td>${safe(row.car_interest)}</td>
+                <td>${safe(row.source)}</td>
+                <td>${safe(row.priority)}</td>
+                <td>${safe(row.status)}</td>
+                <td>${safe(row.assigned_name || "Unassigned")}</td>
+            </tr>
+        `).join("");
+
+    document.getElementById("whatsappSummary").value =
+        report.whatsapp_summary || "";
+}
+
+function copyWhatsappSummary() {
+    const text = document.getElementById("whatsappSummary").value;
+
+    if (!text) {
+        alert("Generate report first");
+        return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("WhatsApp summary copied");
+}
+
+function downloadReportCSV() {
+    if (!currentReport) {
+        alert("Generate report first");
+        return;
+    }
+
+    const rows = [];
+
+    rows.push(["CRM Report", currentReport.type, currentReport.label]);
+    rows.push([]);
+
+    rows.push(["Overview"]);
+    Object.entries(currentReport.overview || {}).forEach(([key, value]) => {
+        rows.push([key, value]);
+    });
+
+    rows.push([]);
+    rows.push(["Source Summary"]);
+    rows.push(["Source", "Count"]);
+    (currentReport.source_summary || []).forEach(row => {
+        rows.push([row.source, row.count]);
+    });
+
+    rows.push([]);
+    rows.push(["Sales Performance"]);
+    rows.push(["Name", "Assigned", "Hot", "Test Drives", "Booked", "Closed", "Missed"]);
+    (currentReport.user_performance || []).forEach(row => {
+        rows.push([
+            row.name,
+            row.assigned_leads,
+            row.hot_leads,
+            row.test_drives,
+            row.booked,
+            row.closed,
+            row.missed_followups
+        ]);
+    });
+
+    const csv = rows.map(row =>
+        row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+
+    const blob = new Blob([csv], {
+        type: "text/csv;charset=utf-8;"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = `crm-report-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+}
+
+window.onload = () => {
+    document.getElementById("reportDate").value = today();
+    document.getElementById("reportMonth").value = currentMonth();
+    handleReportTypeChange();
+};

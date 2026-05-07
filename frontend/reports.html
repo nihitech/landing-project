@@ -1,1 +1,147 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="./css/styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><title>📑 Reports</title></head><body class="crm-v2"><div class="crm-layout"><div id="sidebarContainer"></div><main class="main-content"><header class="module-header"><div><span class="tag">Dealer CRM</span><h1>📑 Reports</h1></div><div class="module-actions"><div class="notification-box"><button onclick="toggleNotifications()" class="notification-btn">🔔 <span id="notificationCount">0</span></button><div id="notificationPanel" class="notification-panel"><h3>Notifications</h3><div id="notificationList"></div></div></div><button onclick="logout()" class="logout-btn">Logout</button></div></header><section class="filter-bar"><select id="reportRange"><option value="daily">Daily Report</option><option value="weekly">Weekly Report</option><option value="monthly">Monthly Report</option></select><button onclick="generateReport()" class="save-btn">Generate</button><button onclick="copyReport()" class="csv-btn">Copy Summary</button><button onclick="downloadReportCSV()" class="csv-btn">Download CSV</button></section><section class="module-card"><h2>Report Summary</h2><pre id="reportText" class="report-box">Select a report range and click Generate.</pre></section><section class="table-card"><table id="reportTable"><thead><tr><th>Name</th><th>Phone</th><th>Car</th><th>Source</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Created</th></tr></thead><tbody></tbody></table></section></main></div><script src="./js/crm-common.js"></script><script>loadLayout('reports');</script><script src="./js/reports.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Reports</title>
+
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body>
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1>📑 Reports Center</h1>
+            <p>Generate daily, weekly, monthly and custom reports for management.</p>
+        </div>
+
+        <div class="report-controls table-card">
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Report Type</label>
+                    <select id="reportType" onchange="handleReportTypeChange()">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+
+                <div class="field-group" id="dailyBox">
+                    <label>Date</label>
+                    <input type="date" id="reportDate">
+                </div>
+
+                <div class="field-group" id="monthBox" style="display:none;">
+                    <label>Month</label>
+                    <input type="month" id="reportMonth">
+                </div>
+
+                <div class="field-group range-box" style="display:none;">
+                    <label>From</label>
+                    <input type="date" id="dateFrom">
+                </div>
+
+                <div class="field-group range-box" style="display:none;">
+                    <label>To</label>
+                    <input type="date" id="dateTo">
+                </div>
+            </div>
+
+            <div class="report-actions">
+                <button onclick="generateReport()" class="save-btn">Generate Report</button>
+                <button onclick="downloadReportCSV()" class="csv-btn">Download CSV</button>
+                <button onclick="copyWhatsappSummary()" class="copy-btn">Copy WhatsApp Summary</button>
+            </div>
+        </div>
+
+        <div id="reportOutput" style="display:none;">
+            <div class="dashboard-stats">
+                <div class="dash-card">Total Leads <span id="r_total">0</span></div>
+                <div class="dash-card hot">HOT <span id="r_hot">0</span></div>
+                <div class="dash-card warm">WARM <span id="r_warm">0</span></div>
+                <div class="dash-card cold">COLD <span id="r_cold">0</span></div>
+                <div class="dash-card">Booked <span id="r_booked">0</span></div>
+                <div class="dash-card">Closed <span id="r_closed">0</span></div>
+                <div class="dash-card">Missed <span id="r_missed">0</span></div>
+            </div>
+
+            <div class="report-grid">
+                <div class="table-card">
+                    <h2>Lead Source Summary</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sourceReport"></tbody>
+                    </table>
+                </div>
+
+                <div class="table-card">
+                    <h2>Model Demand Summary</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modelReport"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <h2>Sales User Performance</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Assigned</th>
+                            <th>Hot</th>
+                            <th>Test Drives</th>
+                            <th>Booked</th>
+                            <th>Closed</th>
+                            <th>Missed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userReport"></tbody>
+                </table>
+            </div>
+
+            <div class="table-card">
+                <h2>Recent Leads</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Car</th>
+                            <th>Source</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Assigned</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadReport"></tbody>
+                </table>
+            </div>
+
+            <div class="table-card">
+                <h2>WhatsApp / CUG Summary</h2>
+                <textarea id="whatsappSummary" rows="14" style="width:100%;"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="./js/layout.js"></script>
+<script src="./js/reports.js"></script>
+</body>
+</html>

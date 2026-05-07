@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-
+const reportRoutes = require("./routes/reports");
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGIN || "*").split(",").map(origin => origin.trim());
 
@@ -18,7 +18,7 @@ app.use(cors({
 
 app.use("/api", require("./routes/leads"));
 app.use("/api/auth", require("./routes/auth"));
-
+app.use("/api/reports", reportRoutes);
 app.get("/", (req, res) => {
     res.json({ message: "Mahindra Lead CRM API running" });
 });
