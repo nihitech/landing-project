@@ -25,7 +25,15 @@ function safe(value) {
 
 async function request(url, options = {}) {
     const response = await fetch(url, options);
-    const data = await response.json().catch(() => ({}));
+
+    let data = {};
+    const text = await response.text();
+
+    try {
+        data = text ? JSON.parse(text) : {};
+    } catch {
+        data = { message: text };
+    }
 
     if (response.status === 401) {
         sessionStorage.clear();
@@ -34,12 +42,17 @@ async function request(url, options = {}) {
     }
 
     if (!response.ok) {
-        throw new Error(data.message || "Request failed");
+        console.error("REPORT API ERROR:", {
+            status: response.status,
+            url,
+            response: data
+        });
+
+        throw new Error(data.message || `Request failed with status ${response.status}`);
     }
 
     return data;
 }
-
 function today() {
     return new Date().toISOString().slice(0, 10);
 }
