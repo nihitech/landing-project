@@ -1,123 +1,285 @@
-const express = require("express");
-const router = express.Router();
+const API = window.CRM_API || "https://landing-backend-8gvq.onrender.com/api";
+const token = sessionStorage.getItem("token");
 
-const db = require("../config/db");
-const auth = require("../middleware/auth");
+let currentReport = null;
 
-function normalizeRole(role) {
-    return String(role || "").trim().toLowerCase();
+if (!token) {
+    window.location.href = "login.html";
 }
 
-function requireAdmin(req, res, next) {
-    if (normalizeRole(req.user?.role) !== "admin") {
-        return res.status(403).json({ message: "Admin access required" });
-    }
-    next();
+function authHeaders() {
+    return {
+        Authorization: `Bearer ${token}`
+    };
 }
 
-// ✅ DAILY REPORT
-router.get("/daily", auth, requireAdmin, async (req, res) => {
+function today() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function currentMonth() {
+    return new Date().toISOString().slice(0, 7);
+}
+
+function safe(value) {
+    return String(value ?? "-").replace(/[&<>'"]/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+    }[char]));
+}
+
+async function request(url, options = {}) {
+    const response = await fetch(url, options);
+    const text = await response.text();
+
+    let data = {};
     try {
-        const date = req.query.date || new Date().toISOString().slice(0, 10);
-
-        const from = `${date} 00:00:00`;
-        const to = `${date} 23:59:59`;
-
-        const overview = await db.query(`
-            SELECT
-                COUNT(*)::int AS total_leads,
-                COUNT(*) FILTER (WHERE priority='HOT')::int AS hot,
-                COUNT(*) FILTER (WHERE priority='WARM')::int AS warm,
-                COUNT(*) FILTER (WHERE priority='COLD')::int AS cold,
-                COUNT(*) FILTER (WHERE status='BOOKED')::int AS booked,
-                COUNT(*) FILTER (WHERE status='CLOSED')::int AS closed,
-                COUNT(*) FILTER (WHERE status='LOST')::int AS lost,
-                COUNT(*) FILTER (WHERE assigned_to IS NULL)::int AS unassigned
-            FROM leads
-            WHERE created_at BETWEEN $1 AND $2
-        `, [from, to]);
-
-        const sourceSummary = await db.query(`
-            SELECT COALESCE(source, 'UNKNOWN') AS source, COUNT(*)::int AS count
-            FROM leads
-            WHERE created_at BETWEEN $1 AND $2
-            GROUP BY COALESCE(source, 'UNKNOWN')
-            ORDER BY count DESC
-        `, [from, to]);
-
-        const userPerformance = await db.query(`
-            SELECT
-                u.name,
-                u.email,
-                COUNT(l.id)::int AS assigned_leads,
-                COUNT(l.id) FILTER (WHERE l.priority='HOT')::int AS hot_leads,
-                COUNT(l.id) FILTER (WHERE l.status='TEST-DRIVE')::int AS test_drives,
-                COUNT(l.id) FILTER (WHERE l.status='BOOKED')::int AS booked,
-                COUNT(l.id) FILTER (WHERE l.status='CLOSED')::int AS closed,
-                COUNT(l.id) FILTER (
-                    WHERE l.next_followup_at < NOW()
-                    AND l.status NOT IN ('CLOSED','LOST')
-                )::int AS missed_followups
-            FROM users u
-            LEFT JOIN leads l
-                ON l.assigned_to = u.id
-                AND l.created_at BETWEEN $1 AND $2
-            WHERE LOWER(u.role) = 'sales'
-            GROUP BY u.id, u.name, u.email
-            ORDER BY assigned_leads DESC
-        `, [from, to]);
-
-        const recentLeads = await db.query(`
-            SELECT
-                l.name,
-                l.phone,
-                l.car_interest,
-                l.source,
-                l.priority,
-                l.status,
-                u.name AS assigned_name
-            FROM leads l
-            LEFT JOIN users u ON l.assigned_to = u.id
-            WHERE l.created_at BETWEEN $1 AND $2
-            ORDER BY l.created_at DESC
-            LIMIT 50
-        `, [from, to]);
-
-        const report = {
-            type: "daily",
-            label: date,
-            overview: overview.rows[0],
-            source_summary: sourceSummary.rows,
-            model_summary: [],
-            user_performance: userPerformance.rows,
-            recent_leads: recentLeads.rows,
-            followups: {
-                missed_or_due_followups: Number(overview.rows[0].missed_followups || 0)
-            }
-        };
-
-        report.whatsapp_summary = `📊 Daily CRM Report
-Date: ${date}
-
-Total Leads: ${report.overview.total_leads}
-Hot: ${report.overview.hot}
-Warm: ${report.overview.warm}
-Cold: ${report.overview.cold}
-
-Booked: ${report.overview.booked}
-Closed: ${report.overview.closed}
-Lost: ${report.overview.lost}
-
-Unassigned Leads: ${report.overview.unassigned}
-
-Please review missed follow-ups and hot leads.`;
-
-        res.json(report);
-
-    } catch (err) {
-        console.error("DAILY REPORT ERROR:", err);
-        res.status(500).json({ message: "Daily report failed", error: err.message });
+        data = text ? JSON.parse(text) : {};
+    } catch {
+        data = { message: text };
     }
-});
 
-module.exports = router;
+    if (response.status === 401) {
+        sessionStorage.clear();
+        window.location.href = "login.html";
+        return;
+    }
+
+    if (!response.ok) {
+        console.error("REPORT API ERROR:", {
+            status: response.status,
+            url,
+            response: data
+        });
+        throw new Error(data.message || `Request failed with status ${response.status}`);
+    }
+
+    return data;
+}
+
+function handleReportTypeChange() {
+    const type = document.getElementById("reportType")?.value || "daily";
+
+    const dailyBox = document.getElementById("dailyBox");
+    const monthBox = document.getElementById("monthBox");
+    const rangeBoxes = document.querySelectorAll(".range-box");
+
+    if (dailyBox) dailyBox.style.display = type === "daily" ? "block" : "none";
+    if (monthBox) monthBox.style.display = type === "monthly" ? "block" : "none";
+
+    rangeBoxes.forEach(box => {
+        box.style.display =
+            type === "weekly" || type === "custom" ? "block" : "none";
+    });
+}
+
+function buildReportUrl() {
+    const type = document.getElementById("reportType")?.value || "daily";
+
+    if (type === "daily") {
+        const date = document.getElementById("reportDate")?.value || today();
+        return `${API}/reports/daily?date=${date}`;
+    }
+
+    if (type === "monthly") {
+        const month = document.getElementById("reportMonth")?.value || currentMonth();
+        return `${API}/reports/monthly?month=${month}`;
+    }
+
+    const from = document.getElementById("dateFrom")?.value;
+    const to = document.getElementById("dateTo")?.value;
+
+    if (!from || !to) {
+        alert("Please select from and to date");
+        return null;
+    }
+
+    return `${API}/reports/${type}?from=${from}&to=${to}`;
+}
+
+async function generateReport() {
+    try {
+        const url = buildReportUrl();
+        if (!url) return;
+
+        const data = await request(url, {
+            headers: authHeaders()
+        });
+
+        currentReport = data;
+        renderReport(data);
+
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function renderReport(report) {
+    const output = document.getElementById("reportOutput");
+    if (output) output.style.display = "block";
+
+    const overview = report.overview || {};
+
+    const fields = {
+        r_total: overview.total_leads || 0,
+        r_hot: overview.hot || 0,
+        r_warm: overview.warm || 0,
+        r_cold: overview.cold || 0,
+        r_booked: overview.booked || 0,
+        r_closed: overview.closed || 0,
+        r_missed: report.followups?.missed_or_due_followups || 0
+    };
+
+    Object.entries(fields).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = value;
+    });
+
+    const sourceReport = document.getElementById("sourceReport");
+    if (sourceReport) {
+        sourceReport.innerHTML = (report.source_summary || []).map(row => `
+            <tr>
+                <td>${safe(row.source)}</td>
+                <td>${row.count}</td>
+            </tr>
+        `).join("");
+    }
+
+    const modelReport = document.getElementById("modelReport");
+    if (modelReport) {
+        modelReport.innerHTML = (report.model_summary || []).map(row => `
+            <tr>
+                <td>${safe(row.model)}</td>
+                <td>${row.count}</td>
+            </tr>
+        `).join("");
+    }
+
+    const userReport = document.getElementById("userReport");
+    if (userReport) {
+        userReport.innerHTML = (report.user_performance || []).map(row => `
+            <tr>
+                <td>${safe(row.name)}</td>
+                <td>${row.assigned_leads || 0}</td>
+                <td>${row.hot_leads || 0}</td>
+                <td>${row.test_drives || 0}</td>
+                <td>${row.booked || 0}</td>
+                <td>${row.closed || 0}</td>
+                <td>${row.missed_followups || 0}</td>
+            </tr>
+        `).join("");
+    }
+
+    const leadReport = document.getElementById("leadReport");
+    if (leadReport) {
+        leadReport.innerHTML = (report.recent_leads || []).map(row => `
+            <tr>
+                <td>${safe(row.name)}</td>
+                <td>${safe(row.phone)}</td>
+                <td>${safe(row.car_interest)}</td>
+                <td>${safe(row.source)}</td>
+                <td>${safe(row.priority)}</td>
+                <td>${safe(row.status)}</td>
+                <td>${safe(row.assigned_name || "Unassigned")}</td>
+            </tr>
+        `).join("");
+    }
+
+    const whatsappSummary = document.getElementById("whatsappSummary");
+    if (whatsappSummary) {
+        whatsappSummary.value = report.whatsapp_summary || "";
+    }
+}
+
+function copyWhatsappSummary() {
+    const text = document.getElementById("whatsappSummary")?.value || "";
+
+    if (!text) {
+        alert("Generate report first");
+        return;
+    }
+
+    navigator.clipboard.writeText(text);
+    alert("WhatsApp summary copied");
+}
+
+function downloadReportCSV() {
+    if (!currentReport) {
+        alert("Generate report first");
+        return;
+    }
+
+    const rows = [];
+
+    rows.push(["CRM Report", currentReport.type || "", currentReport.label || ""]);
+    rows.push([]);
+
+    rows.push(["Overview"]);
+    Object.entries(currentReport.overview || {}).forEach(([key, value]) => {
+        rows.push([key, value]);
+    });
+
+    rows.push([]);
+    rows.push(["Source Summary"]);
+    rows.push(["Source", "Count"]);
+
+    (currentReport.source_summary || []).forEach(row => {
+        rows.push([row.source, row.count]);
+    });
+
+    rows.push([]);
+    rows.push(["Sales Performance"]);
+    rows.push(["Name", "Assigned", "Hot", "Test Drives", "Booked", "Closed", "Missed"]);
+
+    (currentReport.user_performance || []).forEach(row => {
+        rows.push([
+            row.name,
+            row.assigned_leads,
+            row.hot_leads,
+            row.test_drives,
+            row.booked,
+            row.closed,
+            row.missed_followups
+        ]);
+    });
+
+    const csv = rows.map(row =>
+        row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+
+    const blob = new Blob([csv], {
+        type: "text/csv;charset=utf-8;"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = `crm-report-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+}
+
+window.onload = () => {
+    const reportDate = document.getElementById("reportDate");
+    const reportMonth = document.getElementById("reportMonth");
+
+    if (reportDate) reportDate.value = today();
+    if (reportMonth) reportMonth.value = currentMonth();
+
+    handleReportTypeChange();
+};
+
+window.generateReport = generateReport;
+window.handleReportTypeChange = handleReportTypeChange;
+window.downloadReportCSV = downloadReportCSV;
+window.copyWhatsappSummary = copyWhatsappSummary;
+
+console.log("✅ frontend reports.js loaded");
