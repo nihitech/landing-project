@@ -13,14 +13,6 @@ function authHeaders() {
     };
 }
 
-function today() {
-    return new Date().toISOString().slice(0, 10);
-}
-
-function currentMonth() {
-    return new Date().toISOString().slice(0, 7);
-}
-
 function safe(value) {
     return String(value ?? "-").replace(/[&<>'"]/g, char => ({
         "&": "&amp;",
@@ -33,14 +25,7 @@ function safe(value) {
 
 async function request(url, options = {}) {
     const response = await fetch(url, options);
-    const text = await response.text();
-
-    let data = {};
-    try {
-        data = text ? JSON.parse(text) : {};
-    } catch {
-        data = { message: text };
-    }
+    const data = await response.json().catch(() => ({}));
 
     if (response.status === 401) {
         sessionStorage.clear();
@@ -49,48 +34,50 @@ async function request(url, options = {}) {
     }
 
     if (!response.ok) {
-        console.error("REPORT API ERROR:", {
-            status: response.status,
-            url,
-            response: data
-        });
-        throw new Error(data.message || `Request failed with status ${response.status}`);
+        throw new Error(data.message || "Request failed");
     }
 
     return data;
 }
 
+function today() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function currentMonth() {
+    return new Date().toISOString().slice(0, 7);
+}
+
 function handleReportTypeChange() {
-    const type = document.getElementById("reportType")?.value || "daily";
+    const type = document.getElementById("reportType").value;
 
-    const dailyBox = document.getElementById("dailyBox");
-    const monthBox = document.getElementById("monthBox");
-    const rangeBoxes = document.querySelectorAll(".range-box");
+    document.getElementById("dailyBox").style.display =
+        type === "daily" ? "block" : "none";
 
-    if (dailyBox) dailyBox.style.display = type === "daily" ? "block" : "none";
-    if (monthBox) monthBox.style.display = type === "monthly" ? "block" : "none";
+    document.getElementById("monthBox").style.display =
+        type === "monthly" ? "block" : "none";
 
-    rangeBoxes.forEach(box => {
+    document.querySelectorAll(".range-box").forEach(box => {
         box.style.display =
             type === "weekly" || type === "custom" ? "block" : "none";
     });
 }
 
 function buildReportUrl() {
-    const type = document.getElementById("reportType")?.value || "daily";
+    const type = document.getElementById("reportType").value;
 
     if (type === "daily") {
-        const date = document.getElementById("reportDate")?.value || today();
+        const date = document.getElementById("reportDate").value || today();
         return `${API}/reports/daily?date=${date}`;
     }
 
     if (type === "monthly") {
-        const month = document.getElementById("reportMonth")?.value || currentMonth();
+        const month = document.getElementById("reportMonth").value || currentMonth();
         return `${API}/reports/monthly?month=${month}`;
     }
 
-    const from = document.getElementById("dateFrom")?.value;
-    const to = document.getElementById("dateTo")?.value;
+    const from = document.getElementById("dateFrom").value;
+    const to = document.getElementById("dateTo").value;
 
     if (!from || !to) {
         alert("Please select from and to date");
@@ -103,6 +90,7 @@ function buildReportUrl() {
 async function generateReport() {
     try {
         const url = buildReportUrl();
+
         if (!url) return;
 
         const data = await request(url, {
@@ -110,6 +98,7 @@ async function generateReport() {
         });
 
         currentReport = data;
+
         renderReport(data);
 
     } catch (error) {
@@ -118,64 +107,50 @@ async function generateReport() {
 }
 
 function renderReport(report) {
-    const output = document.getElementById("reportOutput");
-    if (output) output.style.display = "block";
+    document.getElementById("reportOutput").style.display = "block";
 
-    const overview = report.overview || {};
+    const o = report.overview || {};
 
-    const fields = {
-        r_total: overview.total_leads || 0,
-        r_hot: overview.hot || 0,
-        r_warm: overview.warm || 0,
-        r_cold: overview.cold || 0,
-        r_booked: overview.booked || 0,
-        r_closed: overview.closed || 0,
-        r_missed: report.followups?.missed_or_due_followups || 0
-    };
+    document.getElementById("r_total").innerText = o.total_leads || 0;
+    document.getElementById("r_hot").innerText = o.hot || 0;
+    document.getElementById("r_warm").innerText = o.warm || 0;
+    document.getElementById("r_cold").innerText = o.cold || 0;
+    document.getElementById("r_booked").innerText = o.booked || 0;
+    document.getElementById("r_closed").innerText = o.closed || 0;
+    document.getElementById("r_missed").innerText =
+        report.followups?.missed_or_due_followups || 0;
 
-    Object.entries(fields).forEach(([id, value]) => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = value;
-    });
-
-    const sourceReport = document.getElementById("sourceReport");
-    if (sourceReport) {
-        sourceReport.innerHTML = (report.source_summary || []).map(row => `
+    document.getElementById("sourceReport").innerHTML =
+        (report.source_summary || []).map(row => `
             <tr>
                 <td>${safe(row.source)}</td>
                 <td>${row.count}</td>
             </tr>
         `).join("");
-    }
 
-    const modelReport = document.getElementById("modelReport");
-    if (modelReport) {
-        modelReport.innerHTML = (report.model_summary || []).map(row => `
+    document.getElementById("modelReport").innerHTML =
+        (report.model_summary || []).map(row => `
             <tr>
                 <td>${safe(row.model)}</td>
                 <td>${row.count}</td>
             </tr>
         `).join("");
-    }
 
-    const userReport = document.getElementById("userReport");
-    if (userReport) {
-        userReport.innerHTML = (report.user_performance || []).map(row => `
+    document.getElementById("userReport").innerHTML =
+        (report.user_performance || []).map(row => `
             <tr>
                 <td>${safe(row.name)}</td>
-                <td>${row.assigned_leads || 0}</td>
-                <td>${row.hot_leads || 0}</td>
-                <td>${row.test_drives || 0}</td>
-                <td>${row.booked || 0}</td>
-                <td>${row.closed || 0}</td>
-                <td>${row.missed_followups || 0}</td>
+                <td>${row.assigned_leads}</td>
+                <td>${row.hot_leads}</td>
+                <td>${row.test_drives}</td>
+                <td>${row.booked}</td>
+                <td>${row.closed}</td>
+                <td>${row.missed_followups}</td>
             </tr>
         `).join("");
-    }
 
-    const leadReport = document.getElementById("leadReport");
-    if (leadReport) {
-        leadReport.innerHTML = (report.recent_leads || []).map(row => `
+    document.getElementById("leadReport").innerHTML =
+        (report.recent_leads || []).map(row => `
             <tr>
                 <td>${safe(row.name)}</td>
                 <td>${safe(row.phone)}</td>
@@ -186,16 +161,13 @@ function renderReport(report) {
                 <td>${safe(row.assigned_name || "Unassigned")}</td>
             </tr>
         `).join("");
-    }
 
-    const whatsappSummary = document.getElementById("whatsappSummary");
-    if (whatsappSummary) {
-        whatsappSummary.value = report.whatsapp_summary || "";
-    }
+    document.getElementById("whatsappSummary").value =
+        report.whatsapp_summary || "";
 }
 
 function copyWhatsappSummary() {
-    const text = document.getElementById("whatsappSummary")?.value || "";
+    const text = document.getElementById("whatsappSummary").value;
 
     if (!text) {
         alert("Generate report first");
@@ -214,7 +186,7 @@ function downloadReportCSV() {
 
     const rows = [];
 
-    rows.push(["CRM Report", currentReport.type || "", currentReport.label || ""]);
+    rows.push(["CRM Report", currentReport.type, currentReport.label]);
     rows.push([]);
 
     rows.push(["Overview"]);
@@ -225,7 +197,6 @@ function downloadReportCSV() {
     rows.push([]);
     rows.push(["Source Summary"]);
     rows.push(["Source", "Count"]);
-
     (currentReport.source_summary || []).forEach(row => {
         rows.push([row.source, row.count]);
     });
@@ -233,7 +204,6 @@ function downloadReportCSV() {
     rows.push([]);
     rows.push(["Sales Performance"]);
     rows.push(["Name", "Assigned", "Hot", "Test Drives", "Booked", "Closed", "Missed"]);
-
     (currentReport.user_performance || []).forEach(row => {
         rows.push([
             row.name,
@@ -268,18 +238,7 @@ function downloadReportCSV() {
 }
 
 window.onload = () => {
-    const reportDate = document.getElementById("reportDate");
-    const reportMonth = document.getElementById("reportMonth");
-
-    if (reportDate) reportDate.value = today();
-    if (reportMonth) reportMonth.value = currentMonth();
-
+    document.getElementById("reportDate").value = today();
+    document.getElementById("reportMonth").value = currentMonth();
     handleReportTypeChange();
 };
-
-window.generateReport = generateReport;
-window.handleReportTypeChange = handleReportTypeChange;
-window.downloadReportCSV = downloadReportCSV;
-window.copyWhatsappSummary = copyWhatsappSummary;
-
-console.log("✅ frontend reports.js loaded");
