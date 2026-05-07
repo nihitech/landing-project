@@ -1,1 +1,26 @@
-<div class="sidebar"><h2>🚗 CRM</h2><nav class="sidebar-nav"><a href="dashboard.html">Dashboard</a><a href="leads.html">Leads</a><a href="followups.html">Follow-ups</a><a href="analytics.html">Analytics</a><a href="performance.html">Performance</a><a href="reports.html">Reports</a><a href="settings.html">Settings</a></nav></div>
+
+<aside class="crm-sidebar">
+    <div class="crm-brand">
+        <div class="crm-logo">🚗</div>
+        <div>
+            <strong>Dealer CRM</strong>
+            <small>Lead Conversion Suite</small>
+        </div>
+    </div>
+
+    <nav class="crm-nav">
+        <a href="dashboard.html" data-nav="dashboard">📊 Dashboard</a>
+        <a href="leads.html" data-nav="leads">👥 Leads</a>
+        <a href="followups.html" data-nav="followups">📞 Follow-ups</a>
+        <a href="analytics.html" data-nav="analytics">📈 Analytics</a>
+        <a href="performance.html" data-nav="performance">🏆 Performance</a>
+        <a href="reports.html" data-nav="reports">📑 Reports</a>
+        <a href="users.html" data-nav="users" data-admin-only="true">👤 Users</a>
+        <a href="settings.html" data-nav="settings">⚙ Settings</a>
+    </nav>
+
+    <div class="crm-sidebar-footer">
+        <span id="sidebarUser">User</span>
+        <button onclick="logout()" class="logout-btn">Logout</button>
+    </div>
+</aside>

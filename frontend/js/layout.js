@@ -1,12 +1,11 @@
-
 fetch("./components/sidebar.html")
-.then(r => r.text())
-.then(html => {
- const box = document.getElementById("sidebarContainer");
- if(box) box.innerHTML = html;
-});
+    .then(res => res.text())
+    .then(data => {
+        document.getElementById("sidebarContainer").innerHTML = data;
+    });
 
-function logout(){
- sessionStorage.clear();
- location.href='login.html';
+function logout() {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    window.location.href = "login.html";
 }

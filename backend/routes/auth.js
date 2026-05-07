@@ -46,7 +46,7 @@ async function optionalAdminForRegister(req, res, next) {
 
 router.post("/register", optionalAdminForRegister, async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, phone } = req.body;
         const role = req.firstUser ? "admin" : cleanRole(req.body.role);
         const cleanEmail = String(email || "").trim().toLowerCase();
         const cleanName = String(name || "").trim();
@@ -66,10 +66,10 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
 
         const hash = await bcrypt.hash(password, 10);
         const result = await db.query(`
-            INSERT INTO users (name, email, password, role)
-            VALUES ($1,$2,$3,$4)
-            RETURNING id, name, email, role, created_at
-        `, [cleanName, cleanEmail, hash, role]);
+            INSERT INTO users (name, email, password, role, phone)
+            VALUES ($1,$2,$3,$4,$5)
+            RETURNING id, name, email, role, phone, created_at
+        `, [cleanName, cleanEmail, hash, role, String(phone || "").replace(/\D/g, "")]);
 
         res.status(201).json({ message: "User created successfully", user: result.rows[0] });
     } catch (err) {
@@ -98,6 +98,7 @@ router.post("/login", async (req, res) => {
             id: user.id,
             name: user.name,
             email: user.email,
+            phone: user.phone || "",
             role: user.role
         };
 
@@ -111,7 +112,7 @@ router.post("/login", async (req, res) => {
 
 router.get("/me", auth, async (req, res) => {
     try {
-        const result = await db.query("SELECT id, name, email, role FROM users WHERE id=$1", [req.user.id]);
+        const result = await db.query("SELECT id, name, email, role, phone FROM users WHERE id=$1", [req.user.id]);
         if (!result.rows.length) return res.status(404).json({ message: "User not found" });
         res.json(result.rows[0]);
     } catch (err) {
@@ -121,7 +122,7 @@ router.get("/me", auth, async (req, res) => {
 
 router.get("/users", auth, requireAdmin, async (req, res) => {
     try {
-        const result = await db.query("SELECT id, name, email, role, created_at FROM users ORDER BY role, name");
+        const result = await db.query("SELECT id, name, email, role, phone, created_at FROM users ORDER BY role, name");
         res.json(result.rows);
     } catch (err) {
         console.error("Users fetch error:", err);

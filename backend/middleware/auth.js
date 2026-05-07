@@ -12,7 +12,7 @@ module.exports = (req, res, next) => {
             ? authHeader.split(" ")[1]
             : authHeader;
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev_secret_change_me");
 
         req.user = {
             id: decoded.id,

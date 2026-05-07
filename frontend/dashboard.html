@@ -1,24 +1,8 @@
-
-<!DOCTYPE html>
-<html>
-<head>
-<title>Dashboard</title>
-<link rel="stylesheet" href="./css/styles.css">
-</head>
-<body>
-<div class="crm-layout">
-<div id="sidebarContainer"></div>
-<div class="main-content">
-<h1>📊 Dashboard</h1>
-<div class="dashboard-stats">
-<div class="dash-card">Total <span id="total">0</span></div>
-<div class="dash-card">HOT <span id="hot">0</span></div>
-<div class="dash-card">WARM <span id="warm">0</span></div>
-<div class="dash-card">COLD <span id="cold">0</span></div>
-</div>
-</div>
-</div>
-<script src="./js/layout.js"></script>
-<script src="./js/dashboard.js"></script>
-</body>
-</html>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="./css/styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><title>📊 Dashboard</title></head><body class="crm-v2"><div class="crm-layout"><div id="sidebarContainer"></div><main class="main-content"><header class="module-header"><div><span class="tag">Dealer CRM</span><h1>📊 Dashboard</h1></div><div class="module-actions"><div class="notification-box"><button onclick="toggleNotifications()" class="notification-btn">🔔 <span id="notificationCount">0</span></button><div id="notificationPanel" class="notification-panel"><h3>Notifications</h3><div id="notificationList"></div></div></div><button onclick="logout()" class="logout-btn">Logout</button></div></header>
+<section class="dashboard-stats compact">
+  <div class="dash-card">Total <span id="total">0</span></div><div class="dash-card hot">HOT <span id="hot">0</span></div><div class="dash-card warm">WARM <span id="warm">0</span></div><div class="dash-card cold">COLD <span id="cold">0</span></div>
+  <div class="dash-card">Booked <span id="booked">0</span></div><div class="dash-card">Closed <span id="closed">0</span></div><div class="dash-card">Today Follow-ups <span id="today_followups">0</span></div><div class="dash-card">Overdue <span id="overdue_followups">0</span></div>
+</section>
+<section class="two-column"><div class="chart-card"><h3>Lead Priority</h3><canvas id="priorityChart"></canvas></div><div class="chart-card"><h3>Customer Actions</h3><canvas id="actionChart"></canvas></div></section>
+<section class="two-column"><div class="module-card"><h2>📞 Today's Follow-ups</h2><div id="todayFollowups"></div></div><div class="module-card"><h2>⚠ Missed Follow-ups</h2><div id="overdueFollowups"></div></div></section>
+</main></div><script src="./js/crm-common.js"></script><script>loadLayout('dashboard');</script><script src="./js/dashboard.js"></script></body></html>
