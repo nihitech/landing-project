@@ -1,244 +1,123 @@
-const API = window.CRM_API || "https://landing-backend-8gvq.onrender.com/api";
-const token = sessionStorage.getItem("token");
+const express = require("express");
+const router = express.Router();
 
-let currentReport = null;
+const db = require("../config/db");
+const auth = require("../middleware/auth");
 
-if (!token) {
-    window.location.href = "login.html";
+function normalizeRole(role) {
+    return String(role || "").trim().toLowerCase();
 }
 
-function authHeaders() {
-    return {
-        Authorization: `Bearer ${token}`
-    };
-}
-
-function safe(value) {
-    return String(value ?? "-").replace(/[&<>'"]/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "'": "&#39;",
-        '"': "&quot;"
-    }[char]));
-}
-
-async function request(url, options = {}) {
-    const response = await fetch(url, options);
-    const data = await response.json().catch(() => ({}));
-
-    if (response.status === 401) {
-        sessionStorage.clear();
-        window.location.href = "login.html";
-        return;
+function requireAdmin(req, res, next) {
+    if (normalizeRole(req.user?.role) !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
     }
-
-    if (!response.ok) {
-        throw new Error(data.message || "Request failed");
-    }
-
-    return data;
+    next();
 }
 
-function today() {
-    return new Date().toISOString().slice(0, 10);
-}
-
-function currentMonth() {
-    return new Date().toISOString().slice(0, 7);
-}
-
-function handleReportTypeChange() {
-    const type = document.getElementById("reportType").value;
-
-    document.getElementById("dailyBox").style.display =
-        type === "daily" ? "block" : "none";
-
-    document.getElementById("monthBox").style.display =
-        type === "monthly" ? "block" : "none";
-
-    document.querySelectorAll(".range-box").forEach(box => {
-        box.style.display =
-            type === "weekly" || type === "custom" ? "block" : "none";
-    });
-}
-
-function buildReportUrl() {
-    const type = document.getElementById("reportType").value;
-
-    if (type === "daily") {
-        const date = document.getElementById("reportDate").value || today();
-        return `${API}/reports/daily?date=${date}`;
-    }
-
-    if (type === "monthly") {
-        const month = document.getElementById("reportMonth").value || currentMonth();
-        return `${API}/reports/monthly?month=${month}`;
-    }
-
-    const from = document.getElementById("dateFrom").value;
-    const to = document.getElementById("dateTo").value;
-
-    if (!from || !to) {
-        alert("Please select from and to date");
-        return null;
-    }
-
-    return `${API}/reports/${type}?from=${from}&to=${to}`;
-}
-
-async function generateReport() {
+// ✅ DAILY REPORT
+router.get("/daily", auth, requireAdmin, async (req, res) => {
     try {
-        const url = buildReportUrl();
+        const date = req.query.date || new Date().toISOString().slice(0, 10);
 
-        if (!url) return;
+        const from = `${date} 00:00:00`;
+        const to = `${date} 23:59:59`;
 
-        const data = await request(url, {
-            headers: authHeaders()
-        });
+        const overview = await db.query(`
+            SELECT
+                COUNT(*)::int AS total_leads,
+                COUNT(*) FILTER (WHERE priority='HOT')::int AS hot,
+                COUNT(*) FILTER (WHERE priority='WARM')::int AS warm,
+                COUNT(*) FILTER (WHERE priority='COLD')::int AS cold,
+                COUNT(*) FILTER (WHERE status='BOOKED')::int AS booked,
+                COUNT(*) FILTER (WHERE status='CLOSED')::int AS closed,
+                COUNT(*) FILTER (WHERE status='LOST')::int AS lost,
+                COUNT(*) FILTER (WHERE assigned_to IS NULL)::int AS unassigned
+            FROM leads
+            WHERE created_at BETWEEN $1 AND $2
+        `, [from, to]);
 
-        currentReport = data;
+        const sourceSummary = await db.query(`
+            SELECT COALESCE(source, 'UNKNOWN') AS source, COUNT(*)::int AS count
+            FROM leads
+            WHERE created_at BETWEEN $1 AND $2
+            GROUP BY COALESCE(source, 'UNKNOWN')
+            ORDER BY count DESC
+        `, [from, to]);
 
-        renderReport(data);
+        const userPerformance = await db.query(`
+            SELECT
+                u.name,
+                u.email,
+                COUNT(l.id)::int AS assigned_leads,
+                COUNT(l.id) FILTER (WHERE l.priority='HOT')::int AS hot_leads,
+                COUNT(l.id) FILTER (WHERE l.status='TEST-DRIVE')::int AS test_drives,
+                COUNT(l.id) FILTER (WHERE l.status='BOOKED')::int AS booked,
+                COUNT(l.id) FILTER (WHERE l.status='CLOSED')::int AS closed,
+                COUNT(l.id) FILTER (
+                    WHERE l.next_followup_at < NOW()
+                    AND l.status NOT IN ('CLOSED','LOST')
+                )::int AS missed_followups
+            FROM users u
+            LEFT JOIN leads l
+                ON l.assigned_to = u.id
+                AND l.created_at BETWEEN $1 AND $2
+            WHERE LOWER(u.role) = 'sales'
+            GROUP BY u.id, u.name, u.email
+            ORDER BY assigned_leads DESC
+        `, [from, to]);
 
-    } catch (error) {
-        alert(error.message);
+        const recentLeads = await db.query(`
+            SELECT
+                l.name,
+                l.phone,
+                l.car_interest,
+                l.source,
+                l.priority,
+                l.status,
+                u.name AS assigned_name
+            FROM leads l
+            LEFT JOIN users u ON l.assigned_to = u.id
+            WHERE l.created_at BETWEEN $1 AND $2
+            ORDER BY l.created_at DESC
+            LIMIT 50
+        `, [from, to]);
+
+        const report = {
+            type: "daily",
+            label: date,
+            overview: overview.rows[0],
+            source_summary: sourceSummary.rows,
+            model_summary: [],
+            user_performance: userPerformance.rows,
+            recent_leads: recentLeads.rows,
+            followups: {
+                missed_or_due_followups: Number(overview.rows[0].missed_followups || 0)
+            }
+        };
+
+        report.whatsapp_summary = `📊 Daily CRM Report
+Date: ${date}
+
+Total Leads: ${report.overview.total_leads}
+Hot: ${report.overview.hot}
+Warm: ${report.overview.warm}
+Cold: ${report.overview.cold}
+
+Booked: ${report.overview.booked}
+Closed: ${report.overview.closed}
+Lost: ${report.overview.lost}
+
+Unassigned Leads: ${report.overview.unassigned}
+
+Please review missed follow-ups and hot leads.`;
+
+        res.json(report);
+
+    } catch (err) {
+        console.error("DAILY REPORT ERROR:", err);
+        res.status(500).json({ message: "Daily report failed", error: err.message });
     }
-}
+});
 
-function renderReport(report) {
-    document.getElementById("reportOutput").style.display = "block";
-
-    const o = report.overview || {};
-
-    document.getElementById("r_total").innerText = o.total_leads || 0;
-    document.getElementById("r_hot").innerText = o.hot || 0;
-    document.getElementById("r_warm").innerText = o.warm || 0;
-    document.getElementById("r_cold").innerText = o.cold || 0;
-    document.getElementById("r_booked").innerText = o.booked || 0;
-    document.getElementById("r_closed").innerText = o.closed || 0;
-    document.getElementById("r_missed").innerText =
-        report.followups?.missed_or_due_followups || 0;
-
-    document.getElementById("sourceReport").innerHTML =
-        (report.source_summary || []).map(row => `
-            <tr>
-                <td>${safe(row.source)}</td>
-                <td>${row.count}</td>
-            </tr>
-        `).join("");
-
-    document.getElementById("modelReport").innerHTML =
-        (report.model_summary || []).map(row => `
-            <tr>
-                <td>${safe(row.model)}</td>
-                <td>${row.count}</td>
-            </tr>
-        `).join("");
-
-    document.getElementById("userReport").innerHTML =
-        (report.user_performance || []).map(row => `
-            <tr>
-                <td>${safe(row.name)}</td>
-                <td>${row.assigned_leads}</td>
-                <td>${row.hot_leads}</td>
-                <td>${row.test_drives}</td>
-                <td>${row.booked}</td>
-                <td>${row.closed}</td>
-                <td>${row.missed_followups}</td>
-            </tr>
-        `).join("");
-
-    document.getElementById("leadReport").innerHTML =
-        (report.recent_leads || []).map(row => `
-            <tr>
-                <td>${safe(row.name)}</td>
-                <td>${safe(row.phone)}</td>
-                <td>${safe(row.car_interest)}</td>
-                <td>${safe(row.source)}</td>
-                <td>${safe(row.priority)}</td>
-                <td>${safe(row.status)}</td>
-                <td>${safe(row.assigned_name || "Unassigned")}</td>
-            </tr>
-        `).join("");
-
-    document.getElementById("whatsappSummary").value =
-        report.whatsapp_summary || "";
-}
-
-function copyWhatsappSummary() {
-    const text = document.getElementById("whatsappSummary").value;
-
-    if (!text) {
-        alert("Generate report first");
-        return;
-    }
-
-    navigator.clipboard.writeText(text);
-    alert("WhatsApp summary copied");
-}
-
-function downloadReportCSV() {
-    if (!currentReport) {
-        alert("Generate report first");
-        return;
-    }
-
-    const rows = [];
-
-    rows.push(["CRM Report", currentReport.type, currentReport.label]);
-    rows.push([]);
-
-    rows.push(["Overview"]);
-    Object.entries(currentReport.overview || {}).forEach(([key, value]) => {
-        rows.push([key, value]);
-    });
-
-    rows.push([]);
-    rows.push(["Source Summary"]);
-    rows.push(["Source", "Count"]);
-    (currentReport.source_summary || []).forEach(row => {
-        rows.push([row.source, row.count]);
-    });
-
-    rows.push([]);
-    rows.push(["Sales Performance"]);
-    rows.push(["Name", "Assigned", "Hot", "Test Drives", "Booked", "Closed", "Missed"]);
-    (currentReport.user_performance || []).forEach(row => {
-        rows.push([
-            row.name,
-            row.assigned_leads,
-            row.hot_leads,
-            row.test_drives,
-            row.booked,
-            row.closed,
-            row.missed_followups
-        ]);
-    });
-
-    const csv = rows.map(row =>
-        row.map(value => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")
-    ).join("\n");
-
-    const blob = new Blob([csv], {
-        type: "text/csv;charset=utf-8;"
-    });
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-
-    a.href = url;
-    a.download = `crm-report-${new Date().toISOString().slice(0, 10)}.csv`;
-
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    URL.revokeObjectURL(url);
-}
-
-window.onload = () => {
-    document.getElementById("reportDate").value = today();
-    document.getElementById("reportMonth").value = currentMonth();
-    handleReportTypeChange();
-};
+module.exports = router;
