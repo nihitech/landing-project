@@ -34,4 +34,70 @@ function closeLeadDetails(){document.getElementById("leadDetailModal").classList
 function openEnquiryModal(id){ const lead=allLeads.find(l=>Number(l.id)===Number(id)); if(!lead)return toast("Lead not found",true); document.getElementById("enquiryLeadId").value=id; const set=(id,v)=>{const e=document.getElementById(id); if(e)e.value=v||""}; set("e_name",lead.name); set("e_phone",lead.phone); set("e_alt_phone",lead.alternate_phone); set("e_email",lead.email); set("e_area",lead.area); set("e_district",lead.district); set("e_profession",lead.profession); set("e_family",lead.family_members); set("e_vehicle_category",lead.vehicle_category); loadVehicleModels(); set("e_fuel_type",lead.fuel_type); set("e_car",lead.car_interest); loadVehicleVariants(); set("e_variant",lead.variant_interest); set("e_budget",lead.budget_range); set("e_timeline",lead.purchase_timeline); set("e_exchange",lead.exchange_vehicle); set("e_finance",lead.finance_required); set("e_testdrive",toISTInput(lead.test_drive_date)); set("e_visit",toISTInput(lead.showroom_visit_date)); set("e_booking",toISTInput(lead.booking_expected_date)); set("e_notes",lead.notes||lead.followup_notes); document.getElementById("enquiryModal").classList.add("show"); }
 function closeEnquiryModal(){document.getElementById("enquiryModal").classList.remove("show");}
 async function saveEnquiry(){ const id=document.getElementById("enquiryLeadId").value; const get=id=>document.getElementById(id)?.value||""; const date=v=>v?`${v}:00+05:30`:""; const payload={name:get("e_name"),phone:get("e_phone"),alternate_phone:get("e_alt_phone"),email:get("e_email"),area:get("e_area"),district:get("e_district"),profession:get("e_profession"),family_members:get("e_family"),vehicle_category:get("e_vehicle_category"),fuel_type:get("e_fuel_type"),car_interest:get("e_car"),variant_interest:get("e_variant"),budget_range:get("e_budget"),purchase_timeline:get("e_timeline"),exchange_vehicle:get("e_exchange"),finance_required:get("e_finance"),test_drive_date:date(get("e_testdrive")),showroom_visit_date:date(get("e_visit")),booking_expected_date:date(get("e_booking")),notes:get("e_notes")}; try{ await request(`${API}/lead/${id}`,{method:"PUT",headers:authHeaders(true),body:JSON.stringify(payload)}); toast("Detailed enquiry saved"); closeEnquiryModal(); await loadPage(); }catch(e){toast(e.message,true);} }
+function openFollowup(id) {
+    const modal = document.getElementById("followupModal");
+
+    if (!modal) {
+        alert("Follow-up modal not found in HTML");
+        return;
+    }
+
+    document.getElementById("followupLeadId").value = id;
+    document.getElementById("callStatus").value = "CONNECTED";
+    document.getElementById("customerResponse").value = "INTERESTED";
+    document.getElementById("nextFollowupAt").value = "";
+    document.getElementById("followupRemarks").value = "";
+
+    modal.classList.add("show");
+}
+
+function closeFollowupModal() {
+    const modal = document.getElementById("followupModal");
+    if (modal) modal.classList.remove("show");
+}
+
+async function submitFollowup() {
+    const id = document.getElementById("followupLeadId").value;
+    const call_status = document.getElementById("callStatus").value;
+    const customer_response = document.getElementById("customerResponse").value;
+    const rawDateTime = document.getElementById("nextFollowupAt").value;
+    const remarks = document.getElementById("followupRemarks").value;
+
+    const next_followup_at = rawDateTime ? `${rawDateTime}:00+05:30` : "";
+
+    if (!next_followup_at) {
+        alert("Please select next follow-up date and time");
+        return;
+    }
+
+    try {
+        await request(`${API}/lead/${id}/followup`, {
+            method: "POST",
+            headers: authHeaders(true),
+            body: JSON.stringify({
+                call_status,
+                customer_response,
+                next_followup_at,
+                remarks
+            })
+        });
+
+        alert("Follow-up saved successfully");
+        closeFollowupModal();
+
+        await loadLeads();
+
+        if (typeof loadAnalytics === "function") {
+            await loadAnalytics();
+        }
+
+    } catch (error) {
+        alert(error.message || "Follow-up save failed");
+    }
+}
+
+// Make functions available to HTML onclick
+window.openFollowup = openFollowup;
+window.closeFollowupModal = closeFollowupModal;
+window.submitFollowup = submitFollowup;
 window.onload=async()=>{ if(user.role!=="admin") document.querySelectorAll(".admin-only").forEach(e=>e.style.display="none"); initDragDrop(); try{ await loadUsers(); await loadPage(); setInterval(()=>loadPage().catch(console.error),50000);}catch(e){toast(e.message,true);} };
