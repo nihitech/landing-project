@@ -705,7 +705,7 @@ function renderUsersTable() {
     if (!tbody) return;
 
     if (!users.length) {
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No users found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No users found</td></tr>`;
         return;
     }
 
@@ -713,6 +713,7 @@ function renderUsersTable() {
         <tr>
             <td>${safe(u.name)}</td>
             <td>${safe(u.email)}</td>
+            <td>${safe(u.phone || "-")}</td>
             <td><span class="role-pill">${safe(u.role)}</span></td>
             <td><button onclick="deleteUser(${u.id})" class="delete-user-btn" ${Number(u.id) === Number(user.id) ? "disabled" : ""}>Delete</button></td>
         </tr>
@@ -724,6 +725,7 @@ async function createUser() {
         name: document.getElementById("uname").value.trim(),
         email: document.getElementById("uemail").value.trim(),
         password: document.getElementById("upassword").value.trim(),
+        phone: document.getElementById("uphone")?.value.trim() || "",
         role: document.getElementById("urole").value
     };
 
@@ -737,7 +739,7 @@ async function createUser() {
             headers: authHeaders(true),
             body: JSON.stringify(payload)
         });
-        ["uname", "uemail", "upassword"].forEach(id => document.getElementById(id).value = "");
+        ["uname", "uemail", "uphone", "upassword"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
         toast("User added");
         await loadUsers();
     } catch (error) {

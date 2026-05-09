@@ -4,53 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales CRM Dashboard</title>
-
     <link rel="stylesheet" href="./css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body class="admin-page">
 
-    <!-- HEADER -->
     <div class="admin-header">
         <div>
             <span class="tag">Sales CRM</span>
             <h1>My Leads Dashboard</h1>
         </div>
 
-        <input
-            type="text"
-            id="searchInput"
-            placeholder="🔍 Search my leads..."
-            oninput="loadLeads()"
-        />
+        <input type="text" id="searchInput" placeholder="🔍 Search name, phone, car..." oninput="loadLeads()">
 
         <select id="filter" onchange="loadLeads()">
-            <option value="">All Priorities</option>
+            <option value="">All Priority</option>
             <option value="HOT">🔥 HOT</option>
             <option value="WARM">🟡 WARM</option>
             <option value="COLD">🔵 COLD</option>
         </select>
 
-        <div class="admin-user-box">
-            <span id="userInfo"></span>
-            <button onclick="logout()" class="logout-btn">Logout</button>
-        </div>
         <div class="notification-box">
-            <button onclick="toggleNotifications()" class="notification-btn">
-                🔔 <span id="notificationCount">0</span>
-            </button>
-
+            <button onclick="toggleNotifications()" class="notification-btn">🔔 <span id="notificationCount">0</span></button>
             <div id="notificationPanel" class="notification-panel">
                 <h3>Notifications</h3>
                 <div id="notificationList"></div>
             </div>
         </div>
+
+        <div class="admin-user-box">
+            <span id="userInfo"></span>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
     </div>
 
-    <!-- STATS -->
     <div class="dashboard-stats">
-        <div class="dash-card">My Leads <span id="total">0</span></div>
+        <div class="dash-card">Total <span id="total">0</span></div>
         <div class="dash-card hot">HOT <span id="hot">0</span></div>
         <div class="dash-card warm">WARM <span id="warm">0</span></div>
         <div class="dash-card cold">COLD <span id="cold">0</span></div>
@@ -62,68 +51,33 @@
         <div class="dash-card">Overdue <span id="overdue_followups">0</span></div>
     </div>
 
-    <!-- TODAY FOLLOWUPS -->
     <div class="followup-alert">
-        <h2>📞 My Today's Follow-ups</h2>
+        <h2>📞 Today's Follow-ups</h2>
         <div id="todayFollowups"></div>
     </div>
+
     <div class="overdue-section">
         <h2>⚠ Missed / Overdue Follow-ups</h2>
-
         <div id="overdueFollowups" class="overdue-grid"></div>
     </div>
-    <!-- CHARTS -->
-    <div class="chart-grid sales-chart-grid">
-        <div class="chart-card">
-            <h3>My Lead Priority</h3>
-            <canvas id="priorityChart"></canvas>
-        </div>
 
-        <div class="chart-card">
-            <h3>My Customer Actions</h3>
-            <canvas id="actionChart"></canvas>
-        </div>
     </div>
 
-    <!-- PIPELINE -->
-    <div class="pipeline" id="pipelineBoard">
-        <div class="column" data-status="NEW">
-            <h3>NEW</h3>
-            <div class="dropzone" id="zone-new"></div>
-        </div>
-
-        <div class="column" data-status="CONTACTED">
-            <h3>CONTACTED</h3>
-            <div class="dropzone" id="zone-contacted"></div>
-        </div>
-
-        <div class="column" data-status="FOLLOW-UP">
-            <h3>FOLLOW-UP</h3>
-            <div class="dropzone" id="zone-follow-up"></div>
-        </div>
-
-        <div class="column" data-status="TEST-DRIVE">
-            <h3>TEST-DRIVE</h3>
-            <div class="dropzone" id="zone-test-drive"></div>
-        </div>
-
-        <div class="column" data-status="BOOKED">
-            <h3>BOOKED</h3>
-            <div class="dropzone" id="zone-booked"></div>
-        </div>
-
-        <div class="column" data-status="CLOSED">
-            <h3>CLOSED</h3>
-            <div class="dropzone" id="zone-closed"></div>
-        </div>
-
-        <div class="column" data-status="LOST">
-            <h3>LOST</h3>
-            <div class="dropzone" id="zone-lost"></div>
-        </div>
+    <div class="chart-grid">
+        <div class="chart-card"><h3>Lead Priority</h3><canvas id="priorityChart"></canvas></div>
+        <div class="chart-card"><h3>Customer Actions</h3><canvas id="actionChart"></canvas></div>
     </div>
 
-    <!-- LEADS TABLE -->
+    <div class="pipeline">
+        <div class="column" data-status="NEW"><h3>NEW</h3><div class="dropzone" id="zone-new"></div></div>
+        <div class="column" data-status="CONTACTED"><h3>CONTACTED</h3><div class="dropzone" id="zone-contacted"></div></div>
+        <div class="column" data-status="FOLLOW-UP"><h3>FOLLOW-UP</h3><div class="dropzone" id="zone-follow-up"></div></div>
+        <div class="column" data-status="TEST-DRIVE"><h3>TEST-DRIVE</h3><div class="dropzone" id="zone-test-drive"></div></div>
+        <div class="column" data-status="BOOKED"><h3>BOOKED</h3><div class="dropzone" id="zone-booked"></div></div>
+        <div class="column" data-status="CLOSED"><h3>CLOSED</h3><div class="dropzone" id="zone-closed"></div></div>
+        <div class="column" data-status="LOST"><h3>LOST</h3><div class="dropzone" id="zone-lost"></div></div>
+    </div>
+
     <div class="table-card">
         <table id="leadTable">
             <thead>
@@ -142,13 +96,19 @@
         </table>
     </div>
 
-    <!-- FOLLOW-UP MODAL -->
+
+    <div id="leadDetailModal" class="lead-detail-modal">
+        <div class="lead-detail-card">
+            <button onclick="closeLeadDetails()" class="modal-close">×</button>
+            <h2>Lead Details</h2>
+            <div id="leadDetailContent"></div>
+        </div>
+    </div>
+
     <div id="followupModal" class="followup-modal">
         <div class="followup-modal-card">
             <h2>📞 Add Follow-up</h2>
-
             <input type="hidden" id="followupLeadId">
-
             <label>Call Status</label>
             <select id="callStatus">
                 <option value="CONNECTED">Connected</option>
@@ -157,7 +117,6 @@
                 <option value="SWITCHED_OFF">Switched Off</option>
                 <option value="WRONG_NUMBER">Wrong Number</option>
             </select>
-
             <label>Customer Response</label>
             <select id="customerResponse">
                 <option value="INTERESTED">Interested</option>
@@ -167,13 +126,10 @@
                 <option value="BOOKING_EXPECTED">Booking Expected</option>
                 <option value="NOT_INTERESTED">Not Interested</option>
             </select>
-
             <label>Next Follow-up Date & Time</label>
             <input type="datetime-local" id="nextFollowupAt">
-
             <label>Remarks</label>
             <textarea id="followupRemarks" placeholder="Customer discussion details..."></textarea>
-
             <div class="followup-modal-actions">
                 <button onclick="closeFollowupModal()" class="cancel-btn">Cancel</button>
                 <button onclick="submitFollowup()" class="save-btn">Save Follow-up</button>
@@ -181,87 +137,36 @@
         </div>
     </div>
 
-    <!-- LEAD DETAIL MODAL -->
-    <div id="leadDetailModal" class="lead-detail-modal">
-        <div class="lead-detail-card">
-            <button onclick="closeLeadDetails()" class="modal-close">×</button>
-            <h2>Lead Details</h2>
-            <div id="leadDetailContent"></div>
+    <div id="enquiryModal" class="enquiry-modal">
+        <div class="enquiry-card">
+            <h2>📝 Detailed Enquiry</h2>
+            <input type="hidden" id="enquiryLeadId">
+            <div class="form-grid">
+                <div class="field-group"><label>Customer Name</label><input id="e_name" placeholder="Customer Name"></div>
+                <div class="field-group"><label>Phone</label><input id="e_phone" placeholder="Phone"></div>
+                <div class="field-group"><label>Alternate Phone</label><input id="e_alt_phone" placeholder="Alternate Phone"></div>
+                <div class="field-group"><label>Email</label><input id="e_email" placeholder="Email"></div>
+                <div class="field-group"><label>Area</label><input id="e_area" placeholder="Area"></div>
+                <div class="field-group"><label>District</label><input id="e_district" placeholder="District"></div>
+                <div class="field-group"><label>Profession</label><input id="e_profession" placeholder="Profession"></div>
+                <div class="field-group"><label>Family Members</label><input id="e_family" placeholder="Family Members"></div>
+                <div class="field-group"><label>Vehicle Category</label><select id="e_vehicle_category" onchange="loadVehicleModels()"><option value="">Select Category</option><option value="AD">Diesel / Petrol Vehicle</option><option value="EV">Electric Vehicle</option></select></div>
+                <div class="field-group"><label>Fuel Type</label><select id="e_fuel_type"><option value="">Select Fuel Type</option></select></div>
+                <div class="field-group"><label>Model Interest</label><select id="e_car" onchange="loadVehicleVariants()"><option value="">Select Model</option></select></div>
+                <div class="field-group"><label>Variant Interest</label><select id="e_variant"><option value="">Select Variant</option></select></div>
+                <div class="field-group"><label>Budget Range</label><input id="e_budget" placeholder="Budget Range"></div>
+                <div class="field-group"><label>Purchase Timeline</label><input id="e_timeline" placeholder="Purchase Timeline"></div>
+                <div class="field-group"><label>Exchange Vehicle</label><input id="e_exchange" placeholder="Exchange Vehicle"></div>
+                <div class="field-group"><label>Finance Required</label><input id="e_finance" placeholder="Finance Required"></div>
+                <div class="field-group"><label>Test Drive Date</label><input type="date" id="e_testdrive"></div>
+                <div class="field-group"><label>Showroom Visit</label><input type="date" id="e_visit"></div>
+                <div class="field-group"><label>Booking Expected</label><input type="date" id="e_booking"></div>
+            </div>
+            <div class="field-group"><label>Customer Discussion Notes</label><textarea id="e_notes" placeholder="Customer discussion notes..."></textarea></div>
+            <div class="modal-actions"><button onclick="closeEnquiryModal()">Cancel</button><button onclick="saveEnquiry()">Save Enquiry</button></div>
         </div>
     </div>
-<div id="enquiryModal" class="enquiry-modal">
-    <div class="enquiry-card">
 
-        <h2>📝 Detailed Enquiry</h2>
-        <input type="hidden" id="enquiryLeadId">
-
-        <div class="form-grid">
-
-            <input id="e_name" placeholder="Customer Name">
-            <input id="e_phone" placeholder="Phone">
-            <input id="e_alt_phone" placeholder="Alternate Phone">
-            <input id="e_email" placeholder="Email">
-
-            <input id="e_area" placeholder="Area">
-            <input id="e_district" placeholder="District">
-            <input id="e_profession" placeholder="Profession">
-            <input id="e_family" placeholder="Family Members">
-
-            <div class="field-group">
-                <label>Vehicle Category</label>
-                <select id="e_vehicle_category" onchange="loadVehicleModels()">
-                    <option value="">Select Category</option>
-                    <option value="AD">Diesel / Petrol Vehicle</option>
-                    <option value="EV">Electric Vehicle</option>
-                </select>
-            </div>
-
-            <div class="field-group">
-                <label>Fuel Type</label>
-                <select id="e_fuel_type">
-                    <option value="">Select Fuel Type</option>
-                </select>
-            </div>
-
-            <div class="field-group">
-                <label>Model Interest</label>
-                <select id="e_car" onchange="loadVehicleVariants()">
-                    <option value="">Select Model</option>
-                </select>
-            </div>
-
-            <div class="field-group">
-                <label>Variant Interest</label>
-                <select id="e_variant">
-                    <option value="">Select Variant</option>
-                </select>
-            </div>
-            <input id="e_budget" placeholder="Budget Range">
-            <input id="e_timeline" placeholder="Purchase Timeline">
-
-            <input id="e_exchange" placeholder="Exchange Vehicle">
-            <input id="e_finance" placeholder="Finance Required">
-
-            <label>Test Drive Date</label>
-            <input type="date" id="e_testdrive">
-
-            <label>Showroom Visit</label>
-            <input type="date" id="e_visit">
-
-            <label>Booking Expected</label>
-            <input type="date" id="e_booking">
-
-        </div>
-
-        <textarea id="e_notes" placeholder="Customer discussion notes..."></textarea>
-
-        <div class="modal-actions">
-            <button onclick="closeEnquiryModal()">Cancel</button>
-            <button onclick="saveEnquiry()">Save Enquiry</button>
-        </div>
-
-    </div>
-</div>
     <script src="./js/user-dashboard.js"></script>
 </body>
 </html>
