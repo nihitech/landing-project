@@ -1,4 +1,4 @@
-const API = window.CRM_API || "https://landing-backend-8gvq.onrender.com/api";
+const API = "https://landing-backend-8gvq.onrender.com/api";
 const token = sessionStorage.getItem("token");
 
 let currentReport = null;
@@ -251,7 +251,16 @@ function downloadReportCSV() {
 }
 
 window.onload = () => {
-    document.getElementById("reportDate").value = today();
-    document.getElementById("reportMonth").value = currentMonth();
+    const reportDate = document.getElementById("reportDate");
+    const reportMonth = document.getElementById("reportMonth");
+    if (reportDate) reportDate.value = today();
+    if (reportMonth) reportMonth.value = currentMonth();
     handleReportTypeChange();
 };
+
+// Expose report actions for inline onclick handlers in reports.html
+window.generateReport = generateReport;
+window.handleReportTypeChange = handleReportTypeChange;
+window.downloadReportCSV = downloadReportCSV;
+window.copyWhatsappSummary = copyWhatsappSummary;
+console.log("✅ frontend reports.js loaded");

@@ -133,3 +133,19 @@ CREATE INDEX IF NOT EXISTS idx_followups_lead_id ON lead_followups(lead_id);
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT false;
+
+
+CREATE TABLE IF NOT EXISTS report_logs (
+    id BIGSERIAL PRIMARY KEY,
+    report_type TEXT,
+    report_date DATE,
+    date_from TIMESTAMPTZ,
+    date_to TIMESTAMPTZ,
+    sent_to_email TEXT,
+    sent_to_whatsapp TEXT,
+    status TEXT DEFAULT 'GENERATED',
+    summary JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_report_logs_created_at ON report_logs(created_at DESC);

@@ -1,5 +1,5 @@
 
-const API = window.CRM_API || "https://landing-backend-8gvq.onrender.com/api";
+const API = "https://landing-backend-8gvq.onrender.com/api";
 const token = sessionStorage.getItem("token");
 const user = JSON.parse(sessionStorage.getItem("user") || "{}");
 const STATUSES = ["NEW", "CONTACTED", "FOLLOW-UP", "TEST-DRIVE", "BOOKED", "CLOSED", "LOST"];

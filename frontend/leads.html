@@ -4,4 +4,43 @@
 <section class="table-card"><table id="leadTable"><thead><tr><th>Customer</th><th>Contact</th><th>Vehicle</th><th>Source</th><th>Priority</th><th>Status</th><th class="admin-only">Assign</th><th>Follow-up</th><th>Actions</th></tr></thead><tbody></tbody></table></section>
 <div id="leadDetailModal" class="lead-detail-modal"><div class="lead-detail-card"><button onclick="closeLeadDetails()" class="modal-close">×</button><h2>Lead Details</h2><div id="leadDetailContent"></div></div></div>
 <div id="enquiryModal" class="enquiry-modal"><div class="enquiry-card"><h2>📝 Detailed Enquiry</h2><input type="hidden" id="enquiryLeadId"><div class="form-grid"><div class="field-group"><label>Name</label><input id="e_name"></div><div class="field-group"><label>Phone</label><input id="e_phone"></div><div class="field-group"><label>Alternate Phone</label><input id="e_alt_phone"></div><div class="field-group"><label>Email</label><input id="e_email"></div><div class="field-group"><label>Area</label><input id="e_area"></div><div class="field-group"><label>District</label><input id="e_district"></div><div class="field-group"><label>Profession</label><input id="e_profession"></div><div class="field-group"><label>Family Members</label><input id="e_family"></div><div class="field-group"><label>Vehicle Category</label><select id="e_vehicle_category" onchange="loadVehicleModels()"><option value="">Select Category</option><option value="AD">Diesel / Petrol Vehicle</option><option value="EV">Electric Vehicle</option></select></div><div class="field-group"><label>Fuel Type</label><select id="e_fuel_type"><option value="">Select Fuel Type</option></select></div><div class="field-group"><label>Model Interest</label><select id="e_car" onchange="loadVehicleVariants()"><option value="">Select Model</option></select></div><div class="field-group"><label>Variant Interest</label><select id="e_variant"><option value="">Select Variant</option></select></div><div class="field-group"><label>Budget Range</label><input id="e_budget"></div><div class="field-group"><label>Purchase Timeline</label><input id="e_timeline"></div><div class="field-group"><label>Exchange Vehicle</label><input id="e_exchange"></div><div class="field-group"><label>Finance Required</label><input id="e_finance"></div><div class="field-group"><label>Test Drive Date</label><input type="datetime-local" id="e_testdrive"></div><div class="field-group"><label>Showroom Visit</label><input type="datetime-local" id="e_visit"></div><div class="field-group"><label>Booking Expected</label><input type="datetime-local" id="e_booking"></div></div><textarea id="e_notes" placeholder="Customer discussion notes..."></textarea><div class="modal-actions"><button onclick="closeEnquiryModal()">Cancel</button><button onclick="saveEnquiry()">Save Enquiry</button></div></div></div>
-<script>document.write(followupModalHTML())</script></main></div><script src="./js/crm-common.js"></script><script>loadLayout('leads');</script><script src="./js/leads.js"></script></body></html>
+</main></div><script src="./js/crm-common.js"></script><script>loadLayout('leads');</script>
+<!-- FOLLOW-UP MODAL -->
+<div id="followupModal" class="followup-modal">
+    <div class="followup-modal-card">
+        <h2>📞 Add Follow-up</h2>
+
+        <input type="hidden" id="followupLeadId">
+
+        <label>Call Status</label>
+        <select id="callStatus">
+            <option value="CONNECTED">Connected</option>
+            <option value="NOT_CONNECTED">Not Connected</option>
+            <option value="BUSY">Busy</option>
+            <option value="SWITCHED_OFF">Switched Off</option>
+            <option value="WRONG_NUMBER">Wrong Number</option>
+        </select>
+
+        <label>Customer Response</label>
+        <select id="customerResponse">
+            <option value="INTERESTED">Interested</option>
+            <option value="NEED_TIME">Need Time</option>
+            <option value="TEST_DRIVE">Test Drive</option>
+            <option value="SHOWROOM_VISIT">Showroom Visit</option>
+            <option value="BOOKING_EXPECTED">Booking Expected</option>
+            <option value="NOT_INTERESTED">Not Interested</option>
+        </select>
+
+        <label>Next Follow-up Date & Time</label>
+        <input type="datetime-local" id="nextFollowupAt">
+
+        <label>Remarks</label>
+        <textarea id="followupRemarks" placeholder="Customer discussion details..."></textarea>
+
+        <div class="followup-modal-actions">
+            <button onclick="closeFollowupModal()" class="cancel-btn">Cancel</button>
+            <button onclick="submitFollowup()" class="save-btn">Save Follow-up</button>
+        </div>
+    </div>
+</div>
+<script src="./js/leads.js"></script></body></html>

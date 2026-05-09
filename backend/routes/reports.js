@@ -299,17 +299,22 @@ router.get("/:type", auth, requireAdmin, async (req, res) => {
         const report = await generateReport(type, range);
         const whatsapp_summary = buildWhatsappSummary(report);
 
-        await db.query(`
-            INSERT INTO report_logs
-            (report_type, report_date, date_from, date_to, status, summary)
-            VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)
-        `, [
-            type,
-            range.from,
-            range.to,
-            "GENERATED",
-            JSON.stringify(report)
-        ]);
+        // Save report history, but never block report generation if the log table is missing.
+        try {
+            await db.query(`
+                INSERT INTO report_logs
+                (report_type, report_date, date_from, date_to, status, summary)
+                VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)
+            `, [
+                type,
+                range.from,
+                range.to,
+                "GENERATED",
+                JSON.stringify(report)
+            ]);
+        } catch (logErr) {
+            console.error("REPORT LOG ERROR:", logErr.message);
+        }
 
         res.json({
             ...report,

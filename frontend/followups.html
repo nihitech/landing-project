@@ -1,1 +1,86 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="./css/styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><title>📞 Follow-up Center</title></head><body class="crm-v2"><div class="crm-layout"><div id="sidebarContainer"></div><main class="main-content"><header class="module-header"><div><span class="tag">Dealer CRM</span><h1>📞 Follow-up Center</h1></div><div class="module-actions"><div class="notification-box"><button onclick="toggleNotifications()" class="notification-btn">🔔 <span id="notificationCount">0</span></button><div id="notificationPanel" class="notification-panel"><h3>Notifications</h3><div id="notificationList"></div></div></div><button onclick="logout()" class="logout-btn">Logout</button></div></header><section class="two-column"><div class="module-card"><h2>📅 Today's Follow-ups</h2><div id="todayFollowups"></div></div><div class="module-card"><h2>⚠ Missed / Overdue Follow-ups</h2><div id="overdueFollowups"></div></div></section><script>document.write(followupModalHTML())</script></main></div><script src="./js/crm-common.js"></script><script>loadLayout('followups');</script><script src="./js/followups.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/styles.css">
+    <title>📞 Follow-up Center</title>
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="module-header">
+            <div>
+                <span class="tag">Dealer CRM</span>
+                <h1>📞 Follow-up Center</h1>
+            </div>
+            <div class="module-actions">
+                <div class="notification-box">
+                    <button onclick="toggleNotifications()" class="notification-btn">🔔 <span id="notificationCount">0</span></button>
+                    <div id="notificationPanel" class="notification-panel">
+                        <h3>Notifications</h3>
+                        <div id="notificationList"></div>
+                    </div>
+                </div>
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <section class="two-column">
+            <div class="module-card">
+                <h2>📅 Today's Follow-ups</h2>
+                <div id="todayFollowups"></div>
+            </div>
+            <div class="module-card">
+                <h2>⚠ Missed / Overdue Follow-ups</h2>
+                <div id="overdueFollowups"></div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- FOLLOW-UP MODAL -->
+<div id="followupModal" class="followup-modal">
+    <div class="followup-modal-card">
+        <h2>📞 Add Follow-up</h2>
+        <input type="hidden" id="followupLeadId">
+
+        <label>Call Status</label>
+        <select id="callStatus">
+            <option value="CONNECTED">Connected</option>
+            <option value="NOT_CONNECTED">Not Connected</option>
+            <option value="BUSY">Busy</option>
+            <option value="SWITCHED_OFF">Switched Off</option>
+            <option value="WRONG_NUMBER">Wrong Number</option>
+        </select>
+
+        <label>Customer Response</label>
+        <select id="customerResponse">
+            <option value="INTERESTED">Interested</option>
+            <option value="NEED_TIME">Need Time</option>
+            <option value="TEST_DRIVE">Test Drive</option>
+            <option value="SHOWROOM_VISIT">Showroom Visit</option>
+            <option value="BOOKING_EXPECTED">Booking Expected</option>
+            <option value="NOT_INTERESTED">Not Interested</option>
+        </select>
+
+        <label>Next Follow-up Date & Time</label>
+        <input type="datetime-local" id="nextFollowupAt">
+
+        <label>Remarks</label>
+        <textarea id="followupRemarks" placeholder="Customer discussion details..."></textarea>
+
+        <div class="followup-modal-actions">
+            <button onclick="closeFollowupModal()" class="cancel-btn">Cancel</button>
+            <button onclick="submitFollowup()" class="save-btn">Save Follow-up</button>
+        </div>
+    </div>
+</div>
+
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('followups');</script>
+<script src="./js/followups.js"></script>
+</body>
+</html>
