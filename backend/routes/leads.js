@@ -446,15 +446,16 @@ router.put("/lead/:id", auth, async (req, res) => {
             cleanText(data.fuel_type),                    // $10
             cleanText(data.car_interest),                 // $11
             cleanText(data.variant_interest),             // $12
-            cleanText(data.budget_range),                 // $13
-            cleanText(data.purchase_timeline),            // $14
-            cleanText(data.exchange_vehicle),             // $15
-            cleanText(data.finance_required),             // $16
-            cleanText(data.notes),                        // $17
-            nullableDate(data.test_drive_date),           // $18
-            nullableDate(data.showroom_visit_date),       // $19
-            nullableDate(data.booking_expected_date),     // $20
-            leadId                                        // $21
+            cleanText(data.preferred_color),              // $13
+            cleanText(data.budget_range),                 // $14
+            cleanText(data.purchase_timeline),            // $15
+            cleanText(data.exchange_vehicle),             // $16
+            cleanText(data.finance_required),             // $17
+            cleanText(data.notes),                        // $18
+            nullableDate(data.test_drive_date),           // $19
+            nullableDate(data.showroom_visit_date),       // $20
+            nullableDate(data.booking_expected_date),     // $21
+            leadId                                        // $22
         ];
 
         let ownerClause = "";
@@ -479,19 +480,19 @@ router.put("/lead/:id", auth, async (req, res) => {
                 fuel_type = $10,
                 car_interest = $11,
                 variant_interest = $12,
-                budget_range = $13,
-                purchase_timeline = $14,
-                exchange_vehicle = $15,
-                finance_required = $16,
-                notes = $17,
-                test_drive_date = $18,
-                showroom_visit_date = $19,
-                booking_expected_date = $20,
+                preferred_color = $13,
+                budget_range = $14,
+                purchase_timeline = $15,
+                exchange_vehicle = $16,
+                finance_required = $17,
+                notes = $18,
+                test_drive_date = $19,
+                showroom_visit_date = $20,
+                booking_expected_date = $21,
                 lead_type = 'COMPLETE_ENQUIRY',
                 action_type = 'COMPLETE_ENQUIRY',
-                status = CASE WHEN status = 'NEW' THEN 'CONTACTED' ELSE status END,
                 updated_at = NOW()
-            WHERE id = $21 ${ownerClause}
+            WHERE id = $22 ${ownerClause}
             RETURNING *
         `, values);
 

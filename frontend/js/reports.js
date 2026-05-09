@@ -249,7 +249,168 @@ function downloadReportCSV() {
 
     URL.revokeObjectURL(url);
 }
+function downloadReportPDF() {
+    const reportOutput = document.getElementById("reportOutput");
 
+    if (!currentReport || !reportOutput || reportOutput.style.display === "none") {
+        alert("Generate report first");
+        return;
+    }
+
+    const printWindow = window.open("", "_blank");
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>CRM Report</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    padding: 24px;
+                    color: #111827;
+                    background: #ffffff;
+                }
+
+                h1, h2, h3 {
+                    color: #111827;
+                }
+
+                .print-header {
+                    border-bottom: 3px solid #111827;
+                    padding-bottom: 14px;
+                    margin-bottom: 22px;
+                }
+
+                .print-header h1 {
+                    margin: 0;
+                    font-size: 26px;
+                }
+
+                .print-header p {
+                    margin: 6px 0 0;
+                    color: #555;
+                }
+
+                .report-kpi-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 12px;
+                    margin-bottom: 22px;
+                }
+
+                .report-kpi-card {
+                    border: 1px solid #ddd;
+                    border-left: 5px solid #111827;
+                    border-radius: 10px;
+                    padding: 14px;
+                }
+
+                .report-kpi-card span {
+                    display: block;
+                    font-size: 12px;
+                    color: #555;
+                    margin-bottom: 6px;
+                }
+
+                .report-kpi-card strong {
+                    font-size: 24px;
+                }
+
+                .report-card {
+                    margin-bottom: 24px;
+                    page-break-inside: avoid;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                }
+
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 9px;
+                    font-size: 12px;
+                    text-align: left;
+                }
+
+                th {
+                    background: #f1f5f9;
+                }
+
+                textarea {
+                    width: 100%;
+                    border: 1px solid #ddd;
+                    padding: 12px;
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                }
+
+                button, .report-actions {
+                    display: none !important;
+                }
+
+                @media print {
+                    body {
+                        padding: 12px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-header">
+                <h1>CRM Management Report</h1>
+                <p>Generated on ${new Date().toLocaleString("en-IN")}</p>
+                <p>Report Type: ${(currentReport.type || "").toUpperCase()} | Period: ${currentReport.label || ""}</p>
+            </div>
+
+            ${reportOutput.innerHTML}
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+
+    printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+    };
+}
+async function sendReportEmail() {
+    if (!currentReport) {
+        alert("Generate report first");
+        return;
+    }
+
+    const receiver = prompt(
+        "Enter receiver email",
+        "manager@example.com"
+    );
+
+    if (!receiver) return;
+
+    try {
+        await request(`${API}/reports/send-email`, {
+            method: "POST",
+            headers: {
+                ...authHeaders(),
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                report_type: currentReport.type,
+                report_label: currentReport.label,
+                receiver_email: receiver,
+                whatsapp_summary: currentReport.whatsapp_summary
+            })
+        });
+
+        alert("Report email sent successfully");
+
+    } catch (error) {
+        alert(error.message || "Email send failed");
+    }
+}
 window.onload = () => {
     const reportDate = document.getElementById("reportDate");
     const reportMonth = document.getElementById("reportMonth");
@@ -261,6 +422,8 @@ window.onload = () => {
 // Expose report actions for inline onclick handlers in reports.html
 window.generateReport = generateReport;
 window.handleReportTypeChange = handleReportTypeChange;
+window.downloadReportPDF = downloadReportPDF;
 window.downloadReportCSV = downloadReportCSV;
 window.copyWhatsappSummary = copyWhatsappSummary;
+window.sendReportEmail = sendReportEmail;
 console.log("✅ frontend reports.js loaded");

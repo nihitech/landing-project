@@ -40,6 +40,19 @@ const VEHICLE_DATA = {
         }
     }
 };
+const VEHICLE_COLORS = {
+    "XUV700": ["Everest White", "Midnight Black", "Dazzling Silver", "Red Rage", "Electric Blue"],
+    "Scorpio N": ["Everest White", "Deep Forest", "Napoli Black", "Red Rage", "Dazzling Silver"],
+    "Scorpio Classic": ["Galaxy Grey", "Molten Red Rage", "Napoli Black", "Everest White"],
+    "Thar": ["Everest White", "Stealth Black", "Deep Grey", "Red Rage", "Desert Fury"],
+    "Thar ROXX": ["Nebula Blue", "Stealth Black", "Everest White", "Deep Forest", "Burnt Sienna"],
+    "XUV 3XO": ["Everest White", "Stealth Black", "Dune Beige", "Nebula Blue", "Red Rage"],
+    "Bolero": ["Diamond White", "Lakeside Brown", "Dsat Silver"],
+    "Bolero Neo": ["Diamond White", "Napoli Black", "Majestic Silver"],
+    "XUV400 EV": ["Arctic Blue", "Everest White", "Napoli Black", "Galaxy Grey"],
+    "BE 6": ["Desert Myst", "Deep Forest", "Tango Red", "Everest White", "Stealth Black"],
+    "XEV 9e": ["Nebula Blue", "Desert Myst", "Deep Forest", "Everest White", "Stealth Black"]
+};
 if (!token) window.location.href = "login.html";
 if (user.role && user.role !== "admin") window.location.href = "user-dashboard.html";
 

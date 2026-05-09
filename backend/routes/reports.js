@@ -3,6 +3,7 @@ const router = express.Router();
 
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const { sendEmailReport } = require("../services/emailService");
 
 function normalizeRole(role) {
     return String(role || "").trim().toLowerCase();
@@ -328,5 +329,68 @@ router.get("/:type", auth, requireAdmin, async (req, res) => {
         });
     }
 });
+router.post("/send-email", auth, requireAdmin, async (req, res) => {
+    try {
+        const {
+            report_type,
+            report_label,
+            receiver_email,
+            whatsapp_summary
+        } = req.body;
 
+        const to = receiver_email || process.env.REPORT_RECEIVER_EMAIL;
+
+        if (!to) {
+            return res.status(400).json({
+                message: "Receiver email is required"
+            });
+        }
+
+        if (!whatsapp_summary) {
+            return res.status(400).json({
+                message: "Report summary is required"
+            });
+        }
+
+        const subject = `CRM ${String(report_type || "Report").toUpperCase()} Report - ${report_label || ""}`;
+
+        const html = `
+            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;">
+                <h2>📊 CRM Management Report</h2>
+                <p><strong>Report Type:</strong> ${report_type || "-"}</p>
+                <p><strong>Period:</strong> ${report_label || "-"}</p>
+
+                <pre style="
+                    background:#f8fafc;
+                    padding:16px;
+                    border-radius:12px;
+                    border:1px solid #e5e7eb;
+                    white-space:pre-wrap;
+                    font-family:Arial,sans-serif;
+                ">${whatsapp_summary}</pre>
+
+                <p style="color:#64748b;font-size:13px;">
+                    This report was generated automatically from CRM.
+                </p>
+            </div>
+        `;
+
+        await sendEmailReport({
+            to,
+            subject,
+            html,
+            text: whatsapp_summary
+        });
+
+        res.json({
+            message: "Report email sent successfully"
+        });
+
+    } catch (err) {
+        console.error("SEND REPORT EMAIL ERROR:", err);
+        res.status(500).json({
+            message: err.message || "Email send failed"
+        });
+    }
+});
 module.exports = router;

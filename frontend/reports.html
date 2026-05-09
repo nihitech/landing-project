@@ -53,91 +53,154 @@
 
             <div class="report-actions">
                 <button onclick="generateReport()" class="save-btn">Generate Report</button>
+                <button onclick="downloadReportPDF()" class="pdf-btn">Download PDF</button>
                 <button onclick="downloadReportCSV()" class="csv-btn">Download CSV</button>
                 <button onclick="copyWhatsappSummary()" class="copy-btn">Copy WhatsApp Summary</button>
+                <button onclick="sendReportEmail()" class="email-btn">Send Email</button>
             </div>
         </div>
 
-        <div id="reportOutput" style="display:none;">
-            <div class="dashboard-stats">
-                <div class="dash-card">Total Leads <span id="r_total">0</span></div>
-                <div class="dash-card hot">HOT <span id="r_hot">0</span></div>
-                <div class="dash-card warm">WARM <span id="r_warm">0</span></div>
-                <div class="dash-card cold">COLD <span id="r_cold">0</span></div>
-                <div class="dash-card">Booked <span id="r_booked">0</span></div>
-                <div class="dash-card">Closed <span id="r_closed">0</span></div>
-                <div class="dash-card">Missed <span id="r_missed">0</span></div>
-            </div>
+        <div id="reportOutput" class="report-output" style="display:none;">
 
-            <div class="report-grid">
-                <div class="table-card">
-                    <h2>Lead Source Summary</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Source</th>
-                                <th>Count</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sourceReport"></tbody>
-                    </table>
-                </div>
-
-                <div class="table-card">
-                    <h2>Model Demand Summary</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Model</th>
-                                <th>Count</th>
-                            </tr>
-                        </thead>
-                        <tbody id="modelReport"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="table-card">
-                <h2>Sales User Performance</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Assigned</th>
-                            <th>Hot</th>
-                            <th>Test Drives</th>
-                            <th>Booked</th>
-                            <th>Closed</th>
-                            <th>Missed</th>
-                        </tr>
-                    </thead>
-                    <tbody id="userReport"></tbody>
-                </table>
-            </div>
-
-            <div class="table-card">
-                <h2>Recent Leads</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>Car</th>
-                            <th>Source</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th>Assigned</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leadReport"></tbody>
-                </table>
-            </div>
-
-            <div class="table-card">
-                <h2>WhatsApp / CUG Summary</h2>
-                <textarea id="whatsappSummary" rows="14" style="width:100%;"></textarea>
-            </div>
+    <div class="report-title-card">
+        <div>
+            <span class="report-label">Generated CRM Report</span>
+            <h2>📊 Management Performance Summary</h2>
+            <p>Lead-wise, source-wise and sales-user-wise report for higher authority review.</p>
         </div>
+
+        <div class="report-badge">
+            LIVE REPORT
+        </div>
+    </div>
+
+    <div class="report-kpi-grid">
+        <div class="report-kpi-card">
+            <span>Total Leads</span>
+            <strong id="r_total">0</strong>
+        </div>
+
+        <div class="report-kpi-card hot">
+            <span>Hot Leads</span>
+            <strong id="r_hot">0</strong>
+        </div>
+
+        <div class="report-kpi-card warm">
+            <span>Warm Leads</span>
+            <strong id="r_warm">0</strong>
+        </div>
+
+        <div class="report-kpi-card cold">
+            <span>Cold Leads</span>
+            <strong id="r_cold">0</strong>
+        </div>
+
+        <div class="report-kpi-card booked">
+            <span>Booked</span>
+            <strong id="r_booked">0</strong>
+        </div>
+
+        <div class="report-kpi-card closed">
+            <span>Closed</span>
+            <strong id="r_closed">0</strong>
+        </div>
+
+        <div class="report-kpi-card missed">
+            <span>Missed Follow-ups</span>
+            <strong id="r_missed">0</strong>
+        </div>
+    </div>
+
+    <div class="report-section-grid">
+        <div class="report-card">
+            <div class="report-card-header">
+                <h2>📍 Lead Source Summary</h2>
+                <span>Source-wise lead flow</span>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Source</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody id="sourceReport"></tbody>
+            </table>
+        </div>
+
+        <div class="report-card">
+            <div class="report-card-header">
+                <h2>🚗 Model Demand Summary</h2>
+                <span>Most interested vehicles</span>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody id="modelReport"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <h2>👥 Sales User Performance</h2>
+            <span>Assigned leads, bookings, closures and missed follow-ups</span>
+        </div>
+
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Assigned</th>
+                    <th>Hot</th>
+                    <th>Test Drives</th>
+                    <th>Booked</th>
+                    <th>Closed</th>
+                    <th>Missed</th>
+                </tr>
+            </thead>
+            <tbody id="userReport"></tbody>
+        </table>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <h2>📋 Recent Lead Details</h2>
+            <span>Latest leads included in this report</span>
+        </div>
+
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Car</th>
+                    <th>Source</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Assigned</th>
+                </tr>
+            </thead>
+            <tbody id="leadReport"></tbody>
+        </table>
+    </div>
+
+    <div class="report-card whatsapp-report-card">
+        <div class="report-card-header">
+            <h2>💬 WhatsApp / CUG Summary</h2>
+            <span>Copy and send this summary to higher authority</span>
+        </div>
+
+        <textarea id="whatsappSummary" rows="14"></textarea>
+    </div>
+
+</div>
     </div>
 </div>
 
