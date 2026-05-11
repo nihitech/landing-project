@@ -662,7 +662,7 @@ async function updateStatus(id, status) {
         const payload = { status };
 
         if (status === "LOST") {
-            const lostReason = prompt("Why was this lead lost?");
+            const lostReason = prompt("Why was this lead lost?\n\nExample: Price high / customer not interested / finance issue");
 
             if (lostReason === null) {
                 toast("Status update cancelled");
@@ -670,7 +670,7 @@ async function updateStatus(id, status) {
                 return;
             }
 
-            const competitorModel = prompt("Competitor model / showroom name, if any?");
+            const competitorModel = prompt("Competitor model / showroom name, if any?\n\nExample: Tata Nexon / Hyundai Creta / Other showroom");
 
             payload.lost_reason = lostReason.trim();
             payload.competitor_model = competitorModel ? competitorModel.trim() : "";

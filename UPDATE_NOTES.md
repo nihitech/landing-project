@@ -1,27 +1,64 @@
-# Multipurpose CRM Update
+# CRM Stability Patch Applied
 
-Updated modules:
-- Admin dashboard with workload cards, source filters, expanded pipeline, follow-up workflow, CSV export, user management.
-- Sales dashboard with assigned-lead-only visibility and follow-up workflow.
-- Backend CRM APIs for role-based leads, assignment, analytics, follow-up history, advanced lead fields.
-- Database schema for advanced lead profile, follow-up history, and communication logs.
+Updated by ChatGPT on 2026-05-11.
 
-Required before deploy:
-1. Run `database/schema.sql` in Supabase SQL Editor.
-2. Make sure Render environment variables are configured: DATABASE_URL, JWT_SECRET, Twilio values if using WhatsApp.
-3. Deploy backend.
-4. Hard refresh browser with Ctrl+F5.
+## Fixed / Added
 
-Important:
-- Login uses sessionStorage, so separate browser tabs can stay logged in as different users.
-- Admin sees all leads and can assign leads.
-- Sales users see only assigned leads.
+1. Backend `backend/routes/leads.js`
+   - Duplicate lead control by phone number.
+   - Activity logging helper.
+   - Activity history endpoint: `GET /api/lead/:id/activity`.
+   - Lost reason and competitor model saving when status is `LOST`.
+   - Activity logs for lead create, duplicate lead, follow-up, status update, assignment, notes update, enquiry update, and auto escalation.
+   - Extra analytics fields for missed follow-ups and booked month.
 
+2. Frontend `frontend/js/leads.js`
+   - LOST status prompt now has clear spacing and examples.
+   - Lead detail modal now shows Lost Reason and Competitor with proper spacing.
+   - Activity History now loads inside lead detail modal.
 
-## 2026-05-09 Production Stabilization Patch
-- Fixed Reports module frontend function exposure (`generateReport`, CSV, WhatsApp copy).
-- Fixed Reports API integration to always call Render backend instead of local Live Server `/api`.
-- Fixed Follow-up modal on modular Follow-up Center and removed invalid early `document.write()` calls.
-- Made report logging non-blocking so missing `report_logs` does not break report generation.
-- Added `report_logs` table to schema.
-- Re-ran JavaScript syntax checks across backend and frontend.
+3. Frontend `frontend/js/admin.js`, `frontend/js/user-dashboard.js`, `frontend/js/admin-legacy.js`
+   - LOST status prompts now include spacing and examples.
+
+4. CSS `frontend/css/styles.css`
+   - Added/confirmed spacing styles for lost reason rows.
+   - Added/confirmed activity history UI styles.
+
+5. Database `database/schema.sql`
+   - Added `preferred_color` column.
+   - Added `competitor_model` column.
+   - Added `activity_logs` table and indexes.
+   - Added safe `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` upgrade lines.
+
+6. Other fixes
+   - Fixed `frontend/settings.html` script order so `API` is available before display.
+   - Added missing `frontend/assets/images/xuv400.jpg` placeholder copy to avoid broken image.
+
+## Required after deployment
+
+Run `database/schema.sql` or at least these SQL commands in your live PostgreSQL/Supabase database:
+
+```sql
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS preferred_color TEXT DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS competitor_model TEXT DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id BIGSERIAL PRIMARY KEY,
+    lead_id BIGINT REFERENCES leads(id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    old_value TEXT DEFAULT '',
+    new_value TEXT DEFAULT '',
+    remarks TEXT DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_logs_lead_id ON activity_logs(lead_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC);
+```
+
+## Verification performed
+
+- `node --check` passed for backend routes, backend services, middleware, config, server, and frontend JS files.
+- Backend `/health` and `/` routes started successfully in sandbox.
+- DB connection could not be fully tested in sandbox due external DNS/network access limitation.

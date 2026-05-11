@@ -2527,3 +2527,25 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
 .activity-body small {
     color: #6b7280;
 }
+/* CRM detail modal label/value spacing */
+.lost-info-row,
+.detail-text-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin: 8px 0;
+}
+
+.lost-info-row strong,
+.detail-text-row strong {
+    min-width: 125px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.lost-info-row span,
+.detail-text-row span {
+    flex: 1;
+    color: #374151;
+    line-height: 1.5;
+}

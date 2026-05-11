@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS leads (
     fuel_type TEXT DEFAULT '',
     car_interest TEXT DEFAULT 'Not Selected',
     variant_interest TEXT DEFAULT '',
+    preferred_color TEXT DEFAULT '',
     budget_range TEXT DEFAULT '',
     purchase_timeline TEXT DEFAULT '',
     exchange_vehicle TEXT DEFAULT '',
@@ -46,6 +47,7 @@ CREATE TABLE IF NOT EXISTS leads (
     followup_count INTEGER DEFAULT 0,
     followup_notes TEXT DEFAULT '',
     lost_reason TEXT DEFAULT '',
+    competitor_model TEXT DEFAULT '',
     followup_1 TIMESTAMPTZ,
     followup_2 TIMESTAMPTZ,
     followup_3 TIMESTAMPTZ,
@@ -68,6 +70,21 @@ CREATE TABLE IF NOT EXISTS lead_followups (
     remarks TEXT DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id BIGSERIAL PRIMARY KEY,
+    lead_id BIGINT REFERENCES leads(id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    old_value TEXT DEFAULT '',
+    new_value TEXT DEFAULT '',
+    remarks TEXT DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_logs_lead_id ON activity_logs(lead_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS communication_logs (
     id BIGSERIAL PRIMARY KEY,
@@ -94,6 +111,7 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS family_members TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS vehicle_category TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS fuel_type TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS variant_interest TEXT DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS preferred_color TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS budget_range TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS purchase_timeline TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS exchange_vehicle TEXT DEFAULT '';
@@ -111,6 +129,7 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_followup_at TIMESTAMPTZ;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS followup_count INTEGER DEFAULT 0;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS followup_notes TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS lost_reason TEXT DEFAULT '';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS competitor_model TEXT DEFAULT '';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS followup_1 TIMESTAMPTZ;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS followup_2 TIMESTAMPTZ;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS followup_3 TIMESTAMPTZ;
