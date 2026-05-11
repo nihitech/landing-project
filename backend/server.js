@@ -49,6 +49,9 @@ app.get("/health", (req, res) => {
 // Background jobs
 require("./services/followupCron");
 require("./services/reminderCron");
+if (process.env.ENABLE_REPORT_CRON === "true") {
+    require("./services/reportCron");
+}
 
 const PORT = process.env.PORT || 5000;
 
