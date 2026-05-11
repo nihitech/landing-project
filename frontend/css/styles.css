@@ -2469,20 +2469,61 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
 .email-btn:hover {
     background: #115e59;
 }
-.lost-info-row {
+.detail-text-row {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: 12px;
     margin: 8px 0;
-    font-size: 16px;
 }
 
-.lost-info-row strong {
+.detail-text-row strong {
     min-width: 120px;
+    font-weight: 700;
     color: #111827;
 }
 
-.lost-info-row span {
+.detail-text-row span {
+    flex: 1;
     color: #374151;
-    line-height: 1.4;
+    line-height: 1.5;
+}
+
+.activity-history {
+    margin-top: 22px;
+}
+
+.activity-item {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.activity-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.activity-top strong {
+    color: #111827;
+    font-size: 14px;
+}
+
+.activity-top span {
+    color: #6b7280;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.activity-body p {
+    margin: 0 0 5px;
+    color: #374151;
+    font-size: 14px;
+}
+
+.activity-body small {
+    color: #6b7280;
 }

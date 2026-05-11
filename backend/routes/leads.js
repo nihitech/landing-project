@@ -569,7 +569,64 @@ router.get("/lead/:id/followups", auth, async (req, res) => {
         });
     }
 });
+/* =====================================================
+   ACTIVITY LOG HISTORY
+===================================================== */
+router.get("/lead/:id/activity", auth, async (req, res) => {
+    try {
+        const leadId = parseId(req.params.id);
 
+        if (!leadId) {
+            return res.status(400).json({ message: "Invalid lead id" });
+        }
+
+        const values = [leadId];
+        let ownerClause = "";
+
+        if (normalizeRole(req.user.role) !== "admin") {
+            values.push(req.user.id);
+            ownerClause = "AND l.assigned_to = $2";
+        }
+
+        const access = await db.query(`
+            SELECT l.id
+            FROM leads l
+            WHERE l.id = $1 ${ownerClause}
+            LIMIT 1
+        `, values);
+
+        if (!access.rows.length) {
+            return res.status(404).json({
+                message: "Lead not found or not assigned to you"
+            });
+        }
+
+        const result = await db.query(`
+            SELECT 
+                a.id,
+                a.action,
+                a.old_value,
+                a.new_value,
+                a.remarks,
+                a.created_at,
+                u.name AS user_name,
+                u.email AS user_email
+            FROM activity_logs a
+            LEFT JOIN users u 
+                ON a.user_id = u.id
+            WHERE a.lead_id = $1
+            ORDER BY a.created_at DESC
+        `, [leadId]);
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error("ACTIVITY HISTORY ERROR:", err);
+        res.status(500).json({
+            message: "Failed to load activity history"
+        });
+    }
+});
 /* =====================================================
    UPDATE STATUS
 ===================================================== */
