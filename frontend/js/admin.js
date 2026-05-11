@@ -582,6 +582,15 @@ async function openLeadDetails(id) {
             <div><strong>Priority</strong><span>${safe(lead.priority || "-")}</span></div>
             <div><strong>Score</strong><span>${safe(lead.score || 0)}</span></div>
             <div><strong>Status</strong><span>${safe(lead.status || "-")}</span></div>
+            <div class="lost-info-row">
+                <strong>Lost Reason:</strong>
+                    <span>${safe(lead.lost_reason || "-")}</span>
+            </div>
+
+            <div class="lost-info-row">
+                <strong>Competitor:</strong>
+                    <span>${safe(lead.competitor_model || "-")}</span>
+            </div>
             <div><strong>Assigned To</strong><span>${safe(lead.assigned_name || "Unassigned")}</span></div>
 
             <div><strong>Next Follow-up</strong><span>${fmtDate(lead.next_followup_at)}</span></div>
@@ -650,18 +659,37 @@ async function assignLead(id, userId) {
 
 async function updateStatus(id, status) {
     try {
+        const payload = { status };
+
+        if (status === "LOST") {
+            const lostReason = prompt("Why was this lead lost?");
+
+            if (lostReason === null) {
+                toast("Status update cancelled");
+                await loadLeads();
+                return;
+            }
+
+            const competitorModel = prompt("Competitor model / showroom name, if any?");
+
+            payload.lost_reason = lostReason.trim();
+            payload.competitor_model = competitorModel ? competitorModel.trim() : "";
+        }
+
         await request(`${API}/lead/${id}/status`, {
             method: "PUT",
             headers: authHeaders(true),
-            body: JSON.stringify({ status })
+            body: JSON.stringify(payload)
         });
+
         toast("Status updated");
         await Promise.all([loadLeads(), loadAnalytics()]);
+
     } catch (error) {
         toast(error.message, true);
+        await loadLeads();
     }
 }
-
 function openFollowup(id) {
     document.getElementById("followupLeadId").value = id;
     document.getElementById("callStatus").value = "CONNECTED";

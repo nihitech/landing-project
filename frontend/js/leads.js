@@ -110,11 +110,44 @@ function renderTable(leads) {
     if(user.role !== "admin") document.querySelectorAll(".admin-only").forEach(e=>e.style.display="none");
 }
 async function assignLead(id,userId){ try{ await request(`${API}/lead/${id}/assign`,{method:"PUT",headers:authHeaders(true),body:JSON.stringify({user_id:userId||null})}); toast(userId?"Lead assigned":"Lead unassigned"); await loadPage(); }catch(e){toast(e.message,true);} }
-async function updateStatus(id,status){ try{ await request(`${API}/lead/${id}/status`,{method:"PUT",headers:authHeaders(true),body:JSON.stringify({status})}); toast("Status updated"); await loadPage(); }catch(e){toast(e.message,true);} }
+async function updateStatus(id, status) {
+    try {
+        const payload = { status };
+
+        if (status === "LOST") {
+            const lostReason = prompt("Why was this lead lost?");
+
+            if (lostReason === null) {
+                toast("Status update cancelled");
+                await loadPage();
+                return;
+            }
+
+            const competitorModel = prompt("Competitor model / showroom name, if any?");
+
+            payload.lost_reason = lostReason.trim();
+            payload.competitor_model = competitorModel ? competitorModel.trim() : "";
+        }
+
+        await request(`${API}/lead/${id}/status`, {
+            method: "PUT",
+            headers: authHeaders(true),
+            body: JSON.stringify(payload)
+        });
+
+        toast("Status updated");
+        await loadPage();
+
+    } catch (e) {
+        toast(e.message, true);
+        await loadPage();
+    }
+}
 async function escalateFollowups(){ if(user.role!=="admin")return; if(!confirm("Escalate missed follow-ups?"))return; try{ const r=await request(`${API}/followups/escalate`,{method:"POST",headers:authHeaders()}); toast(`${r.updated||0} leads escalated`); await loadPage(); }catch(e){toast(e.message,true);} }
 function downloadLeadsCSV(){ if(!allLeads.length)return toast("No leads to download",true); const headers=["Name","Phone","Car","Variant","Source","Priority","Status","Assigned","Next Follow-up","Created"]; const rows=allLeads.map(l=>[l.name,l.phone,l.car_interest,l.variant_interest,l.source,l.priority,l.status,l.assigned_name||"Unassigned",l.next_followup_at,l.created_at]); const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n"); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download=`leads-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(a.href); }
 async function openLeadDetails(id){ const lead=allLeads.find(l=>Number(l.id)===Number(id)); if(!lead)return toast("Lead not found",true); let followups=[]; try{followups=await request(`${API}/lead/${id}/followups`,{headers:authHeaders()});}catch{} document.getElementById("leadDetailContent").innerHTML=`<div class="detail-grid"><div><strong>Name</strong><span>${safe(lead.name)}</span></div><div><strong>Phone</strong><span>${safe(lead.phone)}</span></div><div><strong>Alt Phone</strong><span>${safe(lead.alternate_phone||"-")}</span></div><div><strong>Email</strong><span>${safe(lead.email||"-")}</span></div><div><strong>Area</strong><span>${safe(lead.area||"-")}</span></div><div><strong>District</strong><span>${safe(lead.district||"-")}</span></div><div><strong>Profession</strong><span>${safe(lead.profession||"-")}</span></div><div><strong>Family</strong><span>${safe(lead.family_members||"-")}</span></div><div><strong>Category / Fuel</strong><span>${safe(lead.vehicle_category||"-")} / ${safe(lead.fuel_type||"-")}</span></div><div><strong>Model / Variant</strong><span>${safe(lead.car_interest || "-")} / ${safe(lead.variant_interest || "-")}</span></div>
-<div><strong>Preferred Color</strong><span>${safe(lead.preferred_color || "-")}</span></div><div><strong>Budget</strong><span>${safe(lead.budget_range||"-")}</span></div><div><strong>Timeline</strong><span>${safe(lead.purchase_timeline||"-")}</span></div><div><strong>Exchange</strong><span>${safe(lead.exchange_vehicle||"-")}</span></div><div><strong>Finance</strong><span>${safe(lead.finance_required||"-")}</span></div><div><strong>Test Drive</strong><span>${fmtDate(lead.test_drive_date)}</span></div><div><strong>Visit</strong><span>${fmtDate(lead.showroom_visit_date)}</span></div><div><strong>Booking Expected</strong><span>${fmtDate(lead.booking_expected_date)}</span></div><div><strong>Assigned</strong><span>${safe(lead.assigned_name||"Unassigned")}</span></div></div><div class="detail-notes"><strong>Latest Notes / Follow-up Remarks</strong><p>${safe(lead.notes||lead.followup_notes||"No notes added")}</p></div><div class="followup-history"><h3>📞 Follow-up History</h3>${followups.length?followups.map(f=>`<div class="history-item"><div class="history-top"><strong>${safe(f.call_status||"-")}</strong><span>${fmtDate(f.created_at)}</span></div><p>${safe(f.customer_response||"-")}</p><small>Next: ${fmtDate(f.next_followup_at)}</small><small>By: ${safe(f.user_name||"User")}</small><div>${safe(f.remarks||"")}</div></div>`).join(""):`<div class="empty-state">No follow-up history yet</div>`}</div>`; document.getElementById("leadDetailModal").classList.add("show"); }
+<div><strong>Preferred Color</strong><span>${safe(lead.preferred_color || "-")}</span></div><div><strong>Budget</strong><span>${safe(lead.budget_range||"-")}</span></div><div><strong>Timeline</strong><span>${safe(lead.purchase_timeline||"-")}</span></div><div><strong>Exchange</strong><span>${safe(lead.exchange_vehicle||"-")}</span></div><div><strong>Finance</strong><span>${safe(lead.finance_required||"-")}</span></div><div><strong>Test Drive</strong><span>${fmtDate(lead.test_drive_date)}</span></div><div><strong>Visit</strong><span>${fmtDate(lead.showroom_visit_date)}</span></div><div><strong>Booking Expected</strong><span>${fmtDate(lead.booking_expected_date)}</span></div><div><strong>Assigned</strong><span>${safe(lead.assigned_name||"Unassigned")}</span></div></div><div class="detail-notes"><strong>Latest Notes / Follow-up Remarks</strong><p>${safe(lead.notes||lead.followup_notes||"No notes added")}</p></div><div><strong>Lost Reason</strong><span>${safe(lead.lost_reason || "-")}</span></div>
+<div><strong>Competitor</strong><span>${safe(lead.competitor_model || "-")}</span></div><div class="followup-history"><h3>📞 Follow-up History</h3>${followups.length?followups.map(f=>`<div class="history-item"><div class="history-top"><strong>${safe(f.call_status||"-")}</strong><span>${fmtDate(f.created_at)}</span></div><p>${safe(f.customer_response||"-")}</p><small>Next: ${fmtDate(f.next_followup_at)}</small><small>By: ${safe(f.user_name||"User")}</small><div>${safe(f.remarks||"")}</div></div>`).join(""):`<div class="empty-state">No follow-up history yet</div>`}</div>`; document.getElementById("leadDetailModal").classList.add("show"); }
 function closeLeadDetails(){document.getElementById("leadDetailModal").classList.remove("show");}
 function openEnquiryModal(id) {
     const modal = document.getElementById("enquiryModal");
