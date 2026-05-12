@@ -399,6 +399,32 @@ router.put("/email-settings/:id", auth, requireAdmin, async (req, res) => {
     }
 });
 
+router.delete("/email-settings/:id", auth, requireAdmin, async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ message: "Invalid setting id" });
+        }
+
+        const result = await db.query(`
+            DELETE FROM report_email_settings
+            WHERE id = $1
+            RETURNING id
+        `, [id]);
+
+        if (!result.rows.length) {
+            return res.status(404).json({ message: "Setting not found" });
+        }
+
+        res.json({ message: "Report email setting deleted" });
+
+    } catch (err) {
+        console.error("REPORT EMAIL SETTINGS DELETE ERROR:", err);
+        res.status(500).json({ message: "Failed to delete email setting" });
+    }
+});
+
 router.get("/:type", auth, requireAdmin, async (req, res) => {
     try {
         const { type } = req.params;

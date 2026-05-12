@@ -59,7 +59,63 @@
                 <button onclick="sendReportEmail()" class="email-btn">Send Email</button>
             </div>
         </div>
+        <div class="table-card" style="margin-top:20px;">
+        <div class="page-header">
+            <h2>📧 Auto Report Email Settings</h2>
+            <p>Set receiver emails for automatic daily, weekly and monthly reports.</p>
+        </div>
 
+        <div class="form-grid">
+            <input type="hidden" id="settingId">
+            
+            <div class="field-group">    
+                <label>Report Type</label>
+                <select id="settingReportType">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="all">All Reports</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Receiver Email</label>
+                <input type="email" id="settingReceiverEmail" placeholder="manager@example.com">
+            </div>
+
+            <div class="field-group">
+                <label>CC Email</label>
+                <input type="email" id="settingCcEmail" placeholder="optional@example.com">
+            </div>
+
+            <div class="field-group">
+                <label>Status</label>
+                <select id="settingIsActive">
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+        </div>
+
+    <div class="report-actions">
+        <button onclick="saveReportEmailSetting()" class="save-btn">Save Email Setting</button>
+        <button onclick="resetReportEmailSettingForm()" class="copy-btn">Clear</button>
+        <button onclick="loadReportEmailSettings()" class="copy-btn">Refresh Settings</button>
+    </div>
+
+    <table class="report-table" style="margin-top:15px;">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Receiver</th>
+                <th>CC</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="reportEmailSettingsTable"></tbody>
+    </table>
+</div>
         <div id="reportOutput" class="report-output" style="display:none;">
 
     <div class="report-title-card">

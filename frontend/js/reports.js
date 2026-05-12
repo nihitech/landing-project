@@ -426,6 +426,10 @@ async function loadReportEmailSettings() {
                 <td>${safe(row.receiver_email)}</td>
                 <td>${safe(row.cc_email || "-")}</td>
                 <td>${row.is_active ? "Active" : "Inactive"}</td>
+                <td>
+                    <button onclick='editReportEmailSetting(${JSON.stringify(row)})' class="copy-btn">Edit</button>
+                    <button onclick="deleteReportEmailSetting(${row.id})" class="danger-btn">Delete</button>
+                </td>
             </tr>
         `).join("");
 
@@ -435,6 +439,7 @@ async function loadReportEmailSettings() {
 }
 
 async function saveReportEmailSetting() {
+    const settingId = document.getElementById("settingId").value;
     const reportType = document.getElementById("settingReportType").value;
     const receiverEmail = document.getElementById("settingReceiverEmail").value.trim();
     const ccEmail = document.getElementById("settingCcEmail").value.trim();
@@ -445,9 +450,15 @@ async function saveReportEmailSetting() {
         return;
     }
 
+    const url = settingId
+        ? `${API}/reports/email-settings/${settingId}`
+        : `${API}/reports/email-settings`;
+
+    const method = settingId ? "PUT" : "POST";
+
     try {
-        await request(`${API}/reports/email-settings`, {
-            method: "POST",
+        await request(url, {
+            method,
             headers: {
                 ...authHeaders(),
                 "Content-Type": "application/json"
@@ -460,15 +471,44 @@ async function saveReportEmailSetting() {
             })
         });
 
-        alert("Report email setting saved");
+        alert(settingId ? "Report email setting updated" : "Report email setting saved");
 
-        document.getElementById("settingReceiverEmail").value = "";
-        document.getElementById("settingCcEmail").value = "";
-
+        resetReportEmailSettingForm();
         await loadReportEmailSettings();
 
     } catch (error) {
         alert(error.message || "Failed to save email setting");
+    }
+}
+function editReportEmailSetting(row) {
+    document.getElementById("settingId").value = row.id;
+    document.getElementById("settingReportType").value = row.report_type;
+    document.getElementById("settingReceiverEmail").value = row.receiver_email || "";
+    document.getElementById("settingCcEmail").value = row.cc_email || "";
+    document.getElementById("settingIsActive").value = row.is_active ? "true" : "false";
+}
+
+function resetReportEmailSettingForm() {
+    document.getElementById("settingId").value = "";
+    document.getElementById("settingReceiverEmail").value = "";
+    document.getElementById("settingCcEmail").value = "";
+    document.getElementById("settingIsActive").value = "true";
+}
+
+async function deleteReportEmailSetting(id) {
+    if (!confirm("Delete this report email setting?")) return;
+
+    try {
+        await request(`${API}/reports/email-settings/${id}`, {
+            method: "DELETE",
+            headers: authHeaders()
+        });
+
+        alert("Report email setting deleted");
+        await loadReportEmailSettings();
+
+    } catch (error) {
+        alert(error.message || "Failed to delete setting");
     }
 }
 window.onload = () => {
@@ -489,4 +529,7 @@ window.copyWhatsappSummary = copyWhatsappSummary;
 window.sendReportEmail = sendReportEmail;
 window.loadReportEmailSettings = loadReportEmailSettings;
 window.saveReportEmailSetting = saveReportEmailSetting;
+window.editReportEmailSetting = editReportEmailSetting;
+window.deleteReportEmailSetting = deleteReportEmailSetting;
+window.resetReportEmailSettingForm = resetReportEmailSettingForm;
 console.log("✅ frontend reports.js loaded");
