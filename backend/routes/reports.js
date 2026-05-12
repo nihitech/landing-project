@@ -425,6 +425,37 @@ router.delete("/email-settings/:id", auth, requireAdmin, async (req, res) => {
     }
 });
 
+router.get("/logs/list", auth, requireAdmin, async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT
+                rl.id,
+                rl.report_type,
+                rl.report_date,
+                rl.date_from,
+                rl.date_to,
+                rl.sent_to_email,
+                rl.status,
+                rl.error_message,
+                rl.trigger_type,
+                rl.created_at,
+                u.name AS triggered_by_name
+            FROM report_logs rl
+            LEFT JOIN users u ON rl.triggered_by = u.id
+            ORDER BY rl.created_at DESC
+            LIMIT 100
+        `);
+
+        res.json(result.rows);
+
+    } catch (err) {
+        console.error("REPORT LOGS FETCH ERROR:", err);
+        res.status(500).json({
+            message: "Failed to load report logs"
+        });
+    }
+});
+
 router.get("/:type", auth, requireAdmin, async (req, res) => {
     try {
         const { type } = req.params;
@@ -524,7 +555,26 @@ router.post("/send-email", auth, requireAdmin, async (req, res) => {
         res.json({
             message: "Report email sent successfully"
         });
-
+        await db.query(`
+            INSERT INTO report_logs
+            (
+                report_type,
+                report_date,
+                sent_to_email,
+                status,
+                summary,
+                triggered_by,
+                trigger_type
+            )
+            VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6)
+        `, [
+            report_type || "manual",
+            to,
+            "EMAIL_SENT",
+            JSON.stringify({ report_label, whatsapp_summary }),
+            req.user.id,
+            "manual"
+        ]);
     } catch (err) {
         console.error("SEND REPORT EMAIL ERROR:", err);
         res.status(500).json({

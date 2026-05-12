@@ -511,6 +511,30 @@ async function deleteReportEmailSetting(id) {
         alert(error.message || "Failed to delete setting");
     }
 }
+async function loadReportLogs() {
+    try {
+        const data = await request(`${API}/reports/logs/list`, {
+            headers: authHeaders()
+        });
+
+        const tbody = document.getElementById("reportLogsTable");
+        if (!tbody) return;
+
+        tbody.innerHTML = (data || []).map(row => `
+            <tr>
+                <td>${safe(new Date(row.created_at).toLocaleString("en-IN"))}</td>
+                <td>${safe(row.report_type)}</td>
+                <td>${safe(row.sent_to_email || "-")}</td>
+                <td>${safe(row.status)}</td>
+                <td>${safe(row.trigger_type || "-")}</td>
+                <td>${safe(row.triggered_by_name || "System")}</td>
+            </tr>
+        `).join("");
+
+    } catch (error) {
+        console.error("Load report logs failed:", error.message);
+    }
+}
 window.onload = () => {
     const reportDate = document.getElementById("reportDate");
     const reportMonth = document.getElementById("reportMonth");
@@ -518,6 +542,7 @@ window.onload = () => {
     if (reportMonth) reportMonth.value = currentMonth();
     handleReportTypeChange();
     loadReportEmailSettings();
+    loadReportLogs();
 };
 
 // Expose report actions for inline onclick handlers in reports.html
@@ -532,4 +557,5 @@ window.saveReportEmailSetting = saveReportEmailSetting;
 window.editReportEmailSetting = editReportEmailSetting;
 window.deleteReportEmailSetting = deleteReportEmailSetting;
 window.resetReportEmailSettingForm = resetReportEmailSettingForm;
+window.loadReportLogs = loadReportLogs;
 console.log("✅ frontend reports.js loaded");

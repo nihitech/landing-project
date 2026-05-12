@@ -97,23 +97,47 @@
             </div>
         </div>
 
+        <div class="report-actions">
+            <button onclick="saveReportEmailSetting()" class="save-btn">Save Email Setting</button>
+            <button onclick="resetReportEmailSettingForm()" class="copy-btn">Clear</button>
+            <button onclick="loadReportEmailSettings()" class="copy-btn">Refresh Settings</button>
+        </div>
+
+        <table class="report-table" style="margin-top:15px;">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Receiver</th>
+                    <th>CC</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="reportEmailSettingsTable"></tbody>
+        </table>
+    </div>
+    <div class="table-card" style="margin-top:20px;">
+    <div class="page-header">
+        <h2>📜 Report Email Logs</h2>
+        <p>Track generated and emailed CRM reports.</p>
+    </div>
+
     <div class="report-actions">
-        <button onclick="saveReportEmailSetting()" class="save-btn">Save Email Setting</button>
-        <button onclick="resetReportEmailSettingForm()" class="copy-btn">Clear</button>
-        <button onclick="loadReportEmailSettings()" class="copy-btn">Refresh Settings</button>
+        <button onclick="loadReportLogs()" class="copy-btn">Refresh Logs</button>
     </div>
 
     <table class="report-table" style="margin-top:15px;">
         <thead>
             <tr>
+                <th>Date</th>
                 <th>Type</th>
                 <th>Receiver</th>
-                <th>CC</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th>Trigger</th>
+                <th>User</th>
             </tr>
         </thead>
-        <tbody id="reportEmailSettingsTable"></tbody>
+        <tbody id="reportLogsTable"></tbody>
     </table>
 </div>
         <div id="reportOutput" class="report-output" style="display:none;">

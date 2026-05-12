@@ -88,10 +88,40 @@ async function loadUsers() {
     if (user.role !== "admin") return;
     users = await request(`${API}/auth/users`, { headers: authHeaders() });
 }
+
+async function loadBranches() {
+    if (user.role !== "admin") return;
+
+    const branchSelect = document.getElementById("branchFilter");
+    if (!branchSelect) return;
+
+    try {
+        const branches = await request(`${API}/branches`, {
+            headers: authHeaders()
+        });
+
+        branchSelect.innerHTML = `<option value="">All Branches</option>` +
+            branches.map(branch => `
+                <option value="${branch.id}">
+                    ${safe(branch.branch_name)} ${branch.branch_code ? `(${safe(branch.branch_code)})` : ""}
+                </option>
+            `).join("");
+
+    } catch (err) {
+        console.error("Load branches failed:", err.message);
+    }
+}
+
 async function loadPage() {
     const params = new URLSearchParams();
-    const priority=document.getElementById("filter")?.value||""; const source=document.getElementById("sourceFilter")?.value||""; const search=document.getElementById("searchInput")?.value.trim()||"";
-    if(priority) params.set("priority",priority); if(source) params.set("source",source); if(search) params.set("search",search);
+const priority = document.getElementById("filter")?.value || "";
+const source = document.getElementById("sourceFilter")?.value || "";
+const branchId = document.getElementById("branchFilter")?.value || "";
+const search = document.getElementById("searchInput")?.value.trim() || "";    
+if (priority) params.set("priority", priority);
+if (source) params.set("source", source);
+if (branchId) params.set("branch_id", branchId);
+if (search) params.set("search", search);
     allLeads = await request(`${API}/leads${params.toString()?`?${params}`:""}`, { headers: authHeaders() });
     renderPipeline(allLeads); renderTable(allLeads); renderNotificationBell(allLeads);
 }
@@ -543,5 +573,21 @@ window.saveEnquiry = saveEnquiry;
 window.loadVehicleModels = loadVehicleModels;
 window.loadVehicleVariants = loadVehicleVariants;
 window.loadVehicleColors = loadVehicleColors;
-window.onload=async()=>{ if(user.role!=="admin") 
-    document.querySelectorAll(".admin-only").forEach(e=>e.style.display="none"); initDragDrop(); try{ await loadUsers(); await loadPage(); setInterval(()=>loadPage().catch(console.error),50000);}catch(e){toast(e.message,true);} };
+window.loadBranches = loadBranches;
+window.onload = async () => {
+    if (user.role !== "admin") {
+        document.querySelectorAll(".admin-only").forEach(e => e.style.display = "none");
+    }
+
+    initDragDrop();
+
+    try {
+        await loadUsers();
+        await loadBranches();
+        await loadPage();
+
+        setInterval(() => loadPage().catch(console.error), 50000);
+    } catch (e) {
+        toast(e.message, true);
+    }
+};
