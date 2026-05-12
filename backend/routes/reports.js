@@ -286,6 +286,119 @@ Remarks:
 Please review missed follow-ups and pending hot leads immediately.`;
 }
 
+router.get("/email-settings/list", auth, requireAdmin, async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT *
+            FROM report_email_settings
+            ORDER BY 
+                CASE report_type
+                    WHEN 'daily' THEN 1
+                    WHEN 'weekly' THEN 2
+                    WHEN 'monthly' THEN 3
+                    WHEN 'all' THEN 4
+                    ELSE 5
+                END,
+                id DESC
+        `);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error("REPORT EMAIL SETTINGS FETCH ERROR:", err);
+        res.status(500).json({ message: "Failed to load email settings" });
+    }
+});
+
+router.post("/email-settings", auth, requireAdmin, async (req, res) => {
+    try {
+        const reportType = String(req.body.report_type || "all").toLowerCase();
+        const receiverEmail = String(req.body.receiver_email || "").trim();
+        const ccEmail = String(req.body.cc_email || "").trim();
+        const isActive = req.body.is_active !== false;
+
+        if (!["daily", "weekly", "monthly", "all"].includes(reportType)) {
+            return res.status(400).json({ message: "Invalid report type" });
+        }
+
+        if (!receiverEmail) {
+            return res.status(400).json({ message: "Receiver email is required" });
+        }
+
+        const result = await db.query(`
+            INSERT INTO report_email_settings
+            (report_type, receiver_email, cc_email, is_active, created_by)
+            VALUES ($1,$2,$3,$4,$5)
+            RETURNING *
+        `, [
+            reportType,
+            receiverEmail,
+            ccEmail || null,
+            isActive,
+            req.user.id
+        ]);
+
+        res.status(201).json({
+            message: "Report email setting saved",
+            setting: result.rows[0]
+        });
+    } catch (err) {
+        console.error("REPORT EMAIL SETTINGS SAVE ERROR:", err);
+        res.status(500).json({ message: "Failed to save email setting" });
+    }
+});
+
+router.put("/email-settings/:id", auth, requireAdmin, async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        const reportType = String(req.body.report_type || "all").toLowerCase();
+        const receiverEmail = String(req.body.receiver_email || "").trim();
+        const ccEmail = String(req.body.cc_email || "").trim();
+        const isActive = req.body.is_active !== false;
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ message: "Invalid setting id" });
+        }
+
+        if (!["daily", "weekly", "monthly", "all"].includes(reportType)) {
+            return res.status(400).json({ message: "Invalid report type" });
+        }
+
+        if (!receiverEmail) {
+            return res.status(400).json({ message: "Receiver email is required" });
+        }
+
+        const result = await db.query(`
+            UPDATE report_email_settings
+            SET
+                report_type = $1,
+                receiver_email = $2,
+                cc_email = $3,
+                is_active = $4,
+                updated_at = NOW()
+            WHERE id = $5
+            RETURNING *
+        `, [
+            reportType,
+            receiverEmail,
+            ccEmail || null,
+            isActive,
+            id
+        ]);
+
+        if (!result.rows.length) {
+            return res.status(404).json({ message: "Setting not found" });
+        }
+
+        res.json({
+            message: "Report email setting updated",
+            setting: result.rows[0]
+        });
+    } catch (err) {
+        console.error("REPORT EMAIL SETTINGS UPDATE ERROR:", err);
+        res.status(500).json({ message: "Failed to update email setting" });
+    }
+});
+
 router.get("/:type", auth, requireAdmin, async (req, res) => {
     try {
         const { type } = req.params;

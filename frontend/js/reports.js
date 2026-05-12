@@ -411,12 +411,73 @@ async function sendReportEmail() {
         alert(error.message || "Email send failed");
     }
 }
+async function loadReportEmailSettings() {
+    try {
+        const data = await request(`${API}/reports/email-settings/list`, {
+            headers: authHeaders()
+        });
+
+        const tbody = document.getElementById("reportEmailSettingsTable");
+        if (!tbody) return;
+
+        tbody.innerHTML = (data || []).map(row => `
+            <tr>
+                <td>${safe(row.report_type)}</td>
+                <td>${safe(row.receiver_email)}</td>
+                <td>${safe(row.cc_email || "-")}</td>
+                <td>${row.is_active ? "Active" : "Inactive"}</td>
+            </tr>
+        `).join("");
+
+    } catch (error) {
+        console.error("Load report email settings failed:", error.message);
+    }
+}
+
+async function saveReportEmailSetting() {
+    const reportType = document.getElementById("settingReportType").value;
+    const receiverEmail = document.getElementById("settingReceiverEmail").value.trim();
+    const ccEmail = document.getElementById("settingCcEmail").value.trim();
+    const isActive = document.getElementById("settingIsActive").value === "true";
+
+    if (!receiverEmail) {
+        alert("Receiver email is required");
+        return;
+    }
+
+    try {
+        await request(`${API}/reports/email-settings`, {
+            method: "POST",
+            headers: {
+                ...authHeaders(),
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                report_type: reportType,
+                receiver_email: receiverEmail,
+                cc_email: ccEmail,
+                is_active: isActive
+            })
+        });
+
+        alert("Report email setting saved");
+
+        document.getElementById("settingReceiverEmail").value = "";
+        document.getElementById("settingCcEmail").value = "";
+
+        await loadReportEmailSettings();
+
+    } catch (error) {
+        alert(error.message || "Failed to save email setting");
+    }
+}
 window.onload = () => {
     const reportDate = document.getElementById("reportDate");
     const reportMonth = document.getElementById("reportMonth");
     if (reportDate) reportDate.value = today();
     if (reportMonth) reportMonth.value = currentMonth();
     handleReportTypeChange();
+    loadReportEmailSettings();
 };
 
 // Expose report actions for inline onclick handlers in reports.html
@@ -426,4 +487,6 @@ window.downloadReportPDF = downloadReportPDF;
 window.downloadReportCSV = downloadReportCSV;
 window.copyWhatsappSummary = copyWhatsappSummary;
 window.sendReportEmail = sendReportEmail;
+window.loadReportEmailSettings = loadReportEmailSettings;
+window.saveReportEmailSetting = saveReportEmailSetting;
 console.log("✅ frontend reports.js loaded");

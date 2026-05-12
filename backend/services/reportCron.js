@@ -180,14 +180,36 @@ Please review missed follow-ups, hot leads and pending bookings immediately.`;
     };
 }
 
-async function sendScheduledReport(type, fromDate, toDate) {
-    const to = process.env.REPORT_RECEIVER_EMAIL;
+async function getReportReceivers(type) {
+    const result = await db.query(`
+        SELECT receiver_email, cc_email
+        FROM report_email_settings
+        WHERE is_active = true
+        AND report_type IN ($1, 'all')
+        ORDER BY id ASC
+    `, [type]);
 
-    if (!to) {
-        console.log("REPORT_RECEIVER_EMAIL missing. Skipping scheduled report.");
-        return;
+    if (result.rows.length) {
+        return result.rows;
     }
 
+    if (process.env.REPORT_RECEIVER_EMAIL) {
+        return [{
+            receiver_email: process.env.REPORT_RECEIVER_EMAIL,
+            cc_email: process.env.REPORT_CC_EMAIL || ""
+        }];
+    }
+
+    return [];
+}
+
+async function sendScheduledReport(type, fromDate, toDate) {
+    const receivers = await getReportReceivers(type);
+
+    if (!receivers.length) {
+        console.log(`No active ${type} report receivers found. Skipping scheduled report.`);
+        return;
+    }
     const report = await buildReportSummary(type, fromDate, toDate);
 
     const subject = `CRM ${type.toUpperCase()} Report - ${fromDate} to ${toDate}`;
@@ -213,12 +235,36 @@ async function sendScheduledReport(type, fromDate, toDate) {
         </div>
     `;
 
+    for (const receiver of receivers) {
     await sendEmailReport({
-        to,
+        to: receiver.receiver_email,
+        cc: receiver.cc_email || "",
         subject,
         html,
         text: report.summary
     });
+
+    try {
+        await db.query(`
+            INSERT INTO report_logs
+            (report_type, report_date, date_from, date_to, sent_to_email, status, summary)
+            VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6)
+        `, [
+            type,
+            fromDate,
+            toDate,
+            receiver.receiver_email,
+            "EMAIL_SENT",
+            JSON.stringify(report)
+        ]);
+    } catch (err) {
+        console.error("REPORT LOG ERROR:", err.message);
+    }
+
+    console.log(`✅ ${type} report sent to ${receiver.receiver_email}`);
+}
+
+return;
 
     try {
         await db.query(`

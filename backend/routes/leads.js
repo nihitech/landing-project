@@ -46,13 +46,6 @@ function normalizeRole(role) {
     return String(role || "").trim().toLowerCase();
 }
 
-function requireAdmin(req, res, next) {
-    if (normalizeRole(req.user?.role) !== "admin") {
-        return res.status(403).json({ message: "Admin access required" });
-    }
-    next();
-}
-
 function parseId(value) {
     if (value === "" || value === null || value === undefined) return null;
     const id = Number(value);
@@ -88,22 +81,170 @@ function nullableDate(value) {
     return Number.isNaN(d.getTime()) ? null : d;
 }
 
-async function getLeastLoadedSalesUser() {
+/* =====================================================
+   USER / PERMISSION HELPERS
+===================================================== */
+function isAdminUser(req) {
+    return normalizeRole(req.user?.role) === "admin";
+}
+
+function hasPermission(req, key) {
+    if (isAdminUser(req)) return true;
+
+    const permissions = Array.isArray(req.user?.permissions)
+        ? req.user.permissions
+        : [];
+
+    return permissions.includes(key);
+}
+
+function hasFlag(req, flag) {
+    if (isAdminUser(req)) return true;
+    return req.user?.[flag] === true;
+}
+
+function requireAdmin(req, res, next) {
+    if (!isAdminUser(req)) {
+        return res.status(403).json({ message: "Admin access required" });
+    }
+
+    next();
+}
+
+function requireLeadView(req, res, next) {
+    if (!hasFlag(req, "can_view") && !hasPermission(req, "leads.view")) {
+        return res.status(403).json({
+            message: "You do not have permission to view leads"
+        });
+    }
+
+    next();
+}
+
+function requireLeadEdit(req, res, next) {
+    if (!hasFlag(req, "can_edit") && !hasPermission(req, "leads.edit")) {
+        return res.status(403).json({
+            message: "You do not have permission to edit leads"
+        });
+    }
+
+    next();
+}
+
+function requireLeadAssign(req, res, next) {
+    if (!hasFlag(req, "can_assign") && !hasPermission(req, "leads.assign")) {
+        return res.status(403).json({
+            message: "You do not have permission to assign leads"
+        });
+    }
+
+    next();
+}
+
+function requireLeadMonitor(req, res, next) {
+    if (
+        !isAdminUser(req) &&
+        !hasFlag(req, "can_monitor") &&
+        !hasPermission(req, "reports.view")
+    ) {
+        return res.status(403).json({
+            message: "You do not have permission to monitor reports"
+        });
+    }
+
+    next();
+}
+
+/*
+    Data scope behavior:
+    admin / ALL      -> all leads
+    BRANCH           -> same branch leads
+    DEPARTMENT       -> currently same branch leads
+    TEAM             -> currently same branch leads
+    VIEW_ONLY        -> same branch leads if branch exists, otherwise own leads
+    OWN              -> assigned leads only
+*/
+function appendLeadAccessScope(req, clauses, values, alias = "l") {
+    if (isAdminUser(req)) return;
+
+    const scope = String(req.user?.data_scope || "OWN").toUpperCase();
+
+    if (scope === "ALL") return;
+
+    if (
+        ["BRANCH", "DEPARTMENT", "TEAM", "VIEW_ONLY"].includes(scope) &&
+        req.user.branch_id
+    ) {
+        values.push(req.user.branch_id);
+        clauses.push(`${alias}.branch_id = $${values.length}`);
+        return;
+    }
+
+    values.push(req.user.id);
+    clauses.push(`${alias}.assigned_to = $${values.length}`);
+}
+
+function leadAccessAndClause(req, values, alias = "l") {
+    const clauses = [];
+    appendLeadAccessScope(req, clauses, values, alias);
+    return clauses.length ? `AND ${clauses.join(" AND ")}` : "";
+}
+
+/* =====================================================
+   DATABASE HELPERS
+===================================================== */
+async function getDefaultBranchId() {
+    const result = await db.query(`
+        SELECT id
+        FROM branches
+        WHERE branch_code = 'MAIN'
+        ORDER BY id ASC
+        LIMIT 1
+    `);
+
+    return result.rows[0]?.id || null;
+}
+
+async function getUserBranchId(userId) {
+    if (!userId) return null;
+
+    const result = await db.query(`
+        SELECT branch_id
+        FROM users
+        WHERE id = $1
+        LIMIT 1
+    `, [userId]);
+
+    return result.rows[0]?.branch_id || null;
+}
+
+async function getLeastLoadedSalesUser(branchId = null) {
+    const values = [];
+    let branchClause = "";
+
+    if (branchId) {
+        values.push(branchId);
+        branchClause = `AND u.branch_id = $${values.length}`;
+    }
+
     const result = await db.query(`
         SELECT 
             u.id, 
+            u.branch_id,
             COUNT(l.id)::int AS lead_count
         FROM users u
         LEFT JOIN leads l 
             ON l.assigned_to = u.id 
             AND l.status NOT IN ('CLOSED','LOST')
         WHERE LOWER(u.role) = 'sales'
-        GROUP BY u.id
+        AND COALESCE(u.status, 'ACTIVE') = 'ACTIVE'
+        ${branchClause}
+        GROUP BY u.id, u.branch_id
         ORDER BY lead_count ASC, u.id ASC
         LIMIT 1
-    `);
+    `, values);
 
-    return result.rows[0]?.id || null;
+    return result.rows[0] || null;
 }
 
 async function logActivity({
@@ -136,7 +277,7 @@ async function logActivity({
 }
 
 /* =====================================================
-   CREATE LEAD
+   CREATE LEAD - PUBLIC WEBSITE / SOCIAL / MANUAL API
 ===================================================== */
 router.post("/lead", async (req, res) => {
     try {
@@ -151,18 +292,14 @@ router.post("/lead", async (req, res) => {
             });
         }
 
-        /*
-            Duplicate lead control:
-            Same phone number will not create a new row again.
-            Instead, it will create a system follow-up and update existing lead.
-        */
         const existingLead = await db.query(`
             SELECT 
                 id, 
                 name, 
                 phone, 
                 status, 
-                assigned_to
+                assigned_to,
+                branch_id
             FROM leads
             WHERE phone = $1
             ORDER BY created_at DESC
@@ -212,7 +349,8 @@ router.post("/lead", async (req, res) => {
                 message: "Duplicate lead updated as follow-up",
                 duplicate: true,
                 lead_id: duplicateLead.id,
-                assigned_to: duplicateLead.assigned_to
+                assigned_to: duplicateLead.assigned_to,
+                branch_id: duplicateLead.branch_id
             });
         }
 
@@ -228,15 +366,31 @@ router.post("/lead", async (req, res) => {
         const now = new Date();
 
         const requestedAssign = parseId(data.assigned_to || data.user_id);
+        const requestedBranch = parseId(data.branch_id || data.assigned_branch_id);
+
+        if (Number.isNaN(requestedAssign) || Number.isNaN(requestedBranch)) {
+            return res.status(400).json({
+                message: "Invalid assigned user or branch selected"
+            });
+        }
+
+        let branchId = requestedBranch || await getDefaultBranchId();
         let assignedTo = null;
 
         if (Number.isInteger(requestedAssign)) {
             assignedTo = requestedAssign;
-        } else {
-            assignedTo = await getLeastLoadedSalesUser();
-        }
 
-        console.log("AUTO ASSIGNED TO:", assignedTo);
+            const userBranchId = await getUserBranchId(assignedTo);
+            if (userBranchId) branchId = userBranchId;
+
+        } else {
+            const leastLoadedUser = await getLeastLoadedSalesUser(branchId);
+
+            if (leastLoadedUser) {
+                assignedTo = leastLoadedUser.id;
+                branchId = leastLoadedUser.branch_id || branchId;
+            }
+        }
 
         const result = await db.query(`
             INSERT INTO leads
@@ -265,7 +419,9 @@ router.post("/lead", async (req, res) => {
                 score, 
                 priority, 
                 status, 
-                assigned_to, 
+                assigned_to,
+                branch_id,
+                assigned_branch_id,
                 notes,
                 test_drive_date, 
                 showroom_visit_date, 
@@ -273,17 +429,22 @@ router.post("/lead", async (req, res) => {
                 next_followup_at, 
                 followup_1, 
                 followup_2, 
-                followup_3
+                followup_3,
+                pincode,
+                lead_capture_latitude,
+                lead_capture_longitude,
+                location_tag
             )
             VALUES
             (
                 $1,$2,$3,$4,$5,$6,$7,$8,
                 $9,$10,$11,$12,$13,$14,
                 $15,$16,$17,$18,$19,$20,$21,
-                $22,$23,'NEW',$24,$25,
-                $26,$27,$28,$29,$30,$31,$32
+                $22,$23,'NEW',$24,$25,$26,$27,
+                $28,$29,$30,$31,$32,$33,$34,$35,
+                $36,$37,$38
             )
-            RETURNING id, assigned_to
+            RETURNING id, assigned_to, branch_id
         `, [
             cleanText(data.name),
             phone,
@@ -309,6 +470,8 @@ router.post("/lead", async (req, res) => {
             score,
             priority,
             assignedTo,
+            branchId,
+            branchId,
             cleanText(data.notes),
             nullableDate(data.test_drive_date),
             nullableDate(data.showroom_visit_date),
@@ -316,7 +479,11 @@ router.post("/lead", async (req, res) => {
             nullableDate(data.next_followup_at),
             new Date(now.getTime() + 5 * 60 * 1000),
             new Date(now.getTime() + 24 * 60 * 60 * 1000),
-            new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+            new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+            cleanText(data.pincode),
+            data.lead_capture_latitude || null,
+            data.lead_capture_longitude || null,
+            cleanText(data.location_tag)
         ]);
 
         await logActivity({
@@ -325,7 +492,7 @@ router.post("/lead", async (req, res) => {
             action: "LEAD_CREATED",
             old_value: "",
             new_value: "NEW",
-            remarks: `Lead created from ${source}. Auto assigned to ${result.rows[0].assigned_to || "none"}.`
+            remarks: `Lead created from ${source}. Branch: ${result.rows[0].branch_id || "none"}. Auto assigned to ${result.rows[0].assigned_to || "none"}.`
         });
 
         sendWhatsApp(
@@ -344,6 +511,7 @@ router.post("/lead", async (req, res) => {
             message: "Lead saved",
             id: result.rows[0].id,
             assigned_to: result.rows[0].assigned_to,
+            branch_id: result.rows[0].branch_id,
             score,
             priority
         });
@@ -357,7 +525,7 @@ router.post("/lead", async (req, res) => {
 /* =====================================================
    SAVE FOLLOW-UP
 ===================================================== */
-router.post("/lead/:id/followup", auth, async (req, res) => {
+router.post("/lead/:id/followup", auth, requireLeadEdit, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
 
@@ -379,23 +547,18 @@ router.post("/lead/:id/followup", auth, async (req, res) => {
         const safeStatus = STATUSES.includes(nextStatus) ? nextStatus : "FOLLOW-UP";
 
         const values = [leadId];
-        let ownerClause = "";
-
-        if (normalizeRole(req.user.role) !== "admin") {
-            values.push(req.user.id);
-            ownerClause = `AND assigned_to = $2`;
-        }
+        const ownerClause = leadAccessAndClause(req, values, "l");
 
         const leadAccess = await db.query(`
-            SELECT id, status
-            FROM leads
-            WHERE id = $1 ${ownerClause}
+            SELECT l.id, l.status
+            FROM leads l
+            WHERE l.id = $1 ${ownerClause}
             LIMIT 1
         `, values);
 
         if (!leadAccess.rows.length) {
             return res.status(404).json({
-                message: "Lead not found or not assigned to you"
+                message: "Lead not found or not accessible to you"
             });
         }
 
@@ -460,15 +623,12 @@ router.post("/lead/:id/followup", auth, async (req, res) => {
 /* =====================================================
    GET LEADS
 ===================================================== */
-router.get("/leads", auth, async (req, res) => {
+router.get("/leads", auth, requireLeadView, async (req, res) => {
     try {
         const clauses = [];
         const values = [];
 
-        if (normalizeRole(req.user.role) !== "admin") {
-            values.push(req.user.id);
-            clauses.push(`l.assigned_to = $${values.length}`);
-        }
+        appendLeadAccessScope(req, clauses, values, "l");
 
         if (req.query.priority) {
             values.push(String(req.query.priority).toUpperCase());
@@ -485,6 +645,18 @@ router.get("/leads", auth, async (req, res) => {
             clauses.push(`UPPER(l.source) = $${values.length}`);
         }
 
+        if (req.query.branch_id) {
+            const branchId = parseId(req.query.branch_id);
+            if (Number.isNaN(branchId)) {
+                return res.status(400).json({ message: "Invalid branch filter" });
+            }
+
+            if (branchId) {
+                values.push(branchId);
+                clauses.push(`l.branch_id = $${values.length}`);
+            }
+        }
+
         if (req.query.search) {
             values.push(`%${String(req.query.search).toLowerCase()}%`);
             clauses.push(`(
@@ -492,6 +664,8 @@ router.get("/leads", auth, async (req, res) => {
                 OR l.phone LIKE $${values.length}
                 OR LOWER(l.car_interest) LIKE $${values.length}
                 OR LOWER(COALESCE(l.campaign_name, '')) LIKE $${values.length}
+                OR LOWER(COALESCE(l.district, '')) LIKE $${values.length}
+                OR LOWER(COALESCE(l.area, '')) LIKE $${values.length}
             )`);
         }
 
@@ -501,10 +675,12 @@ router.get("/leads", auth, async (req, res) => {
             SELECT 
                 l.*, 
                 u.name AS assigned_name, 
-                u.email AS assigned_email
+                u.email AS assigned_email,
+                b.branch_name,
+                b.branch_code
             FROM leads l
-            LEFT JOIN users u 
-                ON l.assigned_to = u.id
+            LEFT JOIN users u ON l.assigned_to = u.id
+            LEFT JOIN branches b ON l.branch_id = b.id
             ${where}
             ORDER BY l.created_at DESC, l.id DESC
         `, values);
@@ -520,7 +696,7 @@ router.get("/leads", auth, async (req, res) => {
 /* =====================================================
    FOLLOW-UP HISTORY
 ===================================================== */
-router.get("/lead/:id/followups", auth, async (req, res) => {
+router.get("/lead/:id/followups", auth, requireLeadView, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
 
@@ -529,15 +705,10 @@ router.get("/lead/:id/followups", auth, async (req, res) => {
         }
 
         const values = [leadId];
-        let ownerClause = "";
-
-        if (normalizeRole(req.user.role) !== "admin") {
-            values.push(req.user.id);
-            ownerClause = "AND l.assigned_to = $2";
-        }
+        const ownerClause = leadAccessAndClause(req, values, "l");
 
         const access = await db.query(`
-            SELECT id
+            SELECT l.id
             FROM leads l
             WHERE l.id = $1 ${ownerClause}
             LIMIT 1
@@ -545,7 +716,7 @@ router.get("/lead/:id/followups", auth, async (req, res) => {
 
         if (!access.rows.length) {
             return res.status(404).json({
-                message: "Lead not found or not assigned to you"
+                message: "Lead not found or not accessible to you"
             });
         }
 
@@ -554,8 +725,7 @@ router.get("/lead/:id/followups", auth, async (req, res) => {
                 f.*, 
                 u.name AS user_name
             FROM lead_followups f
-            LEFT JOIN users u 
-                ON f.user_id = u.id
+            LEFT JOIN users u ON f.user_id = u.id
             WHERE f.lead_id = $1
             ORDER BY f.created_at DESC
         `, [leadId]);
@@ -569,10 +739,11 @@ router.get("/lead/:id/followups", auth, async (req, res) => {
         });
     }
 });
+
 /* =====================================================
    ACTIVITY LOG HISTORY
 ===================================================== */
-router.get("/lead/:id/activity", auth, async (req, res) => {
+router.get("/lead/:id/activity", auth, requireLeadView, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
 
@@ -581,12 +752,7 @@ router.get("/lead/:id/activity", auth, async (req, res) => {
         }
 
         const values = [leadId];
-        let ownerClause = "";
-
-        if (normalizeRole(req.user.role) !== "admin") {
-            values.push(req.user.id);
-            ownerClause = "AND l.assigned_to = $2";
-        }
+        const ownerClause = leadAccessAndClause(req, values, "l");
 
         const access = await db.query(`
             SELECT l.id
@@ -597,7 +763,7 @@ router.get("/lead/:id/activity", auth, async (req, res) => {
 
         if (!access.rows.length) {
             return res.status(404).json({
-                message: "Lead not found or not assigned to you"
+                message: "Lead not found or not accessible to you"
             });
         }
 
@@ -612,8 +778,7 @@ router.get("/lead/:id/activity", auth, async (req, res) => {
                 u.name AS user_name,
                 u.email AS user_email
             FROM activity_logs a
-            LEFT JOIN users u 
-                ON a.user_id = u.id
+            LEFT JOIN users u ON a.user_id = u.id
             WHERE a.lead_id = $1
             ORDER BY a.created_at DESC
         `, [leadId]);
@@ -627,10 +792,11 @@ router.get("/lead/:id/activity", auth, async (req, res) => {
         });
     }
 });
+
 /* =====================================================
    UPDATE STATUS
 ===================================================== */
-router.put("/lead/:id/status", auth, async (req, res) => {
+router.put("/lead/:id/status", auth, requireLeadEdit, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
 
@@ -645,25 +811,20 @@ router.put("/lead/:id/status", auth, async (req, res) => {
         }
 
         const accessValues = [leadId];
-        let accessOwnerClause = "";
-
-        if (normalizeRole(req.user.role) !== "admin") {
-            accessValues.push(req.user.id);
-            accessOwnerClause = `AND assigned_to = $2`;
-        }
+        const accessOwnerClause = leadAccessAndClause(req, accessValues, "l");
 
         const oldLead = await db.query(`
             SELECT 
-                id, 
-                status
-            FROM leads
-            WHERE id = $1 ${accessOwnerClause}
+                l.id, 
+                l.status
+            FROM leads l
+            WHERE l.id = $1 ${accessOwnerClause}
             LIMIT 1
         `, accessValues);
 
         if (!oldLead.rows.length) {
             return res.status(404).json({
-                message: "Lead not found or not assigned to you"
+                message: "Lead not found or not accessible to you"
             });
         }
 
@@ -682,15 +843,10 @@ router.put("/lead/:id/status", auth, async (req, res) => {
             leadId
         ];
 
-        let updateOwnerClause = "";
-
-        if (normalizeRole(req.user.role) !== "admin") {
-            updateValues.push(req.user.id);
-            updateOwnerClause = `AND assigned_to = $5`;
-        }
+        const updateOwnerClause = leadAccessAndClause(req, updateValues, "l");
 
         const result = await db.query(`
-            UPDATE leads
+            UPDATE leads l
             SET 
                 status = $1,
                 lost_reason = CASE 
@@ -702,13 +858,13 @@ router.put("/lead/:id/status", auth, async (req, res) => {
                     ELSE competitor_model 
                 END,
                 updated_at = NOW()
-            WHERE id = $4 ${updateOwnerClause}
+            WHERE l.id = $4 ${updateOwnerClause}
             RETURNING id, status, lost_reason, competitor_model
         `, updateValues);
 
         if (!result.rows.length) {
             return res.status(404).json({
-                message: "Lead not found or not assigned to you"
+                message: "Lead not found or not accessible to you"
             });
         }
 
@@ -739,7 +895,7 @@ router.put("/lead/:id/status", auth, async (req, res) => {
 /* =====================================================
    ASSIGN LEAD
 ===================================================== */
-router.put("/lead/:id/assign", auth, requireAdmin, async (req, res) => {
+router.put("/lead/:id/assign", auth, requireLeadAssign, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
 
@@ -757,47 +913,77 @@ router.put("/lead/:id/assign", auth, requireAdmin, async (req, res) => {
         }
 
         if (userId) {
-            const user = await db.query(`
-                SELECT id, role
+            const selectedUser = await db.query(`
+                SELECT id, role, branch_id, status
                 FROM users
                 WHERE id = $1
                 LIMIT 1
             `, [userId]);
 
-            if (!user.rows.length) {
+            if (!selectedUser.rows.length) {
                 return res.status(400).json({
                     message: "Selected user not found"
                 });
             }
 
-            if (normalizeRole(user.rows[0].role) !== "sales") {
+            if (normalizeRole(selectedUser.rows[0].role) !== "sales") {
                 return res.status(400).json({
                     message: "Please select only sales user"
                 });
             }
+
+            if (String(selectedUser.rows[0].status || "ACTIVE").toUpperCase() !== "ACTIVE") {
+                return res.status(400).json({
+                    message: "Selected user is inactive"
+                });
+            }
         }
 
+        const values = [leadId];
+        const ownerClause = leadAccessAndClause(req, values, "l");
+
         const oldLead = await db.query(`
-            SELECT id, assigned_to
-            FROM leads
-            WHERE id = $1
+            SELECT 
+                l.id, 
+                l.assigned_to,
+                l.branch_id
+            FROM leads l
+            WHERE l.id = $1 ${ownerClause}
             LIMIT 1
-        `, [leadId]);
+        `, values);
 
         if (!oldLead.rows.length) {
             return res.status(404).json({
-                message: "Lead not found"
+                message: "Lead not found or not accessible to you"
             });
         }
 
+        let newBranchId = oldLead.rows[0].branch_id || null;
+
+        if (userId) {
+            const userBranchId = await getUserBranchId(userId);
+            if (userBranchId) newBranchId = userBranchId;
+        }
+
+        const updateValues = [userId, newBranchId, leadId];
+        const updateOwnerClause = leadAccessAndClause(req, updateValues, "l");
+
         const result = await db.query(`
-            UPDATE leads
+            UPDATE leads l
             SET 
-                assigned_to = $1, 
+                assigned_to = $1,
+                branch_id = COALESCE($2, branch_id),
+                assigned_branch_id = COALESCE($2, assigned_branch_id),
                 updated_at = NOW()
-            WHERE id = $2
-            RETURNING id, assigned_to
-        `, [userId, leadId]);
+            WHERE l.id = $3 ${updateOwnerClause}
+            RETURNING id, assigned_to, branch_id
+        `, updateValues);
+
+        if (!result.rows.length) {
+            return res.status(404).json({
+                message: "Lead not found or not accessible to you"
+            });
+        }
 
         await logActivity({
             lead_id: leadId,
@@ -826,7 +1012,7 @@ router.put("/lead/:id/assign", auth, requireAdmin, async (req, res) => {
 /* =====================================================
    UPDATE NOTES
 ===================================================== */
-router.put("/lead/:id/notes", auth, async (req, res) => {
+router.put("/lead/:id/notes", auth, requireLeadEdit, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
 
@@ -839,32 +1025,27 @@ router.put("/lead/:id/notes", auth, async (req, res) => {
             leadId
         ];
 
-        let ownerClause = "";
-
-        if (normalizeRole(req.user.role) !== "admin") {
-            values.push(req.user.id);
-            ownerClause = `AND assigned_to = $3`;
-        }
+        const ownerClause = leadAccessAndClause(req, values, "l");
 
         const oldLead = await db.query(`
-            SELECT notes
-            FROM leads
-            WHERE id = $2 ${ownerClause}
+            SELECT l.notes
+            FROM leads l
+            WHERE l.id = $2 ${ownerClause}
             LIMIT 1
         `, values);
 
         const result = await db.query(`
-            UPDATE leads
+            UPDATE leads l
             SET 
                 notes = $1, 
                 updated_at = NOW()
-            WHERE id = $2 ${ownerClause}
+            WHERE l.id = $2 ${ownerClause}
             RETURNING id
         `, values);
 
         if (!result.rows.length) {
             return res.status(404).json({
-                message: "Lead not found or not assigned to you"
+                message: "Lead not found or not accessible to you"
             });
         }
 
@@ -890,95 +1071,94 @@ router.put("/lead/:id/notes", auth, async (req, res) => {
 /* =====================================================
    ANALYTICS
 ===================================================== */
-router.get("/analytics", auth, async (req, res) => {
+router.get("/analytics", auth, requireLeadView, async (req, res) => {
     try {
         const values = [];
-        let where = "";
+        const clauses = [];
 
-        if (normalizeRole(req.user.role) !== "admin") {
-            values.push(req.user.id);
-            where = "WHERE assigned_to = $1";
-        }
+        appendLeadAccessScope(req, clauses, values, "l");
+
+        const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
 
         const result = await db.query(`
             SELECT
                 COUNT(*)::int AS total,
 
                 COUNT(*) FILTER (
-                    WHERE priority = 'HOT'
+                    WHERE l.priority = 'HOT'
                 )::int AS hot,
 
                 COUNT(*) FILTER (
-                    WHERE priority = 'WARM'
+                    WHERE l.priority = 'WARM'
                 )::int AS warm,
 
                 COUNT(*) FILTER (
-                    WHERE priority = 'COLD'
+                    WHERE l.priority = 'COLD'
                 )::int AS cold,
 
                 COUNT(*) FILTER (
-                    WHERE action_type IN ('ENQUIRY','QUICK_ENQUIRY','COMPLETE_ENQUIRY')
+                    WHERE l.action_type IN ('ENQUIRY','QUICK_ENQUIRY','COMPLETE_ENQUIRY')
                 )::int AS enquiry,
 
                 COUNT(*) FILTER (
-                    WHERE action_type = 'TEST_DRIVE'
+                    WHERE l.action_type = 'TEST_DRIVE'
                 )::int AS testdrive,
 
                 COUNT(*) FILTER (
-                    WHERE action_type = 'CALL'
+                    WHERE l.action_type = 'CALL'
                 )::int AS call,
 
                 COUNT(*) FILTER (
-                    WHERE action_type = 'WHATSAPP'
+                    WHERE l.action_type = 'WHATSAPP'
                 )::int AS whatsapp,
 
                 COUNT(*) FILTER (
-                    WHERE status = 'CLOSED'
+                    WHERE l.status = 'CLOSED'
                 )::int AS closed,
 
                 COUNT(*) FILTER (
-                    WHERE status = 'BOOKED'
+                    WHERE l.status = 'BOOKED'
                 )::int AS booked,
 
                 COUNT(*) FILTER (
-                    WHERE status = 'LOST'
+                    WHERE l.status = 'LOST'
                 )::int AS lost,
 
                 COUNT(*) FILTER (
-                    WHERE assigned_to IS NULL
+                    WHERE l.assigned_to IS NULL
                 )::int AS unassigned,
 
                 COUNT(*) FILTER (
-                    WHERE next_followup_at::date = CURRENT_DATE
-                    AND status NOT IN ('CLOSED','LOST')
+                    WHERE l.next_followup_at::date = CURRENT_DATE
+                    AND l.status NOT IN ('CLOSED','LOST')
                 )::int AS today_followups,
 
                 COUNT(*) FILTER (
-                    WHERE next_followup_at < NOW()
-                    AND status NOT IN ('CLOSED','LOST')
+                    WHERE l.next_followup_at < NOW()
+                    AND l.status NOT IN ('CLOSED','LOST')
                 )::int AS overdue_followups,
 
                 COUNT(*) FILTER (
-                    WHERE next_followup_at < NOW()
-                    AND status NOT IN ('CLOSED','LOST')
+                    WHERE l.next_followup_at < NOW()
+                    AND l.status NOT IN ('CLOSED','LOST')
                 )::int AS missed_followups,
 
                 COUNT(*) FILTER (
-                    WHERE status = 'BOOKED'
-                    AND created_at >= date_trunc('month', NOW())
+                    WHERE l.status = 'BOOKED'
+                    AND l.created_at >= date_trunc('month', NOW())
                 )::int AS booked_month
 
-            FROM leads
+            FROM leads l
             ${where}
         `, values);
 
         const bySource = await db.query(`
             SELECT 
-                COALESCE(source, 'WEBSITE') AS source, 
+                COALESCE(l.source, 'WEBSITE') AS source, 
                 COUNT(*)::int AS count
-            FROM leads
+            FROM leads l
             ${where}
-            GROUP BY COALESCE(source, 'WEBSITE')
+            GROUP BY COALESCE(l.source, 'WEBSITE')
             ORDER BY count DESC
         `, values);
 
@@ -998,7 +1178,7 @@ router.get("/analytics", auth, async (req, res) => {
 /* =====================================================
    UPDATE FULL LEAD DETAILS
 ===================================================== */
-router.put("/lead/:id", auth, async (req, res) => {
+router.put("/lead/:id", auth, requireLeadEdit, async (req, res) => {
     try {
         const leadId = parseId(req.params.id);
 
@@ -1032,31 +1212,27 @@ router.put("/lead/:id", auth, async (req, res) => {
             nullableDate(data.test_drive_date),
             nullableDate(data.showroom_visit_date),
             nullableDate(data.booking_expected_date),
+            cleanText(data.pincode),
             leadId
         ];
 
-        let ownerClause = "";
-
-        if (normalizeRole(req.user.role) !== "admin") {
-            values.push(req.user.id);
-            ownerClause = `AND assigned_to = $${values.length}`;
-        }
+        const ownerClause = leadAccessAndClause(req, values, "l");
 
         const oldLead = await db.query(`
             SELECT 
-                id,
-                name,
-                phone,
-                car_interest,
-                variant_interest,
-                status
-            FROM leads
-            WHERE id = $22 ${ownerClause}
+                l.id,
+                l.name,
+                l.phone,
+                l.car_interest,
+                l.variant_interest,
+                l.status
+            FROM leads l
+            WHERE l.id = $23 ${ownerClause}
             LIMIT 1
         `, values);
 
         const result = await db.query(`
-            UPDATE leads
+            UPDATE leads l
             SET
                 name = $1,
                 phone = $2,
@@ -1079,16 +1255,17 @@ router.put("/lead/:id", auth, async (req, res) => {
                 test_drive_date = $19,
                 showroom_visit_date = $20,
                 booking_expected_date = $21,
+                pincode = $22,
                 lead_type = 'COMPLETE_ENQUIRY',
                 action_type = 'COMPLETE_ENQUIRY',
                 updated_at = NOW()
-            WHERE id = $22 ${ownerClause}
+            WHERE l.id = $23 ${ownerClause}
             RETURNING *
         `, values);
 
         if (!result.rows.length) {
             return res.status(404).json({
-                message: "Lead not found or not assigned to you"
+                message: "Lead not found or not accessible to you"
             });
         }
 
@@ -1119,22 +1296,31 @@ router.put("/lead/:id", auth, async (req, res) => {
 /* =====================================================
    AUTO ESCALATE OVERDUE FOLLOW-UPS
 ===================================================== */
-router.post("/followups/escalate", auth, requireAdmin, async (req, res) => {
+router.post("/followups/escalate", auth, requireLeadMonitor, async (req, res) => {
     try {
+        const values = [];
+        const clauses = [
+            "l.next_followup_at IS NOT NULL",
+            "l.status NOT IN ('CLOSED', 'LOST')",
+            "l.next_followup_at < NOW()"
+        ];
+
+        appendLeadAccessScope(req, clauses, values, "l");
+
+        const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+
         const result = await db.query(`
-            UPDATE leads
+            UPDATE leads l
             SET 
                 priority = CASE
-                    WHEN next_followup_at < NOW() - INTERVAL '48 hours' THEN 'HOT'
-                    WHEN next_followup_at < NOW() - INTERVAL '24 hours' THEN 'WARM'
-                    ELSE priority
+                    WHEN l.next_followup_at < NOW() - INTERVAL '48 hours' THEN 'HOT'
+                    WHEN l.next_followup_at < NOW() - INTERVAL '24 hours' THEN 'WARM'
+                    ELSE l.priority
                 END,
                 updated_at = NOW()
-            WHERE next_followup_at IS NOT NULL
-                AND status NOT IN ('CLOSED', 'LOST')
-                AND next_followup_at < NOW()
+            ${where}
             RETURNING id, name, priority, next_followup_at
-        `);
+        `, values);
 
         for (const lead of result.rows) {
             await logActivity({
@@ -1164,13 +1350,24 @@ router.post("/followups/escalate", auth, requireAdmin, async (req, res) => {
 /* =====================================================
    SALES PERFORMANCE
 ===================================================== */
-router.get("/sales-performance", auth, requireAdmin, async (req, res) => {
+router.get("/sales-performance", auth, requireLeadMonitor, async (req, res) => {
     try {
+        const values = [];
+        const leadJoinClauses = [];
+
+        appendLeadAccessScope(req, leadJoinClauses, values, "l");
+
+        const leadJoinAccess = leadJoinClauses.length
+            ? `AND ${leadJoinClauses.join(" AND ")}`
+            : "";
+
         const result = await db.query(`
             SELECT
                 u.id,
                 u.name,
                 u.email,
+                u.branch_id,
+                b.branch_name,
 
                 COUNT(l.id)::int AS total_leads,
 
@@ -1201,12 +1398,14 @@ router.get("/sales-performance", auth, requireAdmin, async (req, res) => {
                 )::int AS lost
 
             FROM users u
+            LEFT JOIN branches b ON u.branch_id = b.id
             LEFT JOIN leads l 
                 ON l.assigned_to = u.id
+                ${leadJoinAccess}
             WHERE LOWER(u.role) = 'sales'
-            GROUP BY u.id
+            GROUP BY u.id, b.branch_name
             ORDER BY closed DESC, booked DESC, total_leads DESC
-        `);
+        `, values);
 
         res.json(result.rows);
 

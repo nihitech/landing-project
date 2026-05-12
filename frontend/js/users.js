@@ -163,7 +163,7 @@ function buildUserPayload(isEdit = false) {
         name: value("uname").trim(),
         email: value("uemail").trim(),
         phone: value("uphone").trim(),
-        role: value("urole"),
+        role: value("urole") || "sales",
         department_id: value("u_department") || null,
         branch_id: value("u_branch") || null,
         designation: value("u_designation").trim(),
