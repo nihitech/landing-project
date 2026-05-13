@@ -174,3 +174,119 @@ CREATE TABLE IF NOT EXISTS report_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_report_logs_created_at ON report_logs(created_at DESC);
+
+-- =====================================================
+-- CRM Master Modules Safe Upgrade: Departments, Roles, Permissions
+-- Added by ChatGPT patch. Safe to run multiple times.
+-- =====================================================
+CREATE TABLE IF NOT EXISTS departments (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT,
+    code TEXT,
+    department_name TEXT,
+    department_code TEXT,
+    description TEXT DEFAULT '',
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS code TEXT;
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS department_name TEXT;
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS department_code TEXT;
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE';
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+UPDATE departments
+SET
+    name = COALESCE(NULLIF(name, ''), department_name),
+    code = COALESCE(NULLIF(code, ''), department_code),
+    department_name = COALESCE(NULLIF(department_name, ''), name),
+    department_code = COALESCE(NULLIF(department_code, ''), code),
+    status = COALESCE(NULLIF(status, ''), 'ACTIVE');
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_departments_code_unique ON departments (LOWER(code)) WHERE code IS NOT NULL AND code <> '';
+CREATE INDEX IF NOT EXISTS idx_departments_status ON departments(status);
+
+INSERT INTO departments (name, code, department_name, department_code, description, status)
+VALUES
+    ('Admin', 'ADMIN', 'Admin', 'ADMIN', 'Administration department', 'ACTIVE'),
+    ('Sales', 'SALES', 'Sales', 'SALES', 'Sales department', 'ACTIVE'),
+    ('Marketing', 'MARKETING', 'Marketing', 'MARKETING', 'Marketing department', 'ACTIVE'),
+    ('Service', 'SERVICE', 'Service', 'SERVICE', 'Service department', 'ACTIVE'),
+    ('Accessories', 'ACCESSORIES', 'Accessories', 'ACCESSORIES', 'Accessories department', 'ACTIVE'),
+    ('Finance', 'FINANCE', 'Finance', 'FINANCE', 'Finance department', 'ACTIVE'),
+    ('Insurance', 'INSURANCE', 'Insurance', 'INSURANCE', 'Insurance department', 'ACTIVE'),
+    ('Field Team', 'FIELD', 'Field Team', 'FIELD', 'Field activity department', 'ACTIVE')
+ON CONFLICT DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS roles (
+    id BIGSERIAL PRIMARY KEY,
+    role_name TEXT NOT NULL,
+    role_code TEXT NOT NULL UNIQUE,
+    description TEXT DEFAULT '',
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS permissions (
+    id BIGSERIAL PRIMARY KEY,
+    permission_name TEXT NOT NULL,
+    permission_code TEXT NOT NULL UNIQUE,
+    module_name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id BIGSERIAL PRIMARY KEY,
+    role_id BIGINT REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id BIGINT REFERENCES permissions(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(role_id, permission_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_roles_status ON roles(status);
+CREATE INDEX IF NOT EXISTS idx_permissions_module ON permissions(module_name);
+
+INSERT INTO permissions (permission_name, permission_code, module_name, description)
+VALUES
+    ('View Leads', 'leads.view', 'Leads', 'Can view leads'),
+    ('Create Leads', 'leads.create', 'Leads', 'Can create leads'),
+    ('Edit Leads', 'leads.edit', 'Leads', 'Can edit lead details'),
+    ('Assign Leads', 'leads.assign', 'Leads', 'Can assign leads'),
+    ('Export Leads', 'leads.export', 'Leads', 'Can export leads'),
+    ('View Follow-ups', 'followups.view', 'Follow-ups', 'Can view follow-ups'),
+    ('Create Follow-ups', 'followups.create', 'Follow-ups', 'Can create follow-ups'),
+    ('View Reports', 'reports.view', 'Reports', 'Can view reports'),
+    ('Send Reports', 'reports.send', 'Reports', 'Can send reports'),
+    ('Manage Branches', 'branches.manage', 'Branches', 'Can manage branches'),
+    ('Manage Departments', 'departments.manage', 'Departments', 'Can manage departments'),
+    ('Manage Users', 'users.manage', 'Users', 'Can manage users'),
+    ('Monitor Performance', 'performance.monitor', 'Performance', 'Can monitor team performance'),
+    ('Field Check-in', 'field.checkin', 'Field Activity', 'Can perform GPS check-in'),
+    ('Upload Field Photos', 'field.upload_photo', 'Field Activity', 'Can upload field activity photos')
+ON CONFLICT (permission_code) DO UPDATE SET
+    permission_name = EXCLUDED.permission_name,
+    module_name = EXCLUDED.module_name,
+    description = EXCLUDED.description;
+
+INSERT INTO roles (role_name, role_code, description, status)
+VALUES
+    ('Admin', 'admin', 'Full CRM access', 'ACTIVE'),
+    ('Manager', 'manager', 'Manager monitoring access', 'ACTIVE'),
+    ('Team Leader', 'team_leader', 'Team-level monitoring access', 'ACTIVE'),
+    ('Sales Executive', 'sales', 'Sales user access', 'ACTIVE'),
+    ('Telecaller', 'telecaller', 'Calling and follow-up access', 'ACTIVE'),
+    ('Marketing', 'marketing', 'Marketing user access', 'ACTIVE'),
+    ('Field Executive', 'field', 'Field activity access', 'ACTIVE'),
+    ('Finance', 'finance', 'Finance user access', 'ACTIVE'),
+    ('Service', 'service', 'Service user access', 'ACTIVE')
+ON CONFLICT (role_code) DO UPDATE SET
+    role_name = EXCLUDED.role_name,
+    description = EXCLUDED.description,
+    status = EXCLUDED.status;
