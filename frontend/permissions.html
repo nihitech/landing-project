@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role & Permission Management</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body class="crm-v2">
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="module-header">
+            <div>
+                <span class="tag">Dealer CRM</span>
+                <h1>🔐 Role & Permission Management</h1>
+                <p>Create roles and assign module permissions.</p>
+            </div>
+
+            <div class="module-actions">
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <section class="table-card">
+            <h2 id="roleFormTitle">Add New Role</h2>
+
+            <input type="hidden" id="roleId">
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Role Name</label>
+                    <input id="roleName" placeholder="Sales Executive">
+                </div>
+
+                <div class="field-group">
+                    <label>Role Code</label>
+                    <input id="roleCode" placeholder="sales">
+                </div>
+
+                <div class="field-group">
+                    <label>Status</label>
+                    <select id="roleStatus">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Description</label>
+                    <input id="roleDescription" placeholder="Sales user access">
+                </div>
+            </div>
+
+            <div class="report-actions">
+                <button onclick="saveRole()" class="save-btn">Save Role</button>
+                <button onclick="resetRoleForm()" class="copy-btn">Clear</button>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Role List</h2>
+                <p>Select a role to manage permissions.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Code</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="roleTable"></tbody>
+            </table>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2 id="permissionTitle">Permissions</h2>
+                <p>Choose permissions for selected role.</p>
+            </div>
+
+            <input type="hidden" id="selectedPermissionRoleId">
+
+            <div id="permissionBox" class="permission-grid"></div>
+
+            <div class="report-actions">
+                <button onclick="saveRolePermissions()" class="save-btn">Save Permissions</button>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="./js/crm-common.js"></script>
+<script>
+    loadLayout('permissions');
+</script>
+<script src="./js/permissions.js"></script>
+</body>
+</html>
