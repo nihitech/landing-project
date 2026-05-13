@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Department Management</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body class="crm-v2">
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="module-header">
+            <div>
+                <span class="tag">Dealer CRM</span>
+                <h1>🏬 Department Management</h1>
+                <p>Create and manage dealership departments.</p>
+            </div>
+
+            <div class="module-actions">
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <section class="table-card">
+            <h2 id="departmentFormTitle">Add New Department</h2>
+
+            <input type="hidden" id="departmentId">
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Department Name</label>
+                    <input id="departmentName" placeholder="Sales">
+                </div>
+
+                <div class="field-group">
+                    <label>Department Code</label>
+                    <input id="departmentCode" placeholder="SALES">
+                </div>
+
+                <div class="field-group">
+                    <label>Status</label>
+                    <select id="departmentStatus">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Description</label>
+                    <input id="departmentDescription" placeholder="Sales team department">
+                </div>
+            </div>
+
+            <div class="report-actions">
+                <button onclick="saveDepartment()" class="save-btn">Save Department</button>
+                <button onclick="resetDepartmentForm()" class="copy-btn">Clear</button>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Department List</h2>
+                <p>All active and inactive departments.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Department</th>
+                        <th>Code</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="departmentTable"></tbody>
+            </table>
+        </section>
+    </main>
+</div>
+
+<script src="./js/crm-common.js"></script>
+<script>
+    loadLayout('departments');
+</script>
+<script src="./js/departments.js"></script>
+</body>
+</html>
