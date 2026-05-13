@@ -351,3 +351,18 @@ VALUES
     ('field.checkin', 'Field Check-in', 'Field'),
     ('field.upload_photo', 'Upload Field Photo', 'Field')
 ON CONFLICT (permission_key) DO NOTHING;
+
+
+-- Customer OTP verification foundation
+ALTER TABLE leads
+ADD COLUMN IF NOT EXISTS verification_status VARCHAR(30) DEFAULT 'NOT_VERIFIED',
+ADD COLUMN IF NOT EXISTS verified_by INTEGER REFERENCES users(id),
+ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS verification_remarks TEXT,
+ADD COLUMN IF NOT EXISTS verification_otp VARCHAR(10),
+ADD COLUMN IF NOT EXISTS verification_otp_expires_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS verification_otp_sent_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS verification_otp_attempts INTEGER DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS idx_leads_verification_status
+ON leads(verification_status);

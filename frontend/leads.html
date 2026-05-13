@@ -54,4 +54,27 @@
         </div>
     </div>
 </div>
+
+<!-- CUSTOMER OTP VERIFICATION MODAL -->
+<div id="otpModal" class="followup-modal">
+    <div class="followup-modal-card">
+        <h2>✅ Customer Phone Verification</h2>
+        <input type="hidden" id="otpLeadId">
+
+        <p id="otpInfo" class="muted">Send OTP to customer WhatsApp/SMS number and verify here.</p>
+
+        <label>Enter OTP</label>
+        <input id="customerOtp" maxlength="6" placeholder="6 digit OTP">
+
+        <label>Verification Remarks</label>
+        <textarea id="otpRemarks" placeholder="Example: Customer confirmed name, model interest and location"></textarea>
+
+        <div class="followup-modal-actions">
+            <button onclick="closeOtpModal()" class="cancel-btn">Cancel</button>
+            <button onclick="sendCustomerOtp()" class="copy-btn">Send OTP</button>
+            <button onclick="verifyCustomerOtp()" class="save-btn">Verify OTP</button>
+        </div>
+    </div>
+</div>
+
 <script src="./js/leads.js"></script></body></html>

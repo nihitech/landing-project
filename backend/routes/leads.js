@@ -276,6 +276,31 @@ async function logActivity({
     }
 }
 
+
+async function ensureLeadVerificationColumns() {
+    await db.query(`
+        ALTER TABLE leads
+        ADD COLUMN IF NOT EXISTS verification_status VARCHAR(30) DEFAULT 'NOT_VERIFIED',
+        ADD COLUMN IF NOT EXISTS verified_by INTEGER REFERENCES users(id),
+        ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS verification_remarks TEXT,
+        ADD COLUMN IF NOT EXISTS verification_otp VARCHAR(10),
+        ADD COLUMN IF NOT EXISTS verification_otp_expires_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS verification_otp_sent_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS verification_otp_attempts INTEGER DEFAULT 0
+    `);
+}
+
+function generateOtp() {
+    return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function maskPhone(phone) {
+    const p = normalizePhone(phone);
+    if (p.length < 10) return p || "customer";
+    return `XXXXXX${p.slice(-4)}`;
+}
+
 /* =====================================================
    CREATE LEAD - PUBLIC WEBSITE / SOCIAL / MANUAL API
 ===================================================== */
@@ -690,6 +715,190 @@ router.get("/leads", auth, requireLeadView, async (req, res) => {
     } catch (err) {
         console.error("FETCH LEADS ERROR:", err);
         res.status(500).json({ message: "Fetch error" });
+    }
+});
+
+
+/* =====================================================
+   CUSTOMER OTP VERIFICATION
+===================================================== */
+router.post("/lead/:id/send-otp", auth, requireLeadEdit, async (req, res) => {
+    try {
+        await ensureLeadVerificationColumns();
+
+        const leadId = parseId(req.params.id);
+
+        if (!leadId) {
+            return res.status(400).json({ message: "Invalid lead id" });
+        }
+
+        const values = [leadId];
+        const ownerClause = leadAccessAndClause(req, values, "l");
+
+        const leadResult = await db.query(`
+            SELECT l.id, l.name, l.phone, l.verification_status
+            FROM leads l
+            WHERE l.id = $1 ${ownerClause}
+            LIMIT 1
+        `, values);
+
+        if (!leadResult.rows.length) {
+            return res.status(404).json({
+                message: "Lead not found or not accessible to you"
+            });
+        }
+
+        const lead = leadResult.rows[0];
+        const phone = normalizePhone(lead.phone);
+
+        if (phone.length !== 10) {
+            return res.status(400).json({ message: "Lead does not have a valid phone number" });
+        }
+
+        const otp = generateOtp();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await db.query(`
+            UPDATE leads
+            SET
+                verification_otp = $1,
+                verification_otp_expires_at = $2,
+                verification_otp_sent_at = NOW(),
+                verification_otp_attempts = 0,
+                verification_status = CASE
+                    WHEN verification_status = 'PHONE_VERIFIED' THEN verification_status
+                    ELSE 'OTP_SENT'
+                END,
+                updated_at = NOW()
+            WHERE id = $3
+        `, [otp, expiresAt, leadId]);
+
+        const message = `Hi ${cleanText(lead.name, "Customer")}, your CRM verification code is ${otp}. This code is valid for 10 minutes. - Shiva Automobiles`;
+        const waResult = await sendWhatsApp(`whatsapp:+91${phone}`, message);
+
+        await logActivity({
+            lead_id: leadId,
+            user_id: req.user.id,
+            action: "OTP_SENT",
+            old_value: lead.verification_status || "NOT_VERIFIED",
+            new_value: "OTP_SENT",
+            remarks: `Verification OTP sent to ${maskPhone(phone)}`
+        });
+
+        res.json({
+            message: "Verification OTP sent successfully",
+            phone: maskPhone(phone),
+            expires_in_minutes: 10,
+            debug_otp: waResult?.skipped || process.env.NODE_ENV !== "production" ? otp : undefined
+        });
+
+    } catch (err) {
+        console.error("SEND OTP ERROR:", err);
+        res.status(500).json({ message: "Failed to send verification OTP" });
+    }
+});
+
+router.post("/lead/:id/verify-otp", auth, requireLeadEdit, async (req, res) => {
+    try {
+        await ensureLeadVerificationColumns();
+
+        const leadId = parseId(req.params.id);
+        const otp = cleanText(req.body.otp);
+        const remarks = cleanText(req.body.remarks);
+
+        if (!leadId) {
+            return res.status(400).json({ message: "Invalid lead id" });
+        }
+
+        if (!/^\d{6}$/.test(otp)) {
+            return res.status(400).json({ message: "Enter valid 6 digit OTP" });
+        }
+
+        const values = [leadId];
+        const ownerClause = leadAccessAndClause(req, values, "l");
+
+        const leadResult = await db.query(`
+            SELECT
+                l.id,
+                l.verification_status,
+                l.verification_otp,
+                l.verification_otp_expires_at,
+                COALESCE(l.verification_otp_attempts, 0)::int AS attempts
+            FROM leads l
+            WHERE l.id = $1 ${ownerClause}
+            LIMIT 1
+        `, values);
+
+        if (!leadResult.rows.length) {
+            return res.status(404).json({
+                message: "Lead not found or not accessible to you"
+            });
+        }
+
+        const lead = leadResult.rows[0];
+
+        if (!lead.verification_otp || !lead.verification_otp_expires_at) {
+            return res.status(400).json({ message: "OTP not generated or already used" });
+        }
+
+        if (lead.attempts >= 5) {
+            return res.status(429).json({ message: "Too many wrong OTP attempts. Send OTP again." });
+        }
+
+        if (new Date(lead.verification_otp_expires_at).getTime() < Date.now()) {
+            await db.query(`
+                UPDATE leads
+                SET verification_status = 'OTP_EXPIRED', updated_at = NOW()
+                WHERE id = $1
+            `, [leadId]);
+
+            return res.status(400).json({ message: "OTP expired. Please send OTP again." });
+        }
+
+        if (String(lead.verification_otp) !== otp) {
+            await db.query(`
+                UPDATE leads
+                SET
+                    verification_otp_attempts = COALESCE(verification_otp_attempts, 0) + 1,
+                    updated_at = NOW()
+                WHERE id = $1
+            `, [leadId]);
+
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        const result = await db.query(`
+            UPDATE leads
+            SET
+                verification_status = 'PHONE_VERIFIED',
+                verified_by = $1,
+                verified_at = NOW(),
+                verification_remarks = $2,
+                verification_otp = NULL,
+                verification_otp_expires_at = NULL,
+                verification_otp_attempts = 0,
+                updated_at = NOW()
+            WHERE id = $3
+            RETURNING id, verification_status, verified_at
+        `, [req.user.id, remarks, leadId]);
+
+        await logActivity({
+            lead_id: leadId,
+            user_id: req.user.id,
+            action: "PHONE_VERIFIED",
+            old_value: lead.verification_status || "NOT_VERIFIED",
+            new_value: "PHONE_VERIFIED",
+            remarks: remarks || "Customer phone verified using OTP"
+        });
+
+        res.json({
+            message: "Customer phone verified successfully",
+            lead: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error("VERIFY OTP ERROR:", err);
+        res.status(500).json({ message: "Failed to verify OTP" });
     }
 });
 

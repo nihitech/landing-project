@@ -136,7 +136,7 @@ function renderTable(leads) {
     const tb=document.querySelector("#leadTable tbody"); if(!tb) return;
     if(!leads.length){ tb.innerHTML=`<tr><td colspan="9" class="empty-state">No leads found</td></tr>`; return; }
     tb.innerHTML = leads.map(lead => { const pc=String(lead.priority||"COLD").toLowerCase(); const phone=cleanPhone(lead.phone); const assign = user.role === "admin" ? `<select onchange="assignLead(${lead.id},this.value)"><option value="">Unassigned</option>${users.filter(u=>u.role==='sales').map(u=>`<option value="${u.id}" ${Number(lead.assigned_to)===Number(u.id)?"selected":""}>${safe(u.name)}</option>`).join("")}</select>` : safe(lead.assigned_name||"Unassigned"); return `<tr class="${pc}"><td><strong>${safe(lead.name)}</strong><small>${fmtDate(lead.created_at)}</small><small>Family: ${safe(lead.family_members||"-")}</small></td><td>${safe(lead.phone)}<small>Alt: ${safe(lead.alternate_phone||"-")}</small><small>${safe(lead.area||"")} ${safe(lead.district||"")}</small></td><td>${safe(lead.vehicle_category||"-")} / ${safe(lead.fuel_type||"-")}<small>${safe(lead.car_interest||"Not Selected")}</small><small>Variant: ${safe(lead.variant_interest || "-")}</small>
-<small>Color: ${safe(lead.preferred_color || "-")}</small></td><td>${safe(lead.source||"WEBSITE")}<small>${safe(lead.action_type||lead.lead_type||"ENQUIRY")}</small><small>${safe(lead.campaign_name||"-")}</small></td><td><span class="badge ${pc}">${safe(lead.priority||"COLD")}</span><small>Score: ${Number(lead.score||0)}</small></td><td><select onchange="updateStatus(${lead.id},this.value)">${STATUSES.map(s=>`<option value="${s}" ${lead.status===s?"selected":""}>${s}</option>`).join("")}</select></td><td class="admin-only">${assign}</td><td><button onclick="openFollowup(${lead.id})" class="followup-btn">📞 Follow-up</button><small>Next: ${fmtDate(lead.next_followup_at)}</small><small>Count: ${lead.followup_count||0}</small></td><td class="actions"><button onclick="openLeadDetails(${lead.id})" class="view-btn">View</button><button onclick="openEnquiryModal(${lead.id})" class="enquiry-btn">Enquiry</button><a href="tel:${phone}">📞</a><a href="https://wa.me/91${phone}" target="_blank">💬</a></td></tr>`; }).join("");
+<small>Color: ${safe(lead.preferred_color || "-")}</small></td><td>${safe(lead.source||"WEBSITE")}<small>${safe(lead.action_type||lead.lead_type||"ENQUIRY")}</small><small>${safe(lead.campaign_name||"-")}</small></td><td><span class="badge ${pc}">${safe(lead.priority||"COLD")}</span><small>Score: ${Number(lead.score||0)}</small></td><td><select onchange="updateStatus(${lead.id},this.value)">${STATUSES.map(s=>`<option value="${s}" ${lead.status===s?"selected":""}>${s}</option>`).join("")}</select></td><td class="admin-only">${assign}</td><td><button onclick="openFollowup(${lead.id})" class="followup-btn">📞 Follow-up</button><small>Next: ${fmtDate(lead.next_followup_at)}</small><small>Count: ${lead.followup_count||0}</small></td><td class="actions"><button onclick="openLeadDetails(${lead.id})" class="view-btn">View</button><button onclick="openOtpModal(${lead.id})" class="copy-btn">Verify</button><button onclick="openEnquiryModal(${lead.id})" class="enquiry-btn">Enquiry</button><a href="tel:${phone}">📞</a><a href="https://wa.me/91${phone}" target="_blank">💬</a></td></tr>`; }).join("");
     if(user.role !== "admin") document.querySelectorAll(".admin-only").forEach(e=>e.style.display="none");
 }
 async function assignLead(id,userId){ try{ await request(`${API}/lead/${id}/assign`,{method:"PUT",headers:authHeaders(true),body:JSON.stringify({user_id:userId||null})}); toast(userId?"Lead assigned":"Lead unassigned"); await loadPage(); }catch(e){toast(e.message,true);} }
@@ -252,6 +252,16 @@ async function openLeadDetails(id) {
             <div>
                 <strong>Preferred Color</strong>
                 <span>${safe(lead.preferred_color || "-")}</span>
+            </div>
+
+            <div>
+                <strong>Verification</strong>
+                <span>${safe(lead.verification_status || "NOT_VERIFIED")}</span>
+            </div>
+
+            <div>
+                <strong>Verified At</strong>
+                <span>${fmtDate(lead.verified_at)}</span>
             </div>
 
             <div>
@@ -561,7 +571,99 @@ async function submitFollowup() {
     }
 }
 
+
+function openOtpModal(id) {
+    const modal = document.getElementById("otpModal");
+    const lead = allLeads.find(l => Number(l.id) === Number(id));
+
+    if (!modal) {
+        alert("OTP modal not found in leads.html");
+        return;
+    }
+
+    if (!lead) {
+        toast("Lead not found", true);
+        return;
+    }
+
+    document.getElementById("otpLeadId").value = id;
+    document.getElementById("customerOtp").value = "";
+    document.getElementById("otpRemarks").value = "";
+
+    const info = document.getElementById("otpInfo");
+    if (info) {
+        info.innerText = `Customer: ${lead.name || "-"} | Phone: ${lead.phone || "-"} | Status: ${lead.verification_status || "NOT_VERIFIED"}`;
+    }
+
+    modal.classList.add("show");
+}
+
+function closeOtpModal() {
+    const modal = document.getElementById("otpModal");
+    if (modal) modal.classList.remove("show");
+}
+
+async function sendCustomerOtp() {
+    const id = document.getElementById("otpLeadId").value;
+
+    if (!id) {
+        toast("Select a lead first", true);
+        return;
+    }
+
+    try {
+        const result = await request(`${API}/lead/${id}/send-otp`, {
+            method: "POST",
+            headers: authHeaders(true),
+            body: JSON.stringify({})
+        });
+
+        const debugText = result.debug_otp ? ` OTP: ${result.debug_otp}` : "";
+        toast(`OTP sent to ${result.phone || "customer"}.${debugText}`);
+        await loadPage();
+
+    } catch (error) {
+        toast(error.message || "OTP send failed", true);
+    }
+}
+
+async function verifyCustomerOtp() {
+    const id = document.getElementById("otpLeadId").value;
+    const otp = document.getElementById("customerOtp").value.trim();
+    const remarks = document.getElementById("otpRemarks").value.trim();
+
+    if (!id) {
+        toast("Select a lead first", true);
+        return;
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+        toast("Enter valid 6 digit OTP", true);
+        return;
+    }
+
+    try {
+        await request(`${API}/lead/${id}/verify-otp`, {
+            method: "POST",
+            headers: authHeaders(true),
+            body: JSON.stringify({ otp, remarks })
+        });
+
+        toast("Customer phone verified");
+        closeOtpModal();
+        await loadPage();
+
+    } catch (error) {
+        toast(error.message || "OTP verification failed", true);
+    }
+}
+
 // Make functions available to HTML onclick
+window.openOtpModal = openOtpModal;
+window.closeOtpModal = closeOtpModal;
+window.sendCustomerOtp = sendCustomerOtp;
+window.verifyCustomerOtp = verifyCustomerOtp;
+
 window.openFollowup = openFollowup;
 window.closeFollowupModal = closeFollowupModal;
 window.submitFollowup = submitFollowup;
