@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Product Master</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body class="crm-v2">
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="module-header">
+            <div>
+                <span class="tag">Product Intelligence</span>
+                <h1>🚗 Vehicle Product Master</h1>
+                <p>Manage models, variants and colors for enquiry, stock and delivery intelligence.</p>
+            </div>
+
+            <div class="module-actions">
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <section class="table-card">
+            <h2 id="modelFormTitle">Add Vehicle Model</h2>
+
+            <input type="hidden" id="modelId">
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Brand Name</label>
+                    <input id="brandName" value="Mahindra">
+                </div>
+
+                <div class="field-group">
+                    <label>Model Name</label>
+                    <input id="modelName" placeholder="XUV700">
+                </div>
+
+                <div class="field-group">
+                    <label>Vehicle Category</label>
+                    <select id="vehicleCategory">
+                        <option value="">Select Category</option>
+                        <option value="AD">Diesel / Petrol</option>
+                        <option value="EV">Electric Vehicle</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Fuel Type</label>
+                    <input id="modelFuelType" placeholder="Petrol / Diesel / EV">
+                </div>
+
+                <div class="field-group">
+                    <label>Status</label>
+                    <select id="modelStatus">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="report-actions">
+                <button onclick="saveModel()" class="save-btn">Save Model</button>
+                <button onclick="resetModelForm()" class="copy-btn">Clear</button>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <h2 id="variantFormTitle">Add Vehicle Variant</h2>
+
+            <input type="hidden" id="variantId">
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Model</label>
+                    <select id="variantModelId">
+                        <option value="">Select Model</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Variant Name</label>
+                    <input id="variantName" placeholder="AX7 Diesel AT">
+                </div>
+
+                <div class="field-group">
+                    <label>Transmission</label>
+                    <input id="variantTransmission" placeholder="Manual / Automatic">
+                </div>
+
+                <div class="field-group">
+                    <label>Fuel Type</label>
+                    <input id="variantFuelType" placeholder="Diesel">
+                </div>
+
+                <div class="field-group">
+                    <label>Price Range</label>
+                    <input id="variantPriceRange" placeholder="₹18L - ₹24L">
+                </div>
+
+                <div class="field-group">
+                    <label>Status</label>
+                    <select id="variantStatus">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="report-actions">
+                <button onclick="saveVariant()" class="save-btn">Save Variant</button>
+                <button onclick="resetVariantForm()" class="copy-btn">Clear</button>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <h2 id="colorFormTitle">Add Vehicle Color</h2>
+
+            <input type="hidden" id="colorId">
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Model</label>
+                    <select id="colorModelId">
+                        <option value="">Select Model</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Color Name</label>
+                    <input id="colorName" placeholder="Everest White">
+                </div>
+
+                <div class="field-group">
+                    <label>Status</label>
+                    <select id="colorStatus">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="report-actions">
+                <button onclick="saveColor()" class="save-btn">Save Color</button>
+                <button onclick="resetColorForm()" class="copy-btn">Clear</button>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Vehicle Models</h2>
+                <p>Master list of available vehicle models.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Brand</th>
+                        <th>Category</th>
+                        <th>Fuel</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="modelTable"></tbody>
+            </table>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Vehicle Variants</h2>
+                <p>Variant-wise sales and stock intelligence foundation.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Variant</th>
+                        <th>Transmission</th>
+                        <th>Fuel</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="variantTable"></tbody>
+            </table>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Vehicle Colors</h2>
+                <p>Model-wise color options for enquiries and stock planning.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Color</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="colorTable"></tbody>
+            </table>
+        </section>
+    </main>
+</div>
+
+<script src="./js/crm-common.js"></script>
+<script>
+    loadLayout('vehicles');
+</script>
+<script src="./js/vehicles.js"></script>
+</body>
+</html>

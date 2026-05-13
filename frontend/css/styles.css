@@ -2628,3 +2628,89 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
         grid-template-columns: 1fr;
     }
 }
+
+.compact-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.icon-btn,
+.icon-link {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.icon-btn:hover,
+.icon-link:hover {
+    transform: translateY(-2px) scale(1.05);
+}
+
+/* View */
+.view-btn {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+/* Follow-up */
+.followup-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+/* OTP Verify */
+.verify-btn {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+}
+
+/* Enquiry */
+.enquiry-btn {
+    background: linear-gradient(135deg, #9333ea, #7e22ce);
+}
+
+/* Call */
+.icon-link {
+    background: linear-gradient(135deg, #0f766e, #115e59);
+}
+
+/* WhatsApp */
+.icon-link.whatsapp {
+    background: linear-gradient(135deg, #22c55e, #15803d);
+}
+#otpInfo {
+    background: #eefbf1;
+    border: 1px solid #b7ebc6;
+    color: #14532d;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+#otpInfo strong {
+    color: #166534;
+}
+
+#otpInfo .not-verified {
+    color: #dc2626;
+    font-weight: 700;
+}
+
+#otpInfo .verified {
+    color: #16a34a;
+    font-weight: 700;
+}
