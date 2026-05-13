@@ -22,11 +22,15 @@ function normalizeRole(role) {
         "admin",
         "sales",
         "manager",
+        "team_leader",
+        "branch_manager",
         "telecaller",
         "marketing",
         "field",
         "finance",
+        "insurance",
         "service",
+        "accessories",
         "view_only"
     ];
 
@@ -68,8 +72,156 @@ function requireAdmin(req, res, next) {
     next();
 }
 
+let authSchemaReady = false;
+
+async function ensureAuthSchema() {
+    if (authSchemaReady) return;
+
+    await db.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
+
+    await db.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS user_code TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS department_id BIGINT,
+        ADD COLUMN IF NOT EXISTS branch_id BIGINT,
+        ADD COLUMN IF NOT EXISTS designation TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS manager_id BIGINT,
+        ADD COLUMN IF NOT EXISTS data_scope TEXT DEFAULT 'OWN',
+        ADD COLUMN IF NOT EXISTS can_view BOOLEAN DEFAULT true,
+        ADD COLUMN IF NOT EXISTS can_create BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS can_edit BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS can_assign BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS can_delete BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS can_export BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS can_monitor BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE',
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW(),
+        ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ
+    `);
+
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS departments (
+            id BIGSERIAL PRIMARY KEY,
+            name TEXT,
+            code TEXT,
+            department_name TEXT,
+            department_code TEXT,
+            description TEXT DEFAULT '',
+            status TEXT DEFAULT 'ACTIVE',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    `);
+
+    await db.query(`ALTER TABLE departments ADD COLUMN IF NOT EXISTS name TEXT`);
+    await db.query(`ALTER TABLE departments ADD COLUMN IF NOT EXISTS code TEXT`);
+    await db.query(`ALTER TABLE departments ADD COLUMN IF NOT EXISTS department_name TEXT`);
+    await db.query(`ALTER TABLE departments ADD COLUMN IF NOT EXISTS department_code TEXT`);
+    await db.query(`ALTER TABLE departments ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
+    await db.query(`ALTER TABLE departments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE'`);
+    await db.query(`ALTER TABLE departments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`);
+
+    await db.query(`
+        UPDATE departments
+        SET
+            name = COALESCE(NULLIF(name, ''), department_name),
+            code = COALESCE(NULLIF(code, ''), department_code),
+            department_name = COALESCE(NULLIF(department_name, ''), name),
+            department_code = COALESCE(NULLIF(department_code, ''), code),
+            status = COALESCE(NULLIF(status, ''), 'ACTIVE')
+    `);
+
+    await db.query(`
+        INSERT INTO departments (name, code, department_name, department_code, description, status)
+        VALUES
+            ('Admin', 'ADMIN', 'Admin', 'ADMIN', 'Administration department', 'ACTIVE'),
+            ('Sales', 'SALES', 'Sales', 'SALES', 'Sales department', 'ACTIVE'),
+            ('Marketing', 'MARKETING', 'Marketing', 'MARKETING', 'Marketing department', 'ACTIVE'),
+            ('Service', 'SERVICE', 'Service', 'SERVICE', 'Service department', 'ACTIVE'),
+            ('Accessories', 'ACCESSORIES', 'Accessories', 'ACCESSORIES', 'Accessories department', 'ACTIVE'),
+            ('Finance', 'FINANCE', 'Finance', 'FINANCE', 'Finance department', 'ACTIVE'),
+            ('Insurance', 'INSURANCE', 'Insurance', 'INSURANCE', 'Insurance department', 'ACTIVE'),
+            ('Field Team', 'FIELD', 'Field Team', 'FIELD', 'Field activity department', 'ACTIVE')
+        ON CONFLICT DO NOTHING
+    `);
+
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS permission_master (
+            id BIGSERIAL PRIMARY KEY,
+            permission_key TEXT UNIQUE NOT NULL,
+            permission_label TEXT DEFAULT '',
+            module_name TEXT DEFAULT 'General',
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    `);
+
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS user_permissions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            permission_key TEXT NOT NULL,
+            allowed BOOLEAN DEFAULT true,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, permission_key)
+        )
+    `);
+
+    await db.query(`
+        INSERT INTO permission_master (permission_key, permission_label, module_name)
+        VALUES
+            ('leads.view', 'View Leads', 'Leads'),
+            ('leads.create', 'Create Leads', 'Leads'),
+            ('leads.edit', 'Edit Leads', 'Leads'),
+            ('leads.assign', 'Assign Leads', 'Leads'),
+            ('leads.export', 'Export Leads', 'Leads'),
+            ('followups.view', 'View Follow-ups', 'Follow-ups'),
+            ('followups.create', 'Create Follow-ups', 'Follow-ups'),
+            ('reports.view', 'View Reports', 'Reports'),
+            ('reports.send', 'Send Reports', 'Reports'),
+            ('branches.manage', 'Manage Branches', 'Branches'),
+            ('departments.manage', 'Manage Departments', 'Departments'),
+            ('users.manage', 'Manage Users', 'Users'),
+            ('performance.monitor', 'Monitor Performance', 'Performance'),
+            ('campaigns.view', 'View Campaigns', 'Marketing'),
+            ('field.checkin', 'Field Check-in', 'Field'),
+            ('field.upload_photo', 'Upload Field Photo', 'Field')
+        ON CONFLICT (permission_key) DO NOTHING
+    `);
+
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS branches (
+            id BIGSERIAL PRIMARY KEY,
+            branch_name TEXT NOT NULL DEFAULT '',
+            branch_code TEXT NOT NULL DEFAULT '',
+            address TEXT DEFAULT '',
+            area TEXT DEFAULT '',
+            city TEXT DEFAULT '',
+            district TEXT DEFAULT '',
+            state TEXT DEFAULT '',
+            pincode TEXT DEFAULT '',
+            latitude TEXT,
+            longitude TEXT,
+            manager_id BIGINT,
+            phone TEXT DEFAULT '',
+            email TEXT DEFAULT '',
+            status TEXT DEFAULT 'ACTIVE',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    `);
+
+    await db.query(`ALTER TABLE branches ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT ''`);
+    await db.query(`ALTER TABLE branches ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''`);
+    await db.query(`ALTER TABLE branches ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE'`);
+    await db.query(`ALTER TABLE branches ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`);
+
+    authSchemaReady = true;
+}
+
 async function optionalAdminForRegister(req, res, next) {
     try {
+        await ensureAuthSchema();
         const count = await db.query("SELECT COUNT(*)::int AS count FROM users");
         const hasUsers = count.rows[0].count > 0;
 
@@ -178,8 +330,8 @@ async function getFullUserById(userId) {
             u.phone,
             u.role,
             u.department_id,
-            d.name AS department_name,
-            d.code AS department_code,
+            COALESCE(d.department_name, d.name) AS department_name,
+            COALESCE(d.department_code, d.code) AS department_code,
             u.branch_id,
             b.branch_name,
             b.branch_code,
@@ -399,6 +551,7 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
 ===================================================== */
 router.post("/login", async (req, res) => {
     try {
+        await ensureAuthSchema();
         const email = cleanText(req.body.email).toLowerCase();
         const password = String(req.body.password || "");
 
@@ -418,8 +571,8 @@ router.post("/login", async (req, res) => {
                 u.phone,
                 u.role,
                 u.department_id,
-                d.name AS department_name,
-                d.code AS department_code,
+                COALESCE(d.department_name, d.name) AS department_name,
+                COALESCE(d.department_code, d.code) AS department_code,
                 u.branch_id,
                 b.branch_name,
                 b.branch_code,
@@ -496,6 +649,7 @@ router.post("/login", async (req, res) => {
 ===================================================== */
 router.get("/me", auth, async (req, res) => {
     try {
+        await ensureAuthSchema();
         const safeUser = await getFullUserById(req.user.id);
 
         if (!safeUser) {
@@ -519,6 +673,7 @@ router.get("/me", auth, async (req, res) => {
 ===================================================== */
 router.get("/users", auth, requireAdmin, async (req, res) => {
     try {
+        await ensureAuthSchema();
         const result = await db.query(`
             SELECT 
                 u.id,
@@ -528,8 +683,8 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
                 u.phone,
                 u.role,
                 u.department_id,
-                d.name AS department_name,
-                d.code AS department_code,
+                COALESCE(d.department_name, d.name) AS department_name,
+                COALESCE(d.department_code, d.code) AS department_code,
                 u.branch_id,
                 b.branch_name,
                 b.branch_code,
@@ -576,6 +731,7 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
 ===================================================== */
 router.put("/user/:id", auth, requireAdmin, async (req, res) => {
     try {
+        await ensureAuthSchema();
         const userId = parseId(req.params.id);
 
         if (!userId) {
@@ -669,6 +825,7 @@ router.put("/user/:id", auth, requireAdmin, async (req, res) => {
 ===================================================== */
 router.delete("/user/:id", auth, requireAdmin, async (req, res) => {
     try {
+        await ensureAuthSchema();
         const id = parseId(req.params.id);
 
         if (!id) {
@@ -705,11 +862,19 @@ router.delete("/user/:id", auth, requireAdmin, async (req, res) => {
 ===================================================== */
 router.get("/departments", auth, requireAdmin, async (req, res) => {
     try {
+        await ensureAuthSchema();
         const result = await db.query(`
-            SELECT id, name, code, description, status
+            SELECT
+                id,
+                COALESCE(department_name, name) AS name,
+                COALESCE(department_code, code) AS code,
+                COALESCE(department_name, name) AS department_name,
+                COALESCE(department_code, code) AS department_code,
+                description,
+                status
             FROM departments
-            WHERE status = 'ACTIVE'
-            ORDER BY name ASC
+            WHERE COALESCE(status, 'ACTIVE') = 'ACTIVE'
+            ORDER BY COALESCE(department_name, name) ASC
         `);
 
         res.json(result.rows);
@@ -727,6 +892,7 @@ router.get("/departments", auth, requireAdmin, async (req, res) => {
 ===================================================== */
 router.get("/branches", auth, requireAdmin, async (req, res) => {
     try {
+        await ensureAuthSchema();
         const result = await db.query(`
             SELECT 
                 id,

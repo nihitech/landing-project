@@ -290,3 +290,64 @@ ON CONFLICT (role_code) DO UPDATE SET
     role_name = EXCLUDED.role_name,
     description = EXCLUDED.description,
     status = EXCLUDED.status;
+
+-- =====================================================
+-- User Management Safe Upgrade: Branch / Department / Role / Scope / Flags
+-- Safe to run multiple times.
+-- =====================================================
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS user_code TEXT DEFAULT '',
+ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '',
+ADD COLUMN IF NOT EXISTS department_id BIGINT,
+ADD COLUMN IF NOT EXISTS branch_id BIGINT,
+ADD COLUMN IF NOT EXISTS designation TEXT DEFAULT '',
+ADD COLUMN IF NOT EXISTS manager_id BIGINT,
+ADD COLUMN IF NOT EXISTS data_scope TEXT DEFAULT 'OWN',
+ADD COLUMN IF NOT EXISTS can_view BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS can_create BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS can_edit BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS can_assign BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS can_delete BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS can_export BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS can_monitor BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE',
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW(),
+ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS permission_master (
+    id BIGSERIAL PRIMARY KEY,
+    permission_key TEXT UNIQUE NOT NULL,
+    permission_label TEXT DEFAULT '',
+    module_name TEXT DEFAULT 'General',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_permissions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    permission_key TEXT NOT NULL,
+    allowed BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, permission_key)
+);
+
+INSERT INTO permission_master (permission_key, permission_label, module_name)
+VALUES
+    ('leads.view', 'View Leads', 'Leads'),
+    ('leads.create', 'Create Leads', 'Leads'),
+    ('leads.edit', 'Edit Leads', 'Leads'),
+    ('leads.assign', 'Assign Leads', 'Leads'),
+    ('leads.export', 'Export Leads', 'Leads'),
+    ('followups.view', 'View Follow-ups', 'Follow-ups'),
+    ('followups.create', 'Create Follow-ups', 'Follow-ups'),
+    ('reports.view', 'View Reports', 'Reports'),
+    ('reports.send', 'Send Reports', 'Reports'),
+    ('branches.manage', 'Manage Branches', 'Branches'),
+    ('departments.manage', 'Manage Departments', 'Departments'),
+    ('users.manage', 'Manage Users', 'Users'),
+    ('performance.monitor', 'Monitor Performance', 'Performance'),
+    ('campaigns.view', 'View Campaigns', 'Marketing'),
+    ('field.checkin', 'Field Check-in', 'Field'),
+    ('field.upload_photo', 'Upload Field Photo', 'Field')
+ON CONFLICT (permission_key) DO NOTHING;

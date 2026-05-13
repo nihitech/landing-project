@@ -1,6 +1,7 @@
 let users = [];
 let departments = [];
 let branches = [];
+let roles = [];
 
 function checkbox(id) {
     return document.getElementById(id)?.checked === true;
@@ -59,6 +60,44 @@ function renderBranchOptions() {
     `).join("");
 }
 
+async function loadRoles() {
+    try {
+        roles = await request(`${API}/permissions/roles`, {
+            headers: authHeaders()
+        });
+    } catch (e) {
+        roles = [
+            { role_name: "Admin", role_code: "admin" },
+            { role_name: "Manager", role_code: "manager" },
+            { role_name: "Team Leader", role_code: "team_leader" },
+            { role_name: "Sales", role_code: "sales" },
+            { role_name: "Telecaller", role_code: "telecaller" },
+            { role_name: "Marketing", role_code: "marketing" },
+            { role_name: "Field Executive", role_code: "field" },
+            { role_name: "Finance", role_code: "finance" },
+            { role_name: "Service", role_code: "service" },
+            { role_name: "View Only", role_code: "view_only" }
+        ];
+    }
+
+    renderRoleOptions();
+}
+
+function renderRoleOptions() {
+    const select = document.getElementById("urole");
+    if (!select) return;
+
+    const current = select.value || "";
+
+    select.innerHTML = `<option value="">Select Role</option>` + roles
+        .filter(r => String(r.status || "ACTIVE").toUpperCase() === "ACTIVE")
+        .map(r => `
+            <option value="${safe(r.role_code)}">${safe(r.role_name)} (${safe(r.role_code)})</option>
+        `).join("");
+
+    if (current) select.value = current;
+}
+
 function renderManagerOptions() {
     const select = document.getElementById("u_manager");
     if (!select) return;
@@ -78,6 +117,7 @@ async function loadPage() {
     requireAdminPage();
 
     await loadDepartmentsAndBranches();
+    await loadRoles();
 
     users = await request(`${API}/auth/users`, {
         headers: authHeaders()
