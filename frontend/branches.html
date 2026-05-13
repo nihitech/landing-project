@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Branch Management</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body class="crm-v2">
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="module-header">
+            <div>
+                <span class="tag">Dealer CRM</span>
+                <h1>🏢 Branch Management</h1>
+                <p>Create, update and monitor dealership branches.</p>
+            </div>
+            <div class="module-actions">
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <section class="table-card">
+            <h2 id="branchFormTitle">Add New Branch</h2>
+
+            <input type="hidden" id="branchId">
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Branch Name</label>
+                    <input id="branchName" placeholder="Main Branch">
+                </div>
+
+                <div class="field-group">
+                    <label>Branch Code</label>
+                    <input id="branchCode" placeholder="MAIN">
+                </div>
+
+                <div class="field-group">
+                    <label>Manager</label>
+                    <select id="managerId">
+                        <option value="">Select Manager</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Phone</label>
+                    <input id="branchPhone" placeholder="9876543210">
+                </div>
+
+                <div class="field-group">
+                    <label>Email</label>
+                    <input id="branchEmail" placeholder="branch@example.com">
+                </div>
+
+                <div class="field-group">
+                    <label>Status</label>
+                    <select id="branchStatus">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Address</label>
+                    <input id="branchAddress" placeholder="Full address">
+                </div>
+
+                <div class="field-group">
+                    <label>Area</label>
+                    <input id="branchArea" placeholder="Area">
+                </div>
+
+                <div class="field-group">
+                    <label>City</label>
+                    <input id="branchCity" placeholder="City">
+                </div>
+
+                <div class="field-group">
+                    <label>District</label>
+                    <input id="branchDistrict" placeholder="District">
+                </div>
+
+                <div class="field-group">
+                    <label>State</label>
+                    <input id="branchState" placeholder="State">
+                </div>
+
+                <div class="field-group">
+                    <label>Pincode</label>
+                    <input id="branchPincode" placeholder="620001">
+                </div>
+
+                <div class="field-group">
+                    <label>Latitude</label>
+                    <input id="branchLatitude" placeholder="10.7905">
+                </div>
+
+                <div class="field-group">
+                    <label>Longitude</label>
+                    <input id="branchLongitude" placeholder="78.7047">
+                </div>
+            </div>
+
+            <div class="report-actions">
+                <button onclick="saveBranch()" class="save-btn">Save Branch</button>
+                <button onclick="resetBranchForm()" class="copy-btn">Clear</button>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Branch List</h2>
+                <p>All active and inactive branches.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Branch</th>
+                        <th>Code</th>
+                        <th>Location</th>
+                        <th>Manager</th>
+                        <th>Contact</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="branchTable"></tbody>
+            </table>
+        </section>
+    </main>
+</div>
+
+<script src="./js/crm-common.js"></script>
+<script>
+    loadLayout('branches');
+</script>
+<script src="./js/branches.js"></script>
+</body>
+</html>
