@@ -1,92 +1,162 @@
 
 let users = [], allLeads = [];
-const VEHICLE_COLORS = {
-    "XUV700": [
-        "Everest White",
-        "Midnight Black",
-        "Dazzling Silver",
-        "Red Rage",
-        "Electric Blue"
-    ],
-
-    "Scorpio N": [
-        "Everest White",
-        "Deep Forest",
-        "Napoli Black",
-        "Red Rage",
-        "Dazzling Silver"
-    ],
-
-    "Scorpio Classic": [
-        "Galaxy Grey",
-        "Molten Red Rage",
-        "Napoli Black",
-        "Everest White"
-    ],
-
-    "Thar": [
-        "Everest White",
-        "Stealth Black",
-        "Deep Grey",
-        "Red Rage",
-        "Desert Fury"
-    ],
-
-    "Thar ROXX": [
-        "Nebula Blue",
-        "Stealth Black",
-        "Everest White",
-        "Deep Forest",
-        "Burnt Sienna"
-    ],
-
-    "XUV 3XO": [
-        "Everest White",
-        "Stealth Black",
-        "Dune Beige",
-        "Nebula Blue",
-        "Red Rage"
-    ],
-
-    "Bolero": [
-        "Diamond White",
-        "Lakeside Brown",
-        "Dsat Silver"
-    ],
-
-    "Bolero Neo": [
-        "Diamond White",
-        "Napoli Black",
-        "Majestic Silver"
-    ],
-
-    "XUV400 EV": [
-        "Arctic Blue",
-        "Everest White",
-        "Napoli Black",
-        "Galaxy Grey"
-    ],
-
-    "BE 6": [
-        "Desert Myst",
-        "Deep Forest",
-        "Tango Red",
-        "Everest White",
-        "Stealth Black"
-    ],
-
-    "XEV 9e": [
-        "Nebula Blue",
-        "Desert Myst",
-        "Deep Forest",
-        "Everest White",
-        "Stealth Black"
-    ]
-};
-
+let vehicleModels = [];
+let vehicleVariants = [];
+let vehicleColors = [];
 async function loadUsers() {
     if (user.role !== "admin") return;
     users = await request(`${API}/auth/users`, { headers: authHeaders() });
+}
+
+async function loadVehicleMasters() {
+    try {
+        const [models, variants, colors] = await Promise.all([
+            request(`${API}/vehicles/models`, {
+                headers: authHeaders()
+            }),
+
+            request(`${API}/vehicles/variants`, {
+                headers: authHeaders()
+            }),
+
+            request(`${API}/vehicles/colors`, {
+                headers: authHeaders()
+            })
+        ]);
+
+        vehicleModels = models || [];
+        vehicleVariants = variants || [];
+        vehicleColors = colors || [];
+
+    } catch (err) {
+        console.error("Vehicle master load failed:", err.message);
+    }
+}
+
+function loadVehicleModels() {
+    const category = document.getElementById("e_vehicle_category")?.value;
+    const modelSelect = document.getElementById("e_car");
+
+    if (!modelSelect) return;
+
+    const filtered = category
+        ? vehicleModels.filter(
+            m => String(m.vehicle_category || "") === String(category)
+        )
+        : vehicleModels;
+
+    modelSelect.innerHTML =
+        `<option value="">Select Model</option>` +
+        filtered.map(model => `
+            <option value="${model.model_name}">
+                ${model.model_name}
+            </option>
+        `).join("");
+        const fuelSelect = document.getElementById("e_fuel_type");
+        if (fuelSelect) {
+            fuelSelect.innerHTML = `<option value="">Select Fuel Type</option>`;
+        }
+}
+
+function loadVehicleVariants() {
+    const model = document.getElementById("e_car")?.value;
+    const variantSelect = document.getElementById("e_variant");
+
+    if (!variantSelect) return;
+
+    variantSelect.innerHTML =
+        `<option value="">Select Variant</option>`;
+
+    if (!model) return;
+
+    const selectedModel = vehicleModels.find(
+        m => String(m.model_name) === String(model)
+    );
+
+    if (!selectedModel) return;
+
+    const fuelSelect = document.getElementById("e_fuel_type");
+if (fuelSelect) {
+    const fuelTypes = [
+        selectedModel.fuel_type,
+        ...vehicleVariants
+            .filter(v => Number(v.model_id) === Number(selectedModel.id))
+            .map(v => v.fuel_type)
+    ]
+        .filter(Boolean)
+        .map(v => String(v).trim())
+        .filter((v, i, arr) => arr.indexOf(v) === i);
+
+    fuelSelect.innerHTML =
+        `<option value="">Select Fuel Type</option>` +
+        fuelTypes.map(fuel => `
+            <option value="${fuel}">
+                ${fuel}
+            </option>
+        `).join("");
+}
+
+    const filteredVariants = vehicleVariants.filter(
+        v => Number(v.model_id) === Number(selectedModel.id)
+    );
+
+    variantSelect.innerHTML += filteredVariants.map(variant => `
+        <option value="${variant.variant_name}">
+            ${variant.variant_name}
+        </option>
+    `).join("");
+}
+
+function loadVehicleColors() {
+    const model = document.getElementById("e_car")?.value;
+    const colorSelect = document.getElementById("e_color");
+
+    if (!colorSelect) return;
+
+    colorSelect.innerHTML =
+        `<option value="">Select Color</option>`;
+
+    if (!model) return;
+
+    const selectedModel = vehicleModels.find(
+        m => String(m.model_name) === String(model)
+    );
+
+    if (!selectedModel) return;
+
+    const filteredColors = vehicleColors.filter(
+        c => Number(c.model_id) === Number(selectedModel.id)
+    );
+
+    colorSelect.innerHTML += filteredColors.map(color => `
+        <option value="${color.color_name}">
+            ${color.color_name}
+        </option>
+    `).join("");
+}
+
+function syncFuelTypeFromVariant() {
+    const model = document.getElementById("e_car")?.value;
+    const variant = document.getElementById("e_variant")?.value;
+    const fuelSelect = document.getElementById("e_fuel_type");
+
+    if (!model || !variant || !fuelSelect) return;
+
+    const selectedModel = vehicleModels.find(
+        m => String(m.model_name) === String(model)
+    );
+
+    if (!selectedModel) return;
+
+    const selectedVariant = vehicleVariants.find(
+        v =>
+            Number(v.model_id) === Number(selectedModel.id) &&
+            String(v.variant_name) === String(variant)
+    );
+
+    if (selectedVariant?.fuel_type) {
+        fuelSelect.value = selectedVariant.fuel_type;
+    }
 }
 
 async function loadBranches() {
@@ -548,20 +618,7 @@ async function saveEnquiry() {
         toast(e.message, true);
     }
 }
-function loadVehicleColors() {
-    const model = document.getElementById("e_car")?.value;
-    const colorSelect = document.getElementById("e_color");
 
-    if (!colorSelect) return;
-
-    colorSelect.innerHTML = `<option value="">Select Color</option>`;
-
-    if (!model || !VEHICLE_COLORS[model]) return;
-
-    VEHICLE_COLORS[model].forEach(color => {
-        colorSelect.innerHTML += `<option value="${color}">${color}</option>`;
-    });
-}
 function openFollowup(id) {
     const modal = document.getElementById("followupModal");
 
@@ -738,6 +795,7 @@ window.saveEnquiry = saveEnquiry;
 window.loadVehicleModels = loadVehicleModels;
 window.loadVehicleVariants = loadVehicleVariants;
 window.loadVehicleColors = loadVehicleColors;
+window.syncFuelTypeFromVariant = syncFuelTypeFromVariant;
 window.loadBranches = loadBranches;
 window.onload = async () => {
     if (user.role !== "admin") {
@@ -747,6 +805,7 @@ window.onload = async () => {
     initDragDrop();
 
     try {
+        await loadVehicleMasters();
         await loadUsers();
         await loadBranches();
         await loadPage();
