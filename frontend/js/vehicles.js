@@ -10,6 +10,13 @@ function isAdmin() {
     return user?.role === "admin";
 }
 
+function canManageVehicles() {
+    const role = String(user?.role || "").toLowerCase();
+    const managerRoles = ["admin", "manager", "branch_manager", "team_leader"];
+
+    return managerRoles.includes(role) || user?.can_create === true || user?.can_edit === true;
+}
+
 function modelNameById(modelId) {
     const model = vehicleModels.find(m => Number(m.id) === Number(modelId));
     return model?.model_name || "-";
@@ -160,8 +167,8 @@ function getModelPayload() {
 }
 
 async function saveModel() {
-    if (!isAdmin()) {
-        toast("Only admin can save vehicle models", true);
+    if (!canManageVehicles()) {
+        toast("You do not have permission to save vehicle models", true);
         return;
     }
 
@@ -245,8 +252,8 @@ function getVariantPayload() {
 }
 
 async function saveVariant() {
-    if (!isAdmin()) {
-        toast("Only admin can save variants", true);
+    if (!canManageVehicles()) {
+        toast("You do not have permission to save variants", true);
         return;
     }
 
@@ -329,8 +336,8 @@ function getColorPayload() {
 }
 
 async function saveColor() {
-    if (!isAdmin()) {
-        toast("Only admin can save colors", true);
+    if (!canManageVehicles()) {
+        toast("You do not have permission to save colors", true);
         return;
     }
 
@@ -411,8 +418,8 @@ window.deactivateColor = deactivateColor;
 window.resetColorForm = resetColorForm;
 
 window.onload = async () => {
-    if (!isAdmin()) {
-        toast("Only admin can access Vehicle Master", true);
+    if (!canManageVehicles()) {
+        toast("You do not have permission to access Vehicle Master", true);
         setTimeout(() => {
             window.location.href = "dashboard.html";
         }, 1200);

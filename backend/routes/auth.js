@@ -88,6 +88,7 @@ async function ensureAuthSchema() {
         ADD COLUMN IF NOT EXISTS designation TEXT DEFAULT '',
         ADD COLUMN IF NOT EXISTS manager_id BIGINT,
         ADD COLUMN IF NOT EXISTS data_scope TEXT DEFAULT 'OWN',
+        ADD COLUMN IF NOT EXISTS vehicle_category_scope TEXT DEFAULT 'ALL',
         ADD COLUMN IF NOT EXISTS can_view BOOLEAN DEFAULT true,
         ADD COLUMN IF NOT EXISTS can_create BOOLEAN DEFAULT false,
         ADD COLUMN IF NOT EXISTS can_edit BOOLEAN DEFAULT false,
@@ -306,6 +307,7 @@ async function buildSafeUser(userRow) {
         manager_name: userRow.manager_name || "",
 
         data_scope: userRow.data_scope || "OWN",
+        vehicle_category_scope: userRow.vehicle_category_scope || "ALL",
 
         can_view: userRow.can_view !== false,
         can_create: userRow.can_create === true,
@@ -339,6 +341,7 @@ async function getFullUserById(userId) {
             u.manager_id,
             m.name AS manager_name,
             u.data_scope,
+            u.vehicle_category_scope,
             u.can_view,
             u.can_create,
             u.can_edit,
@@ -464,6 +467,7 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
                 designation,
                 manager_id,
                 data_scope,
+                vehicle_category_scope,
                 can_view,
                 can_create,
                 can_edit,
@@ -475,7 +479,7 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
             )
             VALUES (
                 $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-                $11,$12,$13,$14,$15,$16,$17,$18,$19
+                $11,$12,$13,$14,$15,$16,$17,$18,$19,$20
             )
             RETURNING id
         `, [
@@ -490,6 +494,7 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
             cleanText(req.body.designation),
             requestedManagerId,
             dataScope,
+            cleanText(req.body.vehicle_category_scope || "ALL").toUpperCase(),
             canView,
             canCreate,
             canEdit,
@@ -580,6 +585,7 @@ router.post("/login", async (req, res) => {
                 u.manager_id,
                 m.name AS manager_name,
                 u.data_scope,
+                u.vehicle_category_scope,
                 u.can_view,
                 u.can_create,
                 u.can_edit,
@@ -701,7 +707,8 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
                 u.can_monitor,
                 u.status,
                 u.created_at,
-                u.last_login_at
+                u.last_login_at,
+                u.vehicle_category_scope
             FROM users u
             LEFT JOIN departments d ON u.department_id = d.id
             LEFT JOIN branches b ON u.branch_id = b.id
@@ -767,16 +774,17 @@ router.put("/user/:id", auth, requireAdmin, async (req, res) => {
                 designation = $7,
                 manager_id = $8,
                 data_scope = $9,
-                can_view = $10,
-                can_create = $11,
-                can_edit = $12,
-                can_assign = $13,
-                can_delete = $14,
-                can_export = $15,
-                can_monitor = $16,
-                status = $17,
+                vehicle_category_scope = $10,
+                can_view = $11,
+                can_create = $12,
+                can_edit = $13,
+                can_assign = $14,
+                can_delete = $15,
+                can_export = $16,
+                can_monitor = $17,
+                status = $18,
                 updated_at = NOW()
-            WHERE id = $18
+            WHERE id = $19
             RETURNING id
         `, [
             cleanText(req.body.user_code),
@@ -788,6 +796,7 @@ router.put("/user/:id", auth, requireAdmin, async (req, res) => {
             cleanText(req.body.designation),
             managerId,
             normalizeScope(req.body.data_scope, role),
+            cleanText(req.body.vehicle_category_scope || "ALL").toUpperCase(),
             req.body.can_view !== false,
             req.body.can_create === true,
             req.body.can_edit === true,

@@ -12,6 +12,26 @@ function isAdmin() {
     return user?.role === "admin";
 }
 
+function normalizeVehicleCategoryScope(value) {
+    const scope = String(value || "ALL").toUpperCase();
+    return ["ALL", "AD", "EV"].includes(scope) ? scope : "ALL";
+}
+
+function canManageStock() {
+    const role = String(user?.role || "").toLowerCase();
+    const managerRoles = ["admin", "manager", "branch_manager", "team_leader"];
+
+    return managerRoles.includes(role) || user?.can_create === true || user?.can_edit === true;
+}
+
+function modelAllowedByUserScope(model) {
+    const scope = normalizeVehicleCategoryScope(user?.vehicle_category_scope);
+
+    if (scope === "ALL") return true;
+
+    return String(model.vehicle_category || "").toUpperCase() === scope;
+}
+
 function optionHtml(value, label) {
     return `<option value="${value}">${safe(label)}</option>`;
 }
@@ -47,7 +67,10 @@ async function loadMasters() {
 }
 
 function renderMasterOptions() {
-    const activeModels = vehicleModels.filter(m => String(m.status || "ACTIVE") === "ACTIVE");
+    const activeModels = vehicleModels.filter(m =>
+        String(m.status || "ACTIVE") === "ACTIVE" &&
+        modelAllowedByUserScope(m)
+    );
     const activeBranches = branches.filter(b => String(b.status || "ACTIVE") === "ACTIVE");
 
     const modelOptions = `<option value="">Select Model</option>` +
@@ -72,7 +95,41 @@ function renderMasterOptions() {
     if (branchSelect) branchSelect.innerHTML = branchOptions;
     if (filterBranchSelect) filterBranchSelect.innerHTML = filterBranchOptions;
 
+    setupCategoryFilterByUserScope();
     handleStockModelChange();
+}
+
+function setupCategoryFilterByUserScope() {
+    const scope = normalizeVehicleCategoryScope(user?.vehicle_category_scope);
+    const filter = document.getElementById("filterVehicleCategory");
+
+    if (!filter) return;
+
+    if (scope === "AD" || scope === "EV") {
+        filter.value = scope;
+        filter.disabled = true;
+    } else {
+        filter.disabled = false;
+    }
+}
+
+function handleStockCategoryFilterChange() {
+    const category = document.getElementById("filterVehicleCategory")?.value || "";
+    const filterModel = document.getElementById("filterModelId");
+
+    if (filterModel) {
+        const filteredModels = vehicleModels.filter(model => {
+            const active = String(model.status || "ACTIVE") === "ACTIVE";
+            const allowed = modelAllowedByUserScope(model);
+            const categoryMatch = !category || String(model.vehicle_category || "") === category;
+            return active && allowed && categoryMatch;
+        });
+
+        filterModel.innerHTML = `<option value="">All Models</option>` +
+            filteredModels.map(m => optionHtml(m.id, m.model_name)).join("");
+    }
+
+    loadStock();
 }
 
 function handleStockModelChange() {
@@ -170,10 +227,12 @@ function buildStockQuery() {
     const branchId = document.getElementById("filterBranchId")?.value || "";
     const modelId = document.getElementById("filterModelId")?.value || "";
     const stockStatus = document.getElementById("filterStockStatus")?.value || "";
+    const vehicleCategory = document.getElementById("filterVehicleCategory")?.value || "";
 
     if (branchId) params.set("branch_id", branchId);
     if (modelId) params.set("model_id", modelId);
     if (stockStatus) params.set("stock_status", stockStatus);
+    if (vehicleCategory) params.set("vehicle_category", vehicleCategory);
 
     return params.toString();
 }
@@ -217,6 +276,7 @@ function renderStock() {
 
                 <td>
                     <strong>${safe(row.model_name || "-")}</strong>
+                    <small>Category: ${safe(row.vehicle_category || "-")}</small>
                     <small>${safe(row.variant_name || "-")}</small>
                     <small>Color: ${safe(row.color_name || "-")}</small>
                 </td>
@@ -284,8 +344,8 @@ function getStockPayload() {
 }
 
 async function saveStock() {
-    if (!isAdmin()) {
-        toast("Only admin can save stock", true);
+    if (!canManageStock()) {
+        toast("You do not have permission to save stock", true);
         return;
     }
 
@@ -374,8 +434,8 @@ function resetStockForm() {
 }
 
 async function deactivateStock(id) {
-    if (!isAdmin()) {
-        toast("Only admin can deactivate stock", true);
+    if (!canManageStock()) {
+        toast("You do not have permission to deactivate stock", true);
         return;
     }
 
@@ -396,6 +456,7 @@ async function deactivateStock(id) {
 }
 
 window.handleStockModelChange = handleStockModelChange;
+window.handleStockCategoryFilterChange = handleStockCategoryFilterChange;
 window.loadStock = loadStock;
 window.saveStock = saveStock;
 window.editStock = editStock;
@@ -404,8 +465,8 @@ window.resetStockForm = resetStockForm;
 window.handleStockStatusFields = handleStockStatusFields;
 
 window.onload = async () => {
-    if (!isAdmin()) {
-        toast("Only admin can access Stock Intelligence", true);
+    if (!canManageStock()) {
+        toast("You do not have permission to access Stock Intelligence", true);
         setTimeout(() => {
             window.location.href = "dashboard.html";
         }, 1200);

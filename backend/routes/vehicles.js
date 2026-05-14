@@ -8,12 +8,67 @@ function normalizeRole(role) {
     return String(role || "").trim().toLowerCase();
 }
 
-function requireAdmin(req, res, next) {
-    if (normalizeRole(req.user?.role) !== "admin") {
-        return res.status(403).json({ message: "Admin access required" });
+function isAdminUser(req) {
+    return normalizeRole(req.user?.role) === "admin";
+}
+
+function normalizeVehicleCategoryScope(value) {
+    const scope = String(value || "ALL").trim().toUpperCase();
+    return ["ALL", "AD", "EV"].includes(scope) ? scope : "ALL";
+}
+
+function canManageVehicles(req) {
+    if (isAdminUser(req)) return true;
+
+    const role = normalizeRole(req.user?.role);
+    const managerRoles = ["manager", "branch_manager", "team_leader"];
+
+    return managerRoles.includes(role) || req.user?.can_edit === true || req.user?.can_create === true;
+}
+
+function requireVehicleManage(req, res, next) {
+    if (!canManageVehicles(req)) {
+        return res.status(403).json({ message: "You do not have permission to manage vehicles" });
     }
 
     next();
+}
+
+function appendVehicleCategoryScope(req, clauses, values, alias = "m") {
+    if (isAdminUser(req)) return;
+
+    const categoryScope = normalizeVehicleCategoryScope(req.user?.vehicle_category_scope);
+
+    if (categoryScope === "ALL") return;
+
+    values.push(categoryScope);
+    clauses.push(`UPPER(COALESCE(${alias}.vehicle_category, '')) = $${values.length}`);
+}
+
+function requestedCategoryAllowed(req, category) {
+    if (isAdminUser(req)) return true;
+
+    const categoryScope = normalizeVehicleCategoryScope(req.user?.vehicle_category_scope);
+    if (categoryScope === "ALL") return true;
+
+    return normalizeVehicleCategoryScope(category) === categoryScope;
+}
+
+async function ensureModelAllowedForUser(req, modelId) {
+    if (isAdminUser(req)) return true;
+
+    const categoryScope = normalizeVehicleCategoryScope(req.user?.vehicle_category_scope);
+    if (categoryScope === "ALL") return true;
+
+    const result = await db.query(`
+        SELECT id
+        FROM vehicle_models
+        WHERE id = $1
+        AND UPPER(COALESCE(vehicle_category, '')) = $2
+        LIMIT 1
+    `, [modelId, categoryScope]);
+
+    return result.rows.length > 0;
 }
 
 function cleanText(value) {
@@ -30,11 +85,27 @@ function parseId(value) {
 ================================ */
 router.get("/models", auth, async (req, res) => {
     try {
+        const clauses = [];
+        const values = [];
+
+        if (req.query.vehicle_category) {
+            const category = normalizeVehicleCategoryScope(req.query.vehicle_category);
+            if (category !== "ALL") {
+                values.push(category);
+                clauses.push(`UPPER(COALESCE(m.vehicle_category, '')) = $${values.length}`);
+            }
+        }
+
+        appendVehicleCategoryScope(req, clauses, values, "m");
+
+        const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+
         const result = await db.query(`
-            SELECT *
-            FROM vehicle_models
-            ORDER BY model_name ASC
-        `);
+            SELECT m.*
+            FROM vehicle_models m
+            ${where}
+            ORDER BY m.model_name ASC
+        `, values);
 
         res.json(result.rows);
     } catch (err) {
@@ -43,12 +114,18 @@ router.get("/models", auth, async (req, res) => {
     }
 });
 
-router.post("/models", auth, requireAdmin, async (req, res) => {
+router.post("/models", auth, requireVehicleManage, async (req, res) => {
     try {
         const modelName = cleanText(req.body.model_name);
 
         if (!modelName) {
             return res.status(400).json({ message: "Model name is required" });
+        }
+
+        const vehicleCategory = normalizeVehicleCategoryScope(req.body.vehicle_category);
+
+        if (!requestedCategoryAllowed(req, vehicleCategory)) {
+            return res.status(403).json({ message: "You cannot create vehicles outside your category scope" });
         }
 
         const result = await db.query(`
@@ -65,7 +142,7 @@ router.post("/models", auth, requireAdmin, async (req, res) => {
         `, [
             cleanText(req.body.brand_name || "Mahindra"),
             modelName,
-            cleanText(req.body.vehicle_category),
+            vehicleCategory,
             cleanText(req.body.fuel_type),
             cleanText(req.body.status || "ACTIVE").toUpperCase()
         ]);
@@ -81,12 +158,18 @@ router.post("/models", auth, requireAdmin, async (req, res) => {
     }
 });
 
-router.put("/models/:id", auth, requireAdmin, async (req, res) => {
+router.put("/models/:id", auth, requireVehicleManage, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 
         if (Number.isNaN(id)) {
             return res.status(400).json({ message: "Invalid model id" });
+        }
+
+        const vehicleCategory = normalizeVehicleCategoryScope(req.body.vehicle_category);
+
+        if (!requestedCategoryAllowed(req, vehicleCategory)) {
+            return res.status(403).json({ message: "You cannot update vehicles outside your category scope" });
         }
 
         const result = await db.query(`
@@ -103,7 +186,7 @@ router.put("/models/:id", auth, requireAdmin, async (req, res) => {
         `, [
             cleanText(req.body.brand_name || "Mahindra"),
             cleanText(req.body.model_name),
-            cleanText(req.body.vehicle_category),
+            vehicleCategory,
             cleanText(req.body.fuel_type),
             cleanText(req.body.status || "ACTIVE").toUpperCase(),
             id
@@ -124,12 +207,16 @@ router.put("/models/:id", auth, requireAdmin, async (req, res) => {
     }
 });
 
-router.delete("/models/:id", auth, requireAdmin, async (req, res) => {
+router.delete("/models/:id", auth, requireVehicleManage, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 
         if (Number.isNaN(id)) {
             return res.status(400).json({ message: "Invalid model id" });
+        }
+
+        if (!(await ensureModelAllowedForUser(req, id))) {
+            return res.status(403).json({ message: "You cannot deactivate vehicles outside your category scope" });
         }
 
         await db.query(`
@@ -152,7 +239,7 @@ router.delete("/models/:id", auth, requireAdmin, async (req, res) => {
 router.get("/variants", auth, async (req, res) => {
     try {
         const values = [];
-        let where = "";
+        const clauses = [];
 
         if (req.query.model_id) {
             const modelId = parseId(req.query.model_id);
@@ -161,13 +248,18 @@ router.get("/variants", auth, async (req, res) => {
             }
 
             values.push(modelId);
-            where = `WHERE v.model_id = $1`;
+            clauses.push(`v.model_id = $${values.length}`);
         }
+
+        appendVehicleCategoryScope(req, clauses, values, "m");
+
+        const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
 
         const result = await db.query(`
             SELECT
                 v.*,
-                m.model_name
+                m.model_name,
+                m.vehicle_category
             FROM vehicle_variants v
             LEFT JOIN vehicle_models m ON m.id = v.model_id
             ${where}
@@ -181,12 +273,16 @@ router.get("/variants", auth, async (req, res) => {
     }
 });
 
-router.post("/variants", auth, requireAdmin, async (req, res) => {
+router.post("/variants", auth, requireVehicleManage, async (req, res) => {
     try {
         const modelId = parseId(req.body.model_id);
 
         if (Number.isNaN(modelId)) {
             return res.status(400).json({ message: "Invalid model selected" });
+        }
+
+        if (!(await ensureModelAllowedForUser(req, modelId))) {
+            return res.status(403).json({ message: "You cannot manage variants outside your category scope" });
         }
 
         const variantName = cleanText(req.body.variant_name);
@@ -227,13 +323,17 @@ router.post("/variants", auth, requireAdmin, async (req, res) => {
     }
 });
 
-router.put("/variants/:id", auth, requireAdmin, async (req, res) => {
+router.put("/variants/:id", auth, requireVehicleManage, async (req, res) => {
     try {
         const id = parseId(req.params.id);
         const modelId = parseId(req.body.model_id);
 
         if (Number.isNaN(id) || Number.isNaN(modelId)) {
             return res.status(400).json({ message: "Invalid variant or model id" });
+        }
+
+        if (!(await ensureModelAllowedForUser(req, modelId))) {
+            return res.status(403).json({ message: "You cannot manage variants outside your category scope" });
         }
 
         const result = await db.query(`
@@ -273,7 +373,7 @@ router.put("/variants/:id", auth, requireAdmin, async (req, res) => {
     }
 });
 
-router.delete("/variants/:id", auth, requireAdmin, async (req, res) => {
+router.delete("/variants/:id", auth, requireVehicleManage, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 
@@ -301,7 +401,7 @@ router.delete("/variants/:id", auth, requireAdmin, async (req, res) => {
 router.get("/colors", auth, async (req, res) => {
     try {
         const values = [];
-        let where = "";
+        const clauses = [];
 
         if (req.query.model_id) {
             const modelId = parseId(req.query.model_id);
@@ -310,13 +410,18 @@ router.get("/colors", auth, async (req, res) => {
             }
 
             values.push(modelId);
-            where = `WHERE c.model_id = $1`;
+            clauses.push(`c.model_id = $${values.length}`);
         }
+
+        appendVehicleCategoryScope(req, clauses, values, "m");
+
+        const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
 
         const result = await db.query(`
             SELECT
                 c.*,
-                m.model_name
+                m.model_name,
+                m.vehicle_category
             FROM vehicle_colors c
             LEFT JOIN vehicle_models m ON m.id = c.model_id
             ${where}
@@ -330,12 +435,16 @@ router.get("/colors", auth, async (req, res) => {
     }
 });
 
-router.post("/colors", auth, requireAdmin, async (req, res) => {
+router.post("/colors", auth, requireVehicleManage, async (req, res) => {
     try {
         const modelId = parseId(req.body.model_id);
 
         if (Number.isNaN(modelId)) {
             return res.status(400).json({ message: "Invalid model selected" });
+        }
+
+        if (!(await ensureModelAllowedForUser(req, modelId))) {
+            return res.status(403).json({ message: "You cannot manage colors outside your category scope" });
         }
 
         const colorName = cleanText(req.body.color_name);
@@ -370,13 +479,17 @@ router.post("/colors", auth, requireAdmin, async (req, res) => {
     }
 });
 
-router.put("/colors/:id", auth, requireAdmin, async (req, res) => {
+router.put("/colors/:id", auth, requireVehicleManage, async (req, res) => {
     try {
         const id = parseId(req.params.id);
         const modelId = parseId(req.body.model_id);
 
         if (Number.isNaN(id) || Number.isNaN(modelId)) {
             return res.status(400).json({ message: "Invalid color or model id" });
+        }
+
+        if (!(await ensureModelAllowedForUser(req, modelId))) {
+            return res.status(403).json({ message: "You cannot manage colors outside your category scope" });
         }
 
         const result = await db.query(`
@@ -409,7 +522,7 @@ router.put("/colors/:id", auth, requireAdmin, async (req, res) => {
     }
 });
 
-router.delete("/colors/:id", auth, requireAdmin, async (req, res) => {
+router.delete("/colors/:id", auth, requireVehicleManage, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 

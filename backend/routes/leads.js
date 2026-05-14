@@ -164,12 +164,32 @@ function requireLeadMonitor(req, res, next) {
     VIEW_ONLY        -> same branch leads if branch exists, otherwise own leads
     OWN              -> assigned leads only
 */
+
+function normalizeVehicleCategoryScope(value) {
+    const scope = String(value || "ALL").trim().toUpperCase();
+    return ["ALL", "AD", "EV"].includes(scope) ? scope : "ALL";
+}
+
+function appendVehicleCategoryScope(req, clauses, values, alias = "l") {
+    if (isAdminUser(req)) return;
+
+    const categoryScope = normalizeVehicleCategoryScope(req.user?.vehicle_category_scope);
+
+    if (categoryScope === "ALL") return;
+
+    values.push(categoryScope);
+    clauses.push(`UPPER(COALESCE(${alias}.vehicle_category, '')) = $${values.length}`);
+}
+
 function appendLeadAccessScope(req, clauses, values, alias = "l") {
     if (isAdminUser(req)) return;
 
     const scope = String(req.user?.data_scope || "OWN").toUpperCase();
 
-    if (scope === "ALL") return;
+    if (scope === "ALL") {
+        appendVehicleCategoryScope(req, clauses, values, alias);
+        return;
+    }
 
     if (
         ["BRANCH", "DEPARTMENT", "TEAM", "VIEW_ONLY"].includes(scope) &&
@@ -177,11 +197,13 @@ function appendLeadAccessScope(req, clauses, values, alias = "l") {
     ) {
         values.push(req.user.branch_id);
         clauses.push(`${alias}.branch_id = $${values.length}`);
+        appendVehicleCategoryScope(req, clauses, values, alias);
         return;
     }
 
     values.push(req.user.id);
     clauses.push(`${alias}.assigned_to = $${values.length}`);
+    appendVehicleCategoryScope(req, clauses, values, alias);
 }
 
 function leadAccessAndClause(req, values, alias = "l") {

@@ -8,11 +8,57 @@ function normalizeRole(role) {
     return String(role || "").trim().toLowerCase();
 }
 
-function requireAdmin(req, res, next) {
-    if (normalizeRole(req.user?.role) !== "admin") {
-        return res.status(403).json({ message: "Admin access required" });
+function isAdminUser(req) {
+    return normalizeRole(req.user?.role) === "admin";
+}
+
+function normalizeVehicleCategoryScope(value) {
+    const scope = String(value || "ALL").trim().toUpperCase();
+    return ["ALL", "AD", "EV"].includes(scope) ? scope : "ALL";
+}
+
+function canManageStock(req) {
+    if (isAdminUser(req)) return true;
+
+    const role = normalizeRole(req.user?.role);
+    const managerRoles = ["manager", "branch_manager", "team_leader"];
+
+    return managerRoles.includes(role) || req.user?.can_edit === true || req.user?.can_create === true;
+}
+
+function requireStockManage(req, res, next) {
+    if (!canManageStock(req)) {
+        return res.status(403).json({ message: "You do not have permission to manage stock" });
     }
     next();
+}
+
+function appendVehicleCategoryScope(req, clauses, values, modelAlias = "m") {
+    if (isAdminUser(req)) return;
+
+    const categoryScope = normalizeVehicleCategoryScope(req.user?.vehicle_category_scope);
+
+    if (categoryScope === "ALL") return;
+
+    values.push(categoryScope);
+    clauses.push(`UPPER(COALESCE(${modelAlias}.vehicle_category, '')) = $${values.length}`);
+}
+
+async function ensureModelAllowedForUser(req, modelId) {
+    if (isAdminUser(req)) return true;
+
+    const categoryScope = normalizeVehicleCategoryScope(req.user?.vehicle_category_scope);
+    if (categoryScope === "ALL") return true;
+
+    const result = await db.query(`
+        SELECT id
+        FROM vehicle_models
+        WHERE id = $1
+        AND UPPER(COALESCE(vehicle_category, '')) = $2
+        LIMIT 1
+    `, [modelId, categoryScope]);
+
+    return result.rows.length > 0;
 }
 
 function cleanText(value) {
@@ -94,6 +140,16 @@ router.get("/", auth, async (req, res) => {
             clauses.push(`s.stock_status = $${values.length}`);
         }
 
+        if (req.query.vehicle_category) {
+            const category = normalizeVehicleCategoryScope(req.query.vehicle_category);
+            if (category !== "ALL") {
+                values.push(category);
+                clauses.push(`UPPER(COALESCE(m.vehicle_category, '')) = $${values.length}`);
+            }
+        }
+
+        appendVehicleCategoryScope(req, clauses, values, "m");
+
         const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
 
         const result = await db.query(`
@@ -101,6 +157,7 @@ router.get("/", auth, async (req, res) => {
                 s.*,
                 m.brand_name,
                 m.model_name,
+                m.vehicle_category,
                 v.variant_name,
                 c.color_name,
                 b.branch_name,
@@ -134,7 +191,7 @@ router.get("/", auth, async (req, res) => {
 });
 
 /* CREATE STOCK SUMMARY */
-router.post("/", auth, requireAdmin, async (req, res) => {
+router.post("/", auth, requireStockManage, async (req, res) => {
     try {
         const modelId = parseId(req.body.model_id);
         const variantId = parseId(req.body.variant_id);
@@ -153,6 +210,12 @@ router.post("/", auth, requireAdmin, async (req, res) => {
         ) {
             return res.status(400).json({
                 message: "Model, variant, color and branch are required"
+            });
+        }
+
+        if (!(await ensureModelAllowedForUser(req, modelId))) {
+            return res.status(403).json({
+                message: "You cannot manage stock outside your vehicle category scope"
             });
         }
 
@@ -204,7 +267,7 @@ router.post("/", auth, requireAdmin, async (req, res) => {
 });
 
 /* UPDATE STOCK SUMMARY */
-router.put("/:id", auth, requireAdmin, async (req, res) => {
+router.put("/:id", auth, requireStockManage, async (req, res) => {
     try {
         const id = parseId(req.params.id);
         const modelId = parseId(req.body.model_id);
@@ -226,6 +289,12 @@ router.put("/:id", auth, requireAdmin, async (req, res) => {
         ) {
             return res.status(400).json({
                 message: "Invalid stock, model, variant, color or branch"
+            });
+        }
+
+        if (!(await ensureModelAllowedForUser(req, modelId))) {
+            return res.status(403).json({
+                message: "You cannot manage stock outside your vehicle category scope"
             });
         }
 
@@ -281,7 +350,7 @@ router.put("/:id", auth, requireAdmin, async (req, res) => {
 });
 
 /* DEACTIVATE STOCK SUMMARY */
-router.delete("/:id", auth, requireAdmin, async (req, res) => {
+router.delete("/:id", auth, requireStockManage, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 
@@ -316,6 +385,8 @@ router.get("/availability/search", auth, async (req, res) => {
         const values = [];
         const clauses = ["s.status = 'ACTIVE'"];
 
+        appendVehicleCategoryScope(req, clauses, values, "m");
+
         if (search) {
             values.push(`%${search}%`);
             clauses.push(`(
@@ -338,6 +409,7 @@ router.get("/availability/search", auth, async (req, res) => {
                 s.expected_arrival_date,
                 s.remarks,
                 m.model_name,
+                m.vehicle_category,
                 v.variant_name,
                 c.color_name,
                 b.branch_name,

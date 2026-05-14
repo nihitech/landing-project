@@ -165,6 +165,7 @@ function renderUsersTable() {
                 <td>
                     <span class="role-pill">${safe(u.role)}</span>
                     <small>Scope: ${safe(u.data_scope || "OWN")}</small>
+                    <small>Vehicle Scope: ${safe(u.vehicle_category_scope || "ALL")}</small>
                     <small>Manager: ${safe(u.manager_name || "-")}</small>
                 </td>
 
@@ -210,6 +211,7 @@ function buildUserPayload(isEdit = false) {
         manager_id: value("u_manager") || null,
         data_scope: value("u_data_scope"),
         status: value("u_status") || "ACTIVE",
+        vehicle_category_scope: value("vehicleCategoryScope") || "ALL",
 
         can_view: checkbox("can_view"),
         can_create: checkbox("can_create"),
@@ -289,6 +291,7 @@ function editUser(id) {
     setValue("u_manager", u.manager_id || "");
     setValue("u_data_scope", u.data_scope || "OWN");
     setValue("u_status", u.status || "ACTIVE");
+    setValue("vehicleCategoryScope", u.vehicle_category_scope || "ALL");
 
     setCheckbox("can_view", u.can_view !== false);
     setCheckbox("can_create", u.can_create === true);
@@ -322,6 +325,7 @@ function resetUserForm() {
     setValue("u_manager", "");
     setValue("u_data_scope", "OWN");
     setValue("u_status", "ACTIVE");
+    setValue("vehicleCategoryScope", "ALL");
 
     setCheckbox("can_view", true);
     setCheckbox("can_create", false);

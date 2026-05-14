@@ -366,3 +366,84 @@ ADD COLUMN IF NOT EXISTS verification_otp_attempts INTEGER DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_leads_verification_status
 ON leads(verification_status);
+
+-- =====================================================
+-- Vehicle Category Scope Foundation (ALL / AD / EV)
+-- Safe to run multiple times.
+-- =====================================================
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS vehicle_category_scope TEXT DEFAULT 'ALL';
+
+UPDATE users
+SET vehicle_category_scope = 'ALL'
+WHERE vehicle_category_scope IS NULL OR vehicle_category_scope = '';
+
+CREATE INDEX IF NOT EXISTS idx_users_vehicle_category_scope
+ON users(vehicle_category_scope);
+
+-- =====================================================
+-- Vehicle Product Master Foundation
+-- =====================================================
+CREATE TABLE IF NOT EXISTS vehicle_models (
+    id BIGSERIAL PRIMARY KEY,
+    brand_name TEXT DEFAULT 'Mahindra',
+    model_name TEXT NOT NULL,
+    vehicle_category TEXT DEFAULT 'AD',
+    fuel_type TEXT DEFAULT '',
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS vehicle_variants (
+    id BIGSERIAL PRIMARY KEY,
+    model_id BIGINT REFERENCES vehicle_models(id) ON DELETE CASCADE,
+    variant_name TEXT NOT NULL,
+    transmission TEXT DEFAULT '',
+    fuel_type TEXT DEFAULT '',
+    price_range TEXT DEFAULT '',
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS vehicle_colors (
+    id BIGSERIAL PRIMARY KEY,
+    model_id BIGINT REFERENCES vehicle_models(id) ON DELETE CASCADE,
+    color_name TEXT NOT NULL,
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_models_category ON vehicle_models(vehicle_category);
+CREATE INDEX IF NOT EXISTS idx_vehicle_models_status ON vehicle_models(status);
+CREATE INDEX IF NOT EXISTS idx_vehicle_variants_model ON vehicle_variants(model_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_colors_model ON vehicle_colors(model_id);
+
+-- =====================================================
+-- Stock Summary Foundation
+-- =====================================================
+CREATE TABLE IF NOT EXISTS vehicle_stock_summary (
+    id BIGSERIAL PRIMARY KEY,
+    model_id BIGINT REFERENCES vehicle_models(id),
+    variant_id BIGINT REFERENCES vehicle_variants(id),
+    color_id BIGINT REFERENCES vehicle_colors(id),
+    branch_id BIGINT REFERENCES branches(id),
+    stock_status TEXT DEFAULT 'AVAILABLE',
+    available_quantity INTEGER DEFAULT 0,
+    booked_quantity INTEGER DEFAULT 0,
+    in_transit_quantity INTEGER DEFAULT 0,
+    billing_soon_quantity INTEGER DEFAULT 0,
+    waiting_period_days INTEGER DEFAULT 0,
+    expected_arrival_date DATE,
+    remarks TEXT,
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_model ON vehicle_stock_summary(model_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_variant ON vehicle_stock_summary(variant_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_color ON vehicle_stock_summary(color_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_branch ON vehicle_stock_summary(branch_id);
+CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_status ON vehicle_stock_summary(stock_status);

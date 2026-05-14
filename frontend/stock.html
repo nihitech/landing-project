@@ -140,6 +140,15 @@
 
             <div class="form-grid">
                 <div class="field-group">
+                    <label>Vehicle Category</label>
+                    <select id="filterVehicleCategory" onchange="handleStockCategoryFilterChange()">
+                        <option value="">All Categories</option>
+                        <option value="AD">AD</option>
+                        <option value="EV">EV</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
                     <label>Branch</label>
                     <select id="filterBranchId" onchange="loadStock()">
                         <option value="">All Branches</option>
