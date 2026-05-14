@@ -2857,3 +2857,9 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
     height: 100%;
     background: linear-gradient(135deg, #22c55e, #16a34a);
 }
+.detail-actions {
+    margin: 16px 0;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}

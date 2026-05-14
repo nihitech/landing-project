@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking & Retail</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body class="crm-v2">
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="module-header">
+            <div>
+                <span class="tag">Retail Workflow</span>
+                <h1>🧾 Booking & Retail Management</h1>
+                <p>Track booking amount, finance, insurance, exchange and retail invoice.</p>
+            </div>
+            <div class="module-actions">
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <section class="table-card">
+            <div class="page-header">
+                <h2>Booking Filters</h2>
+                <p>Search booking, customer, phone, VIN or vehicle.</p>
+            </div>
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Search</label>
+                    <input id="bookingSearch" placeholder="Booking no, customer, phone, VIN..." oninput="loadBookings()">
+                </div>
+
+                <div class="field-group">
+                    <label>Booking Status</label>
+                    <select id="bookingStatusFilter" onchange="loadBookings()">
+                        <option value="">All</option>
+                        <option value="BOOKED">BOOKED</option>
+                        <option value="ADVANCE_RECEIVED">ADVANCE RECEIVED</option>
+                        <option value="VEHICLE_ALLOCATED">VEHICLE ALLOCATED</option>
+                        <option value="FINANCE_PENDING">FINANCE PENDING</option>
+                        <option value="RETAIL_PENDING">RETAIL PENDING</option>
+                        <option value="RETAILED">RETAILED</option>
+                        <option value="DELIVERED">DELIVERED</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Retail Status</label>
+                    <select id="retailStatusFilter" onchange="loadBookings()">
+                        <option value="">All</option>
+                        <option value="PENDING">PENDING</option>
+                        <option value="APPROVED">APPROVED</option>
+                        <option value="INVOICED">INVOICED</option>
+                        <option value="RETAILED">RETAILED</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Bookings List</h2>
+                <p>Booking to retail workflow tracking.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Booking</th>
+                        <th>Customer</th>
+                        <th>Vehicle</th>
+                        <th>Amount</th>
+                        <th>Finance</th>
+                        <th>Insurance</th>
+                        <th>Exchange</th>
+                        <th>Retail</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="bookingTable"></tbody>
+            </table>
+        </section>
+
+        <div id="bookingModal" class="followup-modal">
+            <div class="followup-modal-card delivery-modal-card">
+                <h2 id="bookingModalTitle">Booking Details</h2>
+
+                <input type="hidden" id="bookingId">
+                <input type="hidden" id="bookingLeadId">
+                <input type="hidden" id="bookingInventoryId">
+
+                <div id="bookingInfoBox" class="stock-availability-box">
+                    Booking information
+                </div>
+
+                <label>Booking No</label>
+                <input id="bookingNo" placeholder="Auto generated if empty">
+
+                <label>Booking Date</label>
+                <input type="date" id="bookingDate">
+
+                <label>Booking Amount</label>
+                <input type="number" id="bookingAmount" min="0" value="0">
+
+                <label>Receipt No</label>
+                <input id="receiptNo">
+
+                <label>Booking Status</label>
+                <select id="bookingStatus">
+                    <option value="BOOKED">BOOKED</option>
+                    <option value="ADVANCE_RECEIVED">ADVANCE RECEIVED</option>
+                    <option value="VEHICLE_ALLOCATED">VEHICLE ALLOCATED</option>
+                    <option value="FINANCE_PENDING">FINANCE PENDING</option>
+                    <option value="RETAIL_PENDING">RETAIL PENDING</option>
+                    <option value="RETAILED">RETAILED</option>
+                    <option value="DELIVERED">DELIVERED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                </select>
+
+                <div class="delivery-check-grid">
+                    <label><input type="checkbox" id="financeRequired"> Finance Required</label>
+                    <label><input type="checkbox" id="insuranceRequired" checked> Insurance Required</label>
+                    <label><input type="checkbox" id="exchangeRequired"> Exchange Required</label>
+                </div>
+
+                <label>Finance Partner</label>
+                <input id="financePartner" placeholder="Bank / NBFC">
+
+                <label>Loan Status</label>
+                <select id="loanStatus">
+                    <option value="NOT_REQUIRED">NOT REQUIRED</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="DOCUMENT_COLLECTED">DOCUMENT COLLECTED</option>
+                    <option value="LOGIN_DONE">LOGIN DONE</option>
+                    <option value="APPROVED">APPROVED</option>
+                    <option value="REJECTED">REJECTED</option>
+                    <option value="DISBURSED">DISBURSED</option>
+                </select>
+
+                <label>Insurance Partner</label>
+                <input id="insurancePartner">
+
+                <label>Insurance Status</label>
+                <select id="insuranceStatus">
+                    <option value="PENDING">PENDING</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                    <option value="REJECTED">REJECTED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                </select>
+
+                <label>Exchange Vehicle Details</label>
+                <textarea id="exchangeVehicleDetails" placeholder="Old vehicle model, year, valuation..."></textarea>
+
+                <label>Exchange Status</label>
+                <select id="exchangeStatus">
+                    <option value="NOT_REQUIRED">NOT REQUIRED</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                    <option value="REJECTED">REJECTED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                </select>
+
+                <label>Retail Status</label>
+                <select id="retailStatus">
+                    <option value="PENDING">PENDING</option>
+                    <option value="APPROVED">APPROVED</option>
+                    <option value="INVOICED">INVOICED</option>
+                    <option value="RETAILED">RETAILED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                </select>
+
+                <label>Retail Invoice No</label>
+                <input id="retailInvoiceNo">
+
+                <label>Retail Date</label>
+                <input type="date" id="retailDate">
+
+                <label>Remarks</label>
+                <textarea id="bookingRemarks"></textarea>
+
+                <div class="followup-modal-actions">
+                    <button onclick="closeBookingModal()" class="cancel-btn">Cancel</button>
+                    <button onclick="saveBooking()" class="save-btn">Save Booking</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="./js/crm-common.js"></script>
+<script>
+    loadLayout('bookings');
+</script>
+<script src="./js/bookings.js"></script>
+</body>
+</html>

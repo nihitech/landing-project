@@ -609,6 +609,12 @@ async function loadLeadInventoryOptions(lead) {
 
         box.innerHTML = `
             <h3>🚘 Vehicle Allocation</h3>
+            <button 
+                onclick="openBookingFromLead(${lead.id}, ${lead.allocated_inventory_id || "null"})"
+                class="save-btn"
+            >
+                🧾 Create / Open Booking
+            </button>
             ${vehicles.slice(0, 5).map(vehicle => `
                 <div class="inventory-option-card">
                     <strong>${safe(vehicle.model_name)} - ${safe(vehicle.variant_name || "-")}</strong>
@@ -930,6 +936,16 @@ async function verifyCustomerOtp() {
     }
 }
 
+function openBookingFromLead(leadId, inventoryId = null) {
+    sessionStorage.setItem("booking_lead_id", leadId);
+
+    if (inventoryId) {
+        sessionStorage.setItem("booking_inventory_id", inventoryId);
+    }
+
+    window.location.href = "bookings.html";
+}
+
 // Make functions available to HTML onclick
 window.openOtpModal = openOtpModal;
 window.closeOtpModal = closeOtpModal;
@@ -951,6 +967,7 @@ window.syncFuelTypeFromVariant = syncFuelTypeFromVariant;
 window.loadBranches = loadBranches;
 window.checkLeadStockAvailability = checkLeadStockAvailability;
 window.allocateInventoryToLead = allocateInventoryToLead;
+window.openBookingFromLead = openBookingFromLead;
 window.onload = async () => {
     if (user.role !== "admin") {
         document.querySelectorAll(".admin-only").forEach(e => e.style.display = "none");
