@@ -135,6 +135,65 @@ function loadVehicleColors() {
     `).join("");
 }
 
+async function checkLeadStockAvailability() {
+    const model = document.getElementById("e_car")?.value || "";
+    const variant = document.getElementById("e_variant")?.value || "";
+    const color = document.getElementById("e_color")?.value || "";
+    const box = document.getElementById("stockAvailabilityBox");
+
+    if (!box) return;
+
+    if (!model) {
+        box.innerHTML = "Select model, variant and color to check availability.";
+        return;
+    }
+
+    const search = [model, variant, color].filter(Boolean).join(" ");
+
+    box.innerHTML = "Checking stock availability...";
+
+    try {
+        const data = await request(
+            `${API}/stock/availability/search?search=${encodeURIComponent(search)}`,
+            { headers: authHeaders() }
+        );
+
+        if (!data.length) {
+            box.innerHTML = `
+                <div class="stock-alert warning">
+                    ⚠ No matching stock found. Check alternative model/color or waiting period.
+                </div>
+            `;
+            return;
+        }
+
+        box.innerHTML = data.slice(0, 5).map(row => `
+            <div class="stock-mini-card">
+                <strong>${safe(row.model_name)} - ${safe(row.variant_name || "-")}</strong>
+                <small>Color: ${safe(row.color_name || "-")} | Branch: ${safe(row.branch_name || "-")}</small>
+                <small>Status: ${safe(row.stock_status || "-")}</small>
+                <small>
+                    Available: ${Number(row.available_quantity || 0)} |
+                    Transit: ${Number(row.in_transit_quantity || 0)} |
+                    Billing Soon: ${Number(row.billing_soon_quantity || 0)}
+                </small>
+                <small>
+                    Waiting: ${Number(row.waiting_period_days || 0)} days |
+                    Arrival: ${row.expected_arrival_date ? new Date(row.expected_arrival_date).toLocaleDateString("en-IN") : "-"}
+                </small>
+                <small>${safe(row.remarks || "")}</small>
+            </div>
+        `).join("");
+
+    } catch (err) {
+        box.innerHTML = `
+            <div class="stock-alert danger">
+                Stock availability check failed.
+            </div>
+        `;
+    }
+}
+
 function syncFuelTypeFromVariant() {
     const model = document.getElementById("e_car")?.value;
     const variant = document.getElementById("e_variant")?.value;
@@ -551,7 +610,7 @@ function openEnquiryModal(id) {
 
     if (typeof loadVehicleColors === "function") loadVehicleColors();
     set("e_color", lead.preferred_color);
-
+    checkLeadStockAvailability();
     set("e_budget", lead.budget_range);
     set("e_timeline", lead.purchase_timeline);
     set("e_exchange", lead.exchange_vehicle);
@@ -797,6 +856,7 @@ window.loadVehicleVariants = loadVehicleVariants;
 window.loadVehicleColors = loadVehicleColors;
 window.syncFuelTypeFromVariant = syncFuelTypeFromVariant;
 window.loadBranches = loadBranches;
+window.checkLeadStockAvailability = checkLeadStockAvailability;
 window.onload = async () => {
     if (user.role !== "admin") {
         document.querySelectorAll(".admin-only").forEach(e => e.style.display = "none");

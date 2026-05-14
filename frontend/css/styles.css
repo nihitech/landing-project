@@ -2734,3 +2734,52 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
     color: #16a34a;
     font-weight: 700;
 }
+
+.stock-availability-box {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    padding: 12px;
+    font-size: 13px;
+    color: #334155;
+}
+
+.stock-mini-card {
+    background: #ffffff;
+    border: 1px solid #dbe3ef;
+    border-left: 5px solid #2563eb;
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stock-mini-card strong {
+    color: #0f172a;
+}
+
+.stock-mini-card small {
+    color: #475569;
+}
+
+.stock-alert {
+    padding: 10px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.stock-alert.warning {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.stock-alert.danger {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
