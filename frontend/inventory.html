@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIN Inventory Management</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body class="crm-v2">
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="module-header">
+            <div>
+                <span class="tag">Delivery Intelligence</span>
+                <h1>🚘 VIN-Level Inventory</h1>
+                <p>Track exact vehicles from OEM billing to retail and delivery.</p>
+            </div>
+
+            <div class="module-actions">
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <section class="table-card">
+            <h2 id="inventoryFormTitle">Add Vehicle Inventory Unit</h2>
+
+            <input type="hidden" id="inventoryId">
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Vehicle Category</label>
+                    <select id="vehicleCategory">
+                        <option value="AD">AD</option>
+                        <option value="EV">EV</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Branch</label>
+                    <select id="branchId">
+                        <option value="">Select Branch</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Model</label>
+                    <select id="modelId" onchange="handleModelChange()">
+                        <option value="">Select Model</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Variant</label>
+                    <select id="variantId">
+                        <option value="">Select Variant</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Color</label>
+                    <select id="colorId">
+                        <option value="">Select Color</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Vehicle Status</label>
+                    <select id="vehicleStatus">
+                        <option value="AVAILABLE">AVAILABLE</option>
+                        <option value="IN_TRANSIT">IN TRANSIT</option>
+                        <option value="OEM_BILLED">OEM BILLED</option>
+                        <option value="ARRIVED_YARD">ARRIVED YARD</option>
+                        <option value="ARRIVED_BRANCH">ARRIVED BRANCH</option>
+                        <option value="PDI_PENDING">PDI PENDING</option>
+                        <option value="PDI_DONE">PDI DONE</option>
+                        <option value="BOOKED">BOOKED</option>
+                        <option value="ALLOCATED_TO_CUSTOMER">ALLOCATED TO CUSTOMER</option>
+                        <option value="BLOCKED">BLOCKED</option>
+                        <option value="DEMO">DEMO</option>
+                        <option value="TEST_DRIVE">TEST DRIVE</option>
+                        <option value="DISPLAY">DISPLAY</option>
+                        <option value="RETAIL_DONE">RETAIL DONE</option>
+                        <option value="DELIVERED">DELIVERED</option>
+                        <option value="DELIVERY_HOLD">DELIVERY HOLD</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>VIN Number</label>
+                    <input id="vinNumber" placeholder="VIN / Vehicle ID">
+                </div>
+
+                <div class="field-group">
+                    <label>Chassis Number</label>
+                    <input id="chassisNumber" placeholder="Chassis number">
+                </div>
+
+                <div class="field-group">
+                    <label>Engine Number</label>
+                    <input id="engineNumber" placeholder="Engine number">
+                </div>
+
+                <div class="field-group">
+                    <label>OEM Order No</label>
+                    <input id="oemOrderNo" placeholder="OEM order no">
+                </div>
+
+                <div class="field-group">
+                    <label>OEM Invoice No</label>
+                    <input id="oemInvoiceNo" placeholder="OEM invoice no">
+                </div>
+
+                <div class="field-group">
+                    <label>OEM Billing Date</label>
+                    <input type="date" id="oemBillingDate">
+                </div>
+
+                <div class="field-group">
+                    <label>Dispatch Date</label>
+                    <input type="date" id="dispatchDate">
+                </div>
+
+                <div class="field-group">
+                    <label>Expected Arrival</label>
+                    <input type="date" id="expectedArrivalDate">
+                </div>
+
+                <div class="field-group">
+                    <label>Actual Arrival</label>
+                    <input type="date" id="actualArrivalDate">
+                </div>
+
+                <div class="field-group">
+                    <label>PDI Status</label>
+                    <select id="pdiStatus">
+                        <option value="PDI_PENDING">PDI PENDING</option>
+                        <option value="PDI_IN_PROGRESS">PDI IN PROGRESS</option>
+                        <option value="PDI_DONE">PDI DONE</option>
+                        <option value="PDI_FAILED">PDI FAILED</option>
+                        <option value="PDI_HOLD">PDI HOLD</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Allocated Lead ID</label>
+                    <input id="allocatedLeadId" placeholder="Lead ID if allocated">
+                </div>
+
+                <div class="field-group">
+                    <label>Allocated Customer</label>
+                    <input id="allocatedCustomerName" placeholder="Customer name">
+                </div>
+
+                <div class="field-group">
+                    <label>Booking ID</label>
+                    <input id="bookingId" placeholder="Booking ID">
+                </div>
+
+                <div class="field-group">
+                    <label>Customer Invoice No</label>
+                    <input id="customerInvoiceNo" placeholder="Customer invoice">
+                </div>
+
+                <div class="field-group">
+                    <label>Retail Date</label>
+                    <input type="date" id="retailDate">
+                </div>
+
+                <div class="field-group">
+                    <label>Delivery Date</label>
+                    <input type="date" id="deliveryDate">
+                </div>
+
+                <div class="field-group">
+                    <label>Yard Location</label>
+                    <input id="yardLocation" placeholder="Yard / branch location">
+                </div>
+
+                <div class="field-group">
+                    <label>Record Status</label>
+                    <select id="recordStatus">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label>Remarks</label>
+                <textarea id="remarks" placeholder="Vehicle remarks, delivery hold reason, allocation notes..."></textarea>
+            </div>
+
+            <div class="report-actions">
+                <button onclick="saveInventory()" class="save-btn">Save Inventory</button>
+                <button onclick="resetInventoryForm()" class="copy-btn">Clear</button>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Inventory Filters</h2>
+                <p>Filter by category, branch, model and status.</p>
+            </div>
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Search</label>
+                    <input id="searchInput" placeholder="VIN, chassis, model, color..." oninput="loadInventory()">
+                </div>
+
+                <div class="field-group">
+                    <label>Category</label>
+                    <select id="filterCategory" onchange="loadInventory()">
+                        <option value="">All</option>
+                        <option value="AD">AD</option>
+                        <option value="EV">EV</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Branch</label>
+                    <select id="filterBranchId" onchange="loadInventory()">
+                        <option value="">All Branches</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Model</label>
+                    <select id="filterModelId" onchange="loadInventory()">
+                        <option value="">All Models</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Status</label>
+                    <select id="filterVehicleStatus" onchange="loadInventory()">
+                        <option value="">All Status</option>
+                        <option value="AVAILABLE">AVAILABLE</option>
+                        <option value="IN_TRANSIT">IN TRANSIT</option>
+                        <option value="OEM_BILLED">OEM BILLED</option>
+                        <option value="ARRIVED_YARD">ARRIVED YARD</option>
+                        <option value="ARRIVED_BRANCH">ARRIVED BRANCH</option>
+                        <option value="PDI_PENDING">PDI PENDING</option>
+                        <option value="PDI_DONE">PDI DONE</option>
+                        <option value="ALLOCATED_TO_CUSTOMER">ALLOCATED</option>
+                        <option value="RETAIL_DONE">RETAIL DONE</option>
+                        <option value="DELIVERED">DELIVERED</option>
+                        <option value="DELIVERY_HOLD">DELIVERY HOLD</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>VIN Inventory List</h2>
+                <p>Exact vehicle-level tracking for billing, PDI, allocation and delivery.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Vehicle</th>
+                        <th>VIN / Chassis</th>
+                        <th>Branch</th>
+                        <th>Status</th>
+                        <th>OEM / Transit</th>
+                        <th>PDI</th>
+                        <th>Allocation</th>
+                        <th>Retail / Delivery</th>
+                        <th>Age</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTable"></tbody>
+            </table>
+        </section>
+    </main>
+</div>
+
+<script src="./js/crm-common.js"></script>
+<script>
+    loadLayout('inventory');
+</script>
+<script src="./js/inventory.js"></script>
+</body>
+</html>

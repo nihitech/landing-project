@@ -539,8 +539,14 @@ async function openLeadDetails(id) {
     if (activityBox) {
         activityBox.innerHTML = await loadLeadActivity(id);
     }
+    await loadLeadInventoryOptions(lead);
 }
-function closeLeadDetails(){document.getElementById("leadDetailModal").classList.remove("show");}
+function closeLeadDetails() {
+    document.getElementById("leadDetailModal").classList.remove("show");
+
+    const box = document.getElementById("inventoryAllocationBox");
+    if (box) box.innerHTML = "";
+}
 async function loadLeadActivity(id) {
     try {
         const logs = await request(`${API}/lead/${id}/activity`, {
@@ -569,6 +575,93 @@ async function loadLeadActivity(id) {
         return `<div class="empty-state">Activity history failed to load</div>`;
     }
 }
+
+async function loadLeadInventoryOptions(lead) {
+    const box = document.getElementById("inventoryAllocationBox");
+    if (!box || !lead) return;
+
+    box.innerHTML = `
+        <h3>🚘 Vehicle Allocation</h3>
+        <p class="muted">Checking available VIN inventory...</p>
+    `;
+
+    const search = [
+        lead.car_interest,
+        lead.variant_interest,
+        lead.preferred_color
+    ].filter(Boolean).join(" ");
+
+    try {
+        const vehicles = await request(
+            `${API}/inventory?search=${encodeURIComponent(search)}&vehicle_status=AVAILABLE`,
+            { headers: authHeaders() }
+        );
+
+        if (!vehicles.length) {
+            box.innerHTML = `
+                <h3>🚘 Vehicle Allocation</h3>
+                <div class="empty-state">
+                    No available VIN vehicle found for this lead.
+                </div>
+            `;
+            return;
+        }
+
+        box.innerHTML = `
+            <h3>🚘 Vehicle Allocation</h3>
+            ${vehicles.slice(0, 5).map(vehicle => `
+                <div class="inventory-option-card">
+                    <strong>${safe(vehicle.model_name)} - ${safe(vehicle.variant_name || "-")}</strong>
+                    <small>Color: ${safe(vehicle.color_name || "-")} | Branch: ${safe(vehicle.branch_name || "-")}</small>
+                    <small>VIN: ${safe(vehicle.vin_number || "-")} | Status: ${safe(vehicle.vehicle_status || "-")}</small>
+                    <small>PDI: ${safe(vehicle.pdi_status || "-")} | ETA: ${
+                        vehicle.expected_arrival_date
+                            ? new Date(vehicle.expected_arrival_date).toLocaleDateString("en-IN")
+                            : "-"
+                    }</small>
+
+                    <button 
+                        onclick="allocateInventoryToLead(${vehicle.id}, ${lead.id})"
+                        class="save-btn"
+                    >
+                        Allocate This Vehicle
+                    </button>
+                </div>
+            `).join("")}
+        `;
+
+    } catch (err) {
+        box.innerHTML = `
+            <h3>🚘 Vehicle Allocation</h3>
+            <div class="stock-alert danger">
+                Failed to load inventory options.
+            </div>
+        `;
+    }
+}
+
+async function allocateInventoryToLead(inventoryId, leadId) {
+    if (!confirm("Allocate this VIN vehicle to the selected lead?")) return;
+
+    try {
+        await request(`${API}/inventory/${inventoryId}/allocate-lead`, {
+            method: "POST",
+            headers: authHeaders(true),
+            body: JSON.stringify({
+                lead_id: leadId
+            })
+        });
+
+        toast("Vehicle allocated to lead successfully");
+
+        await loadPage();
+        closeLeadDetails();
+
+    } catch (err) {
+        toast(err.message || "Vehicle allocation failed", true);
+    }
+}
+
 function openEnquiryModal(id) {
     const modal = document.getElementById("enquiryModal");
 
@@ -857,6 +950,7 @@ window.loadVehicleColors = loadVehicleColors;
 window.syncFuelTypeFromVariant = syncFuelTypeFromVariant;
 window.loadBranches = loadBranches;
 window.checkLeadStockAvailability = checkLeadStockAvailability;
+window.allocateInventoryToLead = allocateInventoryToLead;
 window.onload = async () => {
     if (user.role !== "admin") {
         document.querySelectorAll(".admin-only").forEach(e => e.style.display = "none");
