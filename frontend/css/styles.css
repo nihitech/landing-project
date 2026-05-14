@@ -2190,7 +2190,27 @@ select option, select option:checked {
 /* ===== CRM V2 Modular Layout ===== */
 .crm-v2, .crm-v2 body { background:#f4f7fb; }
 .crm-layout{display:flex;min-height:100vh;background:#f4f7fb;color:#111827;font-family:Poppins,Arial,sans-serif;}
-.crm-sidebar{width:260px;background:#0f172a;color:#fff;padding:20px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;box-shadow:8px 0 30px rgba(15,23,42,.12);}
+.crm-sidebar {
+    width: 260px;
+    min-width: 260px;
+    height: 100vh;
+
+    position: sticky;
+    top: 0;
+    left: 0;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    background: #111827;
+    color: #fff;
+
+    display: flex;
+    flex-direction: column;
+
+    scrollbar-width: thin;
+    scrollbar-color: #374151 transparent;
+}
 .crm-brand{display:flex;gap:12px;align-items:center;margin-bottom:24px;}
 .crm-logo{width:42px;height:42px;border-radius:14px;background:#ef4444;display:grid;place-items:center;}
 .crm-brand strong{display:block;color:#fff;font-size:18px}.crm-brand small{color:#cbd5e1;font-size:12px}

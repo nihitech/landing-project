@@ -60,7 +60,7 @@
 
                 <div class="field-group">
                     <label>Stock Status</label>
-                    <select id="stockStatus">
+                    <select id="stockStatus" onchange="handleStockStatusFields()">
                         <option value="AVAILABLE">AVAILABLE</option>
                         <option value="LOW_STOCK">LOW STOCK</option>
                         <option value="IN_TRANSIT">IN TRANSIT</option>
@@ -82,32 +82,32 @@
                     </select>
                 </div>
 
-                <div class="field-group">
+                <div class="field-group stock-field stock-available">
                     <label>Available Qty</label>
                     <input type="number" id="availableQuantity" min="0" value="0">
                 </div>
 
-                <div class="field-group">
+                <div class="field-group stock-field stock-booked">
                     <label>Booked Qty</label>
                     <input type="number" id="bookedQuantity" min="0" value="0">
                 </div>
 
-                <div class="field-group">
+                <div class="field-group stock-field stock-transit">
                     <label>In Transit Qty</label>
                     <input type="number" id="inTransitQuantity" min="0" value="0">
                 </div>
 
-                <div class="field-group">
+                <div class="field-group stock-field stock-billing">
                     <label>Billing Soon Qty</label>
                     <input type="number" id="billingSoonQuantity" min="0" value="0">
                 </div>
 
-                <div class="field-group">
+                <div class="field-group stock-field stock-waiting">
                     <label>Waiting Period Days</label>
                     <input type="number" id="waitingPeriodDays" min="0" value="0">
                 </div>
 
-                <div class="field-group">
+                <div class="field-group stock-field stock-arrival">
                     <label>Expected Arrival</label>
                     <input type="date" id="expectedArrivalDate">
                 </div>

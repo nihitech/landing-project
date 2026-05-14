@@ -106,6 +106,64 @@ function handleStockModelChange() {
     ).join("");
 }
 
+function handleStockStatusFields() {
+    const status =
+        document.getElementById("stockStatus")?.value || "AVAILABLE";
+
+    document.querySelectorAll(".stock-field").forEach(el => {
+        el.style.display = "none";
+    });
+
+    const show = selector => {
+        document.querySelectorAll(selector).forEach(el => {
+            el.style.display = "block";
+        });
+    };
+
+    switch (status) {
+
+        case "AVAILABLE":
+        case "LOW_STOCK":
+        case "DISPLAY":
+        case "DEMO":
+        case "TEST_DRIVE":
+            show(".stock-available");
+            break;
+
+        case "BOOKED":
+        case "ALLOCATED_TO_CUSTOMER":
+            show(".stock-booked");
+            break;
+
+        case "IN_TRANSIT":
+        case "ARRIVED_YARD":
+        case "ARRIVED_BRANCH":
+            show(".stock-transit");
+            show(".stock-arrival");
+            break;
+
+        case "BILLING_SOON":
+        case "OEM_BILLED":
+            show(".stock-billing");
+            show(".stock-arrival");
+            break;
+
+        case "WAITING":
+        case "PRODUCTION_DELAY":
+        case "NOT_AVAILABLE":
+            show(".stock-waiting");
+            break;
+
+        case "PDI_PENDING":
+        case "PDI_DONE":
+            show(".stock-arrival");
+            break;
+
+        default:
+            show(".stock-available");
+    }
+}
+
 function buildStockQuery() {
     const params = new URLSearchParams();
 
@@ -343,6 +401,7 @@ window.saveStock = saveStock;
 window.editStock = editStock;
 window.deactivateStock = deactivateStock;
 window.resetStockForm = resetStockForm;
+window.handleStockStatusFields = handleStockStatusFields;
 
 window.onload = async () => {
     if (!isAdmin()) {
@@ -354,5 +413,6 @@ window.onload = async () => {
     }
 
     await loadMasters();
+    handleStockStatusFields();
     await loadStock();
 };
