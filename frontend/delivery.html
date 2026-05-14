@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Readiness</title>
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body class="crm-v2">
+<div class="crm-layout">
+    <div id="sidebarContainer"></div>
+
+    <main class="main-content">
+        <header class="module-header">
+            <div>
+                <span class="tag">Delivery Intelligence</span>
+                <h1>✅ Delivery Readiness & PDI</h1>
+                <p>Track PDI, finance, insurance, RTO, invoice and delivery blockers.</p>
+            </div>
+
+            <div class="module-actions">
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <section class="table-card">
+            <div class="page-header">
+                <h2>Delivery Filters</h2>
+                <p>Search customer, VIN, model and delivery status.</p>
+            </div>
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Search</label>
+                    <input id="deliverySearch" placeholder="Customer, phone, VIN, model..." oninput="loadDeliveries()">
+                </div>
+
+                <div class="field-group">
+                    <label>Status</label>
+                    <select id="deliveryStatusFilter" onchange="loadDeliveries()">
+                        <option value="">All Status</option>
+                        <option value="PENDING">PENDING</option>
+                        <option value="NEAR_READY">NEAR READY</option>
+                        <option value="READY">READY</option>
+                        <option value="BLOCKED">BLOCKED</option>
+                    </select>
+                </div>
+
+                <div class="field-group">
+                    <label>Branch</label>
+                    <select id="deliveryBranchFilter" onchange="loadDeliveries()">
+                        <option value="">All Branches</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="table-card" style="margin-top:20px;">
+            <div class="page-header">
+                <h2>Delivery Checklist List</h2>
+                <p>Manage readiness status for allocated vehicles.</p>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Vehicle</th>
+                        <th>VIN</th>
+                        <th>Branch</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                        <th>Planned</th>
+                        <th>Blocker</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="deliveryTable"></tbody>
+            </table>
+        </section>
+
+        <div id="deliveryModal" class="followup-modal">
+            <div class="followup-modal-card delivery-modal-card">
+                <h2 id="deliveryModalTitle">Delivery Checklist</h2>
+
+                <input type="hidden" id="deliveryInventoryId">
+                <input type="hidden" id="deliveryLeadId">
+
+                <div id="deliveryInfoBox" class="stock-availability-box">
+                    Loading vehicle details...
+                </div>
+
+                <div class="delivery-check-grid">
+                    <label><input type="checkbox" id="pdiCompleted"> PDI Completed</label>
+                    <label><input type="checkbox" id="accessoriesCompleted"> Accessories Completed</label>
+                    <label><input type="checkbox" id="financeCompleted"> Finance Completed</label>
+                    <label><input type="checkbox" id="insuranceCompleted"> Insurance Completed</label>
+                    <label><input type="checkbox" id="rtoCompleted"> RTO Completed</label>
+                    <label><input type="checkbox" id="fastagCompleted"> FASTag Completed</label>
+                    <label><input type="checkbox" id="paymentCompleted"> Payment Completed</label>
+                    <label><input type="checkbox" id="invoiceCompleted"> Invoice Completed</label>
+                    <label><input type="checkbox" id="deliveryPhotoUploaded"> Delivery Photo Uploaded</label>
+                    <label><input type="checkbox" id="customerConfirmation"> Customer Confirmation</label>
+                </div>
+
+                <label>Planned Delivery Date</label>
+                <input type="date" id="plannedDeliveryDate">
+
+                <label>Actual Delivery Date</label>
+                <input type="date" id="actualDeliveryDate">
+
+                <label>Blocker Reason</label>
+                <textarea id="blockerReason" placeholder="Example: Finance pending / RTO pending / accessories pending"></textarea>
+
+                <label>Remarks</label>
+                <textarea id="deliveryRemarks" placeholder="Delivery notes..."></textarea>
+
+                <div class="followup-modal-actions">
+                    <button onclick="closeDeliveryModal()" class="cancel-btn">Cancel</button>
+                    <button onclick="saveDeliveryChecklist()" class="save-btn">Save Checklist</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="./js/crm-common.js"></script>
+<script>
+    loadLayout('delivery');
+</script>
+<script src="./js/delivery.js"></script>
+</body>
+</html>

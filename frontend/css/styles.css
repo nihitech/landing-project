@@ -2815,3 +2815,45 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
 .inventory-option-card small {
     color: #475569;
 }
+.delivery-modal-card {
+    max-width: 760px;
+}
+
+.delivery-check-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+}
+
+.delivery-check-grid label {
+    background: #f8fafc;
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    padding: 10px;
+    font-weight: 600;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.delivery-check-grid input {
+    width: 16px;
+    height: 16px;
+}
+
+.mini-progress {
+    width: 90px;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+.mini-progress span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+}

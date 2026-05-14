@@ -12,6 +12,7 @@ const permissionRoutes = require("./routes/permissions");
 const vehicleRoutes = require("./routes/vehicles");
 const stockRoutes = require("./routes/stock");
 const inventoryRoutes = require("./routes/inventory");
+const deliveryRoutes = require("./routes/delivery");
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/api/permissions", permissionRoutes);
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/stock", stockRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/delivery", deliveryRoutes);
 
 // Test routes
 app.get("/", (req, res) => {

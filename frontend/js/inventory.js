@@ -366,6 +366,14 @@ function renderInventory() {
                 </button>
 
                 <button
+                    onclick="openDeliveryForInventory(${row.id})"
+                    class="icon-btn followup-btn"
+                    title="Delivery Checklist"
+                >
+                    ✅
+                </button>
+
+                <button
                     onclick="deactivateInventory(${row.id})"
                     class="icon-btn verify-btn"
                     title="Deactivate"
@@ -675,14 +683,31 @@ async function deactivateInventory(id) {
     }
 }
 
+function openDeliveryForInventory(inventoryId) {
+    if (!inventoryId) {
+        toast("Invalid inventory vehicle", true);
+        return;
+    }
+
+    sessionStorage.setItem("selected_inventory_for_delivery", inventoryId);
+    window.location.href = "delivery.html";
+}
+
 window.handleModelChange = handleModelChange;
 window.loadInventory = loadInventory;
 window.saveInventory = saveInventory;
 window.editInventory = editInventory;
 window.deactivateInventory = deactivateInventory;
 window.resetInventoryForm = resetInventoryForm;
+window.openDeliveryForInventory = openDeliveryForInventory;
 
 window.onload = async () => {
     await loadMasters();
     await loadInventory();
+    const selectedInventoryId = sessionStorage.getItem("selected_inventory_for_delivery");
+
+    if (selectedInventoryId) {
+        sessionStorage.removeItem("selected_inventory_for_delivery");
+        await openDeliveryModal(selectedInventoryId);
+    }
 };
