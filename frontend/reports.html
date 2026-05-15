@@ -8,11 +8,11 @@
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 
-<body>
+<body class="crm-v2">
 <div class="crm-layout">
     <div id="sidebarContainer"></div>
 
-    <div class="main-content">
+    <main class="main-content">
         <div class="page-header">
             <h1>📑 Reports Center</h1>
             <p>Generate daily, weekly, monthly and custom reports for management.</p>
@@ -282,9 +282,11 @@
 
 </div>
     </div>
+</main>
 </div>
 
-<script src="./js/layout.js"></script>
-<script src="./js/reports.js?v=10"></script>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('reports');</script>
+<script src="./js/reports.js?v=11"></script>
 </body>
 </html>

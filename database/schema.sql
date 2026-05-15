@@ -447,3 +447,112 @@ CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_variant ON vehicle_stock_su
 CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_color ON vehicle_stock_summary(color_id);
 CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_branch ON vehicle_stock_summary(branch_id);
 CREATE INDEX IF NOT EXISTS idx_vehicle_stock_summary_status ON vehicle_stock_summary(stock_status);
+
+-- =====================================================
+-- SAFE CRM EXPANSION TABLES: Inventory, Booking, Delivery
+-- Required by backend/routes/inventory.js, bookings.js and delivery.js
+-- =====================================================
+
+ALTER TABLE leads
+ADD COLUMN IF NOT EXISTS allocated_inventory_id BIGINT,
+ADD COLUMN IF NOT EXISTS allocated_vin_number TEXT,
+ADD COLUMN IF NOT EXISTS vehicle_allocated_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS vehicle_allocation_status TEXT DEFAULT 'NOT_ALLOCATED';
+
+CREATE TABLE IF NOT EXISTS vehicle_inventory_units (
+    id BIGSERIAL PRIMARY KEY,
+    model_id BIGINT,
+    variant_id BIGINT,
+    color_id BIGINT,
+    branch_id BIGINT,
+    vehicle_category TEXT DEFAULT 'AD',
+    vin_number TEXT UNIQUE,
+    chassis_number TEXT,
+    engine_number TEXT,
+    vehicle_status TEXT DEFAULT 'AVAILABLE',
+    oem_order_no TEXT,
+    oem_invoice_no TEXT,
+    oem_billing_date TIMESTAMPTZ,
+    dispatch_date TIMESTAMPTZ,
+    expected_arrival_date TIMESTAMPTZ,
+    actual_arrival_date TIMESTAMPTZ,
+    pdi_status TEXT DEFAULT 'PDI_PENDING',
+    pdi_completed_at TIMESTAMPTZ,
+    allocated_lead_id BIGINT,
+    allocated_customer_name TEXT,
+    booking_id TEXT,
+    customer_invoice_no TEXT,
+    retail_date TIMESTAMPTZ,
+    delivery_date TIMESTAMPTZ,
+    yard_location TEXT,
+    remarks TEXT,
+    status TEXT DEFAULT 'ACTIVE',
+    created_by BIGINT,
+    updated_by BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS delivery_checklists (
+    id BIGSERIAL PRIMARY KEY,
+    inventory_id BIGINT UNIQUE,
+    lead_id BIGINT,
+    pdi_completed BOOLEAN DEFAULT FALSE,
+    accessories_completed BOOLEAN DEFAULT FALSE,
+    finance_completed BOOLEAN DEFAULT FALSE,
+    insurance_completed BOOLEAN DEFAULT FALSE,
+    rto_completed BOOLEAN DEFAULT FALSE,
+    fastag_completed BOOLEAN DEFAULT FALSE,
+    payment_completed BOOLEAN DEFAULT FALSE,
+    invoice_completed BOOLEAN DEFAULT FALSE,
+    delivery_photo_uploaded BOOLEAN DEFAULT FALSE,
+    customer_confirmation BOOLEAN DEFAULT FALSE,
+    delivery_ready_score INTEGER DEFAULT 0,
+    delivery_status TEXT DEFAULT 'PENDING',
+    planned_delivery_date TIMESTAMPTZ,
+    actual_delivery_date TIMESTAMPTZ,
+    blocker_reason TEXT,
+    remarks TEXT,
+    created_by BIGINT,
+    updated_by BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS bookings (
+    id BIGSERIAL PRIMARY KEY,
+    lead_id BIGINT,
+    inventory_id BIGINT,
+    booking_no TEXT UNIQUE,
+    booking_date TIMESTAMPTZ DEFAULT NOW(),
+    booking_amount NUMERIC(12,2) DEFAULT 0,
+    receipt_no TEXT,
+    booking_status TEXT DEFAULT 'BOOKED',
+    finance_required BOOLEAN DEFAULT FALSE,
+    finance_partner TEXT,
+    loan_status TEXT DEFAULT 'NOT_REQUIRED',
+    insurance_required BOOLEAN DEFAULT TRUE,
+    insurance_partner TEXT,
+    insurance_status TEXT DEFAULT 'PENDING',
+    exchange_required BOOLEAN DEFAULT FALSE,
+    exchange_vehicle_details TEXT,
+    exchange_status TEXT DEFAULT 'NOT_REQUIRED',
+    retail_status TEXT DEFAULT 'PENDING',
+    retail_invoice_no TEXT,
+    retail_date TIMESTAMPTZ,
+    remarks TEXT,
+    created_by BIGINT,
+    updated_by BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_branch ON vehicle_inventory_units(branch_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_model ON vehicle_inventory_units(model_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_status ON vehicle_inventory_units(vehicle_status);
+CREATE INDEX IF NOT EXISTS idx_inventory_category ON vehicle_inventory_units(vehicle_category);
+CREATE INDEX IF NOT EXISTS idx_delivery_inventory ON delivery_checklists(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_lead ON delivery_checklists(lead_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_lead ON bookings(lead_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_inventory ON bookings(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(booking_status);

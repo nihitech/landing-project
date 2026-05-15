@@ -4,7 +4,7 @@ let vehicleModels = [];
 let vehicleVariants = [];
 let vehicleColors = [];
 async function loadUsers() {
-    if (user.role !== "admin") return;
+    if (String(user?.role || "").toLowerCase() !== "admin") return;
     users = await request(`${API}/auth/users`, { headers: authHeaders() });
 }
 
@@ -219,7 +219,7 @@ function syncFuelTypeFromVariant() {
 }
 
 async function loadBranches() {
-    if (user.role !== "admin") return;
+    if (String(user?.role || "").toLowerCase() !== "admin") return;
 
     const branchSelect = document.getElementById("branchFilter");
     if (!branchSelect) return;
@@ -264,7 +264,7 @@ function initDragDrop() { document.querySelectorAll(".dropzone").forEach(z => { 
 function renderTable(leads) {
     const tb=document.querySelector("#leadTable tbody"); if(!tb) return;
     if(!leads.length){ tb.innerHTML=`<tr><td colspan="8" class="empty-state">No leads found</td></tr>`; return; }
-    tb.innerHTML = leads.map(lead => { const pc=String(lead.priority||"COLD").toLowerCase(); const phone=cleanPhone(lead.phone); const assign = user.role === "admin" ? `<select onchange="assignLead(${lead.id},this.value)"><option value="">Unassigned</option>${users.filter(u=>u.role==='sales').map(u=>`<option value="${u.id}" ${Number(lead.assigned_to)===Number(u.id)?"selected":""}>${safe(u.name)}</option>`).join("")}</select>` : safe(lead.assigned_name||"Unassigned"); return `<tr class="${pc}"><td><strong>${safe(lead.name)}</strong><small>${fmtDate(lead.created_at)}</small><small>Family: ${safe(lead.family_members||"-")}</small></td><td>${safe(lead.phone)}<small>Alt: ${safe(lead.alternate_phone||"-")}</small><small>${safe(lead.area||"")} ${safe(lead.district||"")}</small></td><td>${safe(lead.vehicle_category||"-")} / ${safe(lead.fuel_type||"-")}<small>${safe(lead.car_interest||"Not Selected")}</small><small>Variant: ${safe(lead.variant_interest || "-")}</small>
+    tb.innerHTML = leads.map(lead => { const pc=String(lead.priority||"COLD").toLowerCase(); const phone=cleanPhone(lead.phone); const assignableUsers = users.filter(u => String(u.role || "").toLowerCase() === "sales" && String(u.status || "ACTIVE").toUpperCase() !== "INACTIVE"); const assign = String(user?.role || "").toLowerCase() === "admin" ? `<select class="assign-select" onchange="assignLead(${lead.id},this.value)"><option value="">Unassigned</option>${assignableUsers.map(u=>`<option value="${u.id}" ${Number(lead.assigned_to)===Number(u.id)?"selected":""}>${safe(u.name || u.email)}</option>`).join("")}</select>` : safe(lead.assigned_name||"Unassigned"); return `<tr class="${pc}"><td><strong>${safe(lead.name)}</strong><small>${fmtDate(lead.created_at)}</small><small>Family: ${safe(lead.family_members||"-")}</small></td><td>${safe(lead.phone)}<small>Alt: ${safe(lead.alternate_phone||"-")}</small><small>${safe(lead.area||"")} ${safe(lead.district||"")}</small></td><td>${safe(lead.vehicle_category||"-")} / ${safe(lead.fuel_type||"-")}<small>${safe(lead.car_interest||"Not Selected")}</small><small>Variant: ${safe(lead.variant_interest || "-")}</small>
 <small>Color: ${safe(lead.preferred_color || "-")}</small></td><td>${safe(lead.source||"WEBSITE")}<small>${safe(lead.action_type||lead.lead_type||"ENQUIRY")}</small><small>${safe(lead.campaign_name||"-")}</small></td><td><span class="badge ${pc}">${safe(lead.priority||"COLD")}</span><small>Score: ${Number(lead.score||0)}</small></td><td><select onchange="updateStatus(${lead.id},this.value)">${STATUSES.map(s=>`<option value="${s}" ${lead.status===s?"selected":""}>${s}</option>`).join("")}</select></td><td class="admin-only">${assign}</td>
 <td class="actions compact-actions">
 
@@ -319,7 +319,7 @@ function renderTable(leads) {
 
 </td>
 </tr>`; }).join("");
-    if(user.role !== "admin") document.querySelectorAll(".admin-only").forEach(e=>e.style.display="none");
+    if(String(user?.role || "").toLowerCase() !== "admin") document.querySelectorAll(".admin-only").forEach(e=>e.style.display="none");
 }
 async function assignLead(id,userId){ try{ await request(`${API}/lead/${id}/assign`,{method:"PUT",headers:authHeaders(true),body:JSON.stringify({user_id:userId||null})}); toast(userId?"Lead assigned":"Lead unassigned"); await loadPage(); }catch(e){toast(e.message,true);} }
 async function updateStatus(id, status) {
@@ -360,7 +360,7 @@ async function updateStatus(id, status) {
     }
 }
 
-async function escalateFollowups(){ if(user.role!=="admin")return; if(!confirm("Escalate missed follow-ups?"))return; try{ const r=await request(`${API}/followups/escalate`,{method:"POST",headers:authHeaders()}); toast(`${r.updated||0} leads escalated`); await loadPage(); }catch(e){toast(e.message,true);} }
+async function escalateFollowups(){ if(String(user?.role || "").toLowerCase()!=="admin")return; if(!confirm("Escalate missed follow-ups?"))return; try{ const r=await request(`${API}/followups/escalate`,{method:"POST",headers:authHeaders()}); toast(`${r.updated||0} leads escalated`); await loadPage(); }catch(e){toast(e.message,true);} }
 function downloadLeadsCSV(){ if(!allLeads.length)return toast("No leads to download",true); const headers=["Name","Phone","Car","Variant","Source","Priority","Status","Assigned","Next Follow-up","Created"]; const rows=allLeads.map(l=>[l.name,l.phone,l.car_interest,l.variant_interest,l.source,l.priority,l.status,l.assigned_name||"Unassigned",l.next_followup_at,l.created_at]); const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n"); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download=`leads-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(a.href); }
 async function openLeadDetails(id) {
     const lead = allLeads.find(l => Number(l.id) === Number(id));
@@ -969,7 +969,7 @@ window.checkLeadStockAvailability = checkLeadStockAvailability;
 window.allocateInventoryToLead = allocateInventoryToLead;
 window.openBookingFromLead = openBookingFromLead;
 window.onload = async () => {
-    if (user.role !== "admin") {
+    if (String(user?.role || "").toLowerCase() !== "admin") {
         document.querySelectorAll(".admin-only").forEach(e => e.style.display = "none");
     }
 

@@ -1,6 +1,3 @@
-const API = "https://landing-backend-8gvq.onrender.com/api";
-const token = sessionStorage.getItem("token");
-
 let currentReport = null;
 
 if (!token) {
