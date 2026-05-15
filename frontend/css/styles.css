@@ -3041,3 +3041,44 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
     flex-direction: column;
   }
 }
+
+/* Dashboard compact follow-up cards */
+.followup-mini-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+  transition: 0.2s ease;
+}
+
+.followup-mini-card:hover {
+  background: #eef4ff;
+  transform: translateY(-1px);
+}
+
+.followup-mini-card strong {
+  color: #0f172a;
+}
+
+.followup-mini-card span,
+.followup-mini-card small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.notification-item {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.notification-item span {
+  font-size: 12px;
+  color: #64748b;
+}

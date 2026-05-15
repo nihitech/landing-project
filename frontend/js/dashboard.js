@@ -143,7 +143,7 @@ function renderTodayFollowupsSafe(leads) {
   const today = new Date().toISOString().slice(0, 10);
 
   const items = leads.filter((lead) => {
-    const date = lead.next_followup_date || lead.followup_date;
+    const date = lead.next_followup_at || lead.next_followup_date || lead.followup_date;
     return date && String(date).slice(0, 10) === today;
   });
 
@@ -159,7 +159,7 @@ function renderOverdueFollowupsSafe(leads) {
   const now = new Date();
 
   const items = leads.filter((lead) => {
-    const date = lead.next_followup_date || lead.followup_date;
+    const date = lead.next_followup_at || lead.next_followup_date || lead.followup_date;
     if (!date) return false;
 
     const status = String(lead.followup_status || lead.status || "").toUpperCase();
@@ -172,9 +172,9 @@ function renderOverdueFollowupsSafe(leads) {
 }
 
 function renderFollowupItem(lead) {
-  const name = escapeHtml(lead.customer_name || lead.name || "Customer");
+  const name = escapeHtml(lead.name || lead.customer_name || "Customer");
   const phone = escapeHtml(lead.phone || lead.mobile || "-");
-  const date = lead.next_followup_date || lead.followup_date || "";
+  const date = lead.next_followup_at || lead.next_followup_date || lead.followup_date || "";
 
   return `
     <div class="followup-mini-card" onclick="openLeadDetails(${lead.id})">
@@ -187,7 +187,7 @@ function renderFollowupItem(lead) {
 
 function renderDashboardNotifications(leads) {
   const overdueCount = leads.filter((lead) => {
-    const date = lead.next_followup_date || lead.followup_date;
+    const date = lead.next_followup_at || lead.next_followup_date || lead.followup_date;
     if (!date) return false;
     return new Date(date) < new Date();
   }).length;
@@ -216,7 +216,7 @@ function openLeadDetails(id) {
 
 function formatDateSafe(value) {
   try {
-    return new Date(value).toLocaleString();
+    return new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
   } catch {
     return value;
   }
