@@ -2863,3 +2863,181 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
     gap: 10px;
     flex-wrap: wrap;
 }
+
+.actions-cell {
+  min-width: 150px;
+}
+
+.icon-btn {
+  border: none;
+  padding: 6px 8px;
+  margin: 2px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.icon-btn.view {
+  background: #e8f1ff;
+}
+
+.icon-btn.edit {
+  background: #fff3cd;
+}
+
+.icon-btn.followup {
+  background: #e9fbe9;
+}
+
+.followup-summary {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #666;
+  line-height: 1.2;
+}
+
+.crm-sidebar {
+  width: 280px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0f172a, #111827);
+  color: #fff;
+  padding: 18px 14px;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 22px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 14px;
+}
+
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #2563eb;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 22px;
+}
+
+.sidebar-brand h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.sidebar-brand span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.menu-group,
+.menu-node {
+  margin-bottom: 6px;
+}
+
+.menu-main,
+.menu-sub {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #e5e7eb;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  border-radius: 12px;
+  transition: 0.2s ease;
+}
+
+.menu-main {
+  padding: 12px 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.menu-sub {
+  padding: 9px 10px 9px 22px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.menu-main:hover,
+.menu-sub:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.menu-main b,
+.menu-sub b {
+  transition: 0.2s ease;
+}
+
+.menu-group.open > .menu-main b,
+.menu-node.open > .menu-sub b {
+  transform: rotate(180deg);
+}
+
+.menu-children,
+.menu-node-children {
+  display: none;
+  margin-top: 4px;
+}
+
+.menu-group.open > .menu-children,
+.menu-node.open > .menu-node-children {
+  display: block;
+}
+
+.menu-link {
+  display: block;
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin: 2px 0;
+  transition: 0.2s ease;
+}
+
+.menu-link.level-1 {
+  padding-left: 24px;
+}
+
+.menu-link.level-2 {
+  padding-left: 38px;
+}
+
+.menu-link.level-3 {
+  padding-left: 52px;
+}
+
+.menu-link:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.menu-link.active {
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(37,99,235,0.35);
+}
+
+@media (max-width: 900px) {
+  .crm-sidebar {
+    width: 100%;
+    min-height: auto;
+    position: relative;
+  }
+
+  .crm-layout {
+    flex-direction: column;
+  }
+}

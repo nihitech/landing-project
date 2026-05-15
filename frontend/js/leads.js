@@ -263,9 +263,9 @@ function renderPipeline(leads) {
 function initDragDrop() { document.querySelectorAll(".dropzone").forEach(z => { z.addEventListener("dragover",e=>e.preventDefault()); z.addEventListener("drop", async e => { e.preventDefault(); await updateStatus(e.dataTransfer.getData("id"), z.parentElement.dataset.status); }); }); }
 function renderTable(leads) {
     const tb=document.querySelector("#leadTable tbody"); if(!tb) return;
-    if(!leads.length){ tb.innerHTML=`<tr><td colspan="9" class="empty-state">No leads found</td></tr>`; return; }
+    if(!leads.length){ tb.innerHTML=`<tr><td colspan="8" class="empty-state">No leads found</td></tr>`; return; }
     tb.innerHTML = leads.map(lead => { const pc=String(lead.priority||"COLD").toLowerCase(); const phone=cleanPhone(lead.phone); const assign = user.role === "admin" ? `<select onchange="assignLead(${lead.id},this.value)"><option value="">Unassigned</option>${users.filter(u=>u.role==='sales').map(u=>`<option value="${u.id}" ${Number(lead.assigned_to)===Number(u.id)?"selected":""}>${safe(u.name)}</option>`).join("")}</select>` : safe(lead.assigned_name||"Unassigned"); return `<tr class="${pc}"><td><strong>${safe(lead.name)}</strong><small>${fmtDate(lead.created_at)}</small><small>Family: ${safe(lead.family_members||"-")}</small></td><td>${safe(lead.phone)}<small>Alt: ${safe(lead.alternate_phone||"-")}</small><small>${safe(lead.area||"")} ${safe(lead.district||"")}</small></td><td>${safe(lead.vehicle_category||"-")} / ${safe(lead.fuel_type||"-")}<small>${safe(lead.car_interest||"Not Selected")}</small><small>Variant: ${safe(lead.variant_interest || "-")}</small>
-<small>Color: ${safe(lead.preferred_color || "-")}</small></td><td>${safe(lead.source||"WEBSITE")}<small>${safe(lead.action_type||lead.lead_type||"ENQUIRY")}</small><small>${safe(lead.campaign_name||"-")}</small></td><td><span class="badge ${pc}">${safe(lead.priority||"COLD")}</span><small>Score: ${Number(lead.score||0)}</small></td><td><select onchange="updateStatus(${lead.id},this.value)">${STATUSES.map(s=>`<option value="${s}" ${lead.status===s?"selected":""}>${s}</option>`).join("")}</select></td><td class="admin-only">${assign}</td><td><button onclick="openFollowup(${lead.id})" class="followup-btn">📞 Follow-up</button><small>Next: ${fmtDate(lead.next_followup_at)}</small><small>Count: ${lead.followup_count||0}</small></td>
+<small>Color: ${safe(lead.preferred_color || "-")}</small></td><td>${safe(lead.source||"WEBSITE")}<small>${safe(lead.action_type||lead.lead_type||"ENQUIRY")}</small><small>${safe(lead.campaign_name||"-")}</small></td><td><span class="badge ${pc}">${safe(lead.priority||"COLD")}</span><small>Score: ${Number(lead.score||0)}</small></td><td><select onchange="updateStatus(${lead.id},this.value)">${STATUSES.map(s=>`<option value="${s}" ${lead.status===s?"selected":""}>${s}</option>`).join("")}</select></td><td class="admin-only">${assign}</td>
 <td class="actions compact-actions">
 
 <button 
@@ -281,7 +281,7 @@ function renderTable(leads) {
     class="icon-btn followup-btn"
     title="Add Follow-up"
 >
-    📞
+    ⏰
 </button>
 
 <button 
