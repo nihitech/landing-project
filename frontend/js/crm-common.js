@@ -1,5 +1,5 @@
 /* =====================================================
-   Nihi Tech / Nihikra Technologies CRM Common Layout
+   NIKRION Technologies CRM Common Layout
    - Shared API helpers
    - Shared auth handling
    - Shared professional nested sidebar

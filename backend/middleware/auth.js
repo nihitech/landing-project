@@ -35,6 +35,9 @@ module.exports = (req, res, next) => {
             manager_id: decoded.manager_id || null,
             data_scope: decoded.data_scope || "OWN",
             vehicle_category_scope: decoded.vehicle_category_scope || "ALL",
+            is_higher_authority: ["admin", "super_admin", "owner", "director", "ceo"]
+                .includes(String(decoded.role || "").trim().toLowerCase()),
+
 
             can_view: decoded.can_view !== false,
             can_create: decoded.can_create === true,
