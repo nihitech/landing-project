@@ -184,6 +184,8 @@ async function ensureAuthSchema() {
             ('departments.manage', 'Manage Departments', 'Departments'),
             ('users.manage', 'Manage Users', 'Users'),
             ('performance.monitor', 'Monitor Performance', 'Performance'),
+            ('performance.view', 'View Performance', 'Performance'),
+            ('permissions.manage', 'Manage Roles & Permissions', 'Permissions'),
             ('campaigns.view', 'View Campaigns', 'Marketing'),
             ('field.checkin', 'Field Check-in', 'Field'),
             ('field.upload_photo', 'Upload Field Photo', 'Field')

@@ -17,6 +17,13 @@ const token =
 let user = readCurrentUser();
 let currentUser = user;
 
+function isHigherAuthority(roleValue = user?.role) {
+  return ["admin", "super_admin", "owner", "director", "ceo"].includes(
+    String(roleValue || "").trim().toLowerCase()
+  );
+}
+
+
 function readCurrentUser() {
   const raw =
     localStorage.getItem("user") ||
@@ -117,8 +124,7 @@ function toast(message, isError = false) {
 }
 
 function requireAdminPage() {
-  const role = String(user?.role || "").toLowerCase();
-  if (role !== "admin" && role !== "manager" && role !== "branch_manager") {
+  if (!isHigherAuthority(user?.role) && !["manager", "branch_manager"].includes(String(user?.role || "").toLowerCase())) {
     toast("You do not have permission to view this page", true);
     setTimeout(() => (window.location.href = "dashboard.html"), 800);
     return false;
@@ -293,8 +299,8 @@ function loadLayout(activeKey = "") {
       <div class="sidebar-brand">
         <div class="brand-logo">N</div>
         <div>
-          <h2>Nihikra</h2>
-          <span>Automobile CRM</span>
+          <h2>NIKRION</h2>
+          <span>Engineering Intelligent Futures</span>
         </div>
       </div>
       <nav class="sidebar-tree">
@@ -305,7 +311,7 @@ function loadLayout(activeKey = "") {
 
   document.querySelectorAll(".admin-only").forEach(el => {
     const role = String(user?.role || "").toLowerCase();
-    if (!["admin", "manager", "branch_manager"].includes(role)) el.style.display = "none";
+    if (!isHigherAuthority(role) && !["manager", "branch_manager"].includes(role)) el.style.display = "none";
   });
 }
 

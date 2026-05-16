@@ -21,7 +21,7 @@ module.exports = (req, res, next) => {
             name: decoded.name || "",
             email: decoded.email || "",
             phone: decoded.phone || "",
-            role: decoded.role || "sales",
+            role: String(decoded.role || "sales").trim().toLowerCase(),
 
             department_id: decoded.department_id || null,
             department_name: decoded.department_name || "",
@@ -34,6 +34,7 @@ module.exports = (req, res, next) => {
             designation: decoded.designation || "",
             manager_id: decoded.manager_id || null,
             data_scope: decoded.data_scope || "OWN",
+            vehicle_category_scope: decoded.vehicle_category_scope || "ALL",
 
             can_view: decoded.can_view !== false,
             can_create: decoded.can_create === true,

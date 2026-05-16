@@ -9,7 +9,7 @@ function normalizeRole(role) {
 }
 
 function requireAdmin(req, res, next) {
-    if (normalizeRole(req.user?.role) !== "admin") {
+    if (!["admin", "super_admin", "owner", "director", "ceo"].includes(normalizeRole(req.user?.role))) {
         return res.status(403).json({ message: "Admin access required" });
     }
     next();

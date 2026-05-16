@@ -11,7 +11,7 @@ function normalizeRole(role) {
 }
 
 function requireAdmin(req, res, next) {
-    if (normalizeRole(req.user?.role) !== "admin") {
+    if (!["admin", "super_admin", "owner", "director", "ceo"].includes(normalizeRole(req.user?.role))) {
         return res.status(403).json({ message: "Admin access required" });
     }
     next();
@@ -91,6 +91,8 @@ async function ensurePermissionSchema() {
             ('Manage Departments', 'departments.manage', 'Departments', 'Can manage departments'),
             ('Manage Users', 'users.manage', 'Users', 'Can manage users'),
             ('Monitor Performance', 'performance.monitor', 'Performance', 'Can monitor team performance'),
+            ('View Performance', 'performance.view', 'Performance', 'Can view performance reports'),
+            ('Manage Permissions', 'permissions.manage', 'Permissions', 'Can manage roles and permissions'),
             ('Field Check-in', 'field.checkin', 'Field Activity', 'Can perform GPS check-in'),
             ('Upload Field Photos', 'field.upload_photo', 'Field Activity', 'Can upload field activity photos')
         ON CONFLICT (permission_code) DO UPDATE SET

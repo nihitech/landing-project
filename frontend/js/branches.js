@@ -6,7 +6,7 @@ if (!token) {
 }
 
 function isAdmin() {
-    return user?.role === "admin";
+    return isHigherAuthority ? isHigherAuthority(user?.role) : user?.role === "admin";
 }
 
 async function loadManagers() {

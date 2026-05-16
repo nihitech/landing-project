@@ -13,7 +13,7 @@ function normalizeRole(role) {
 }
 
 function isAdminUser(req) {
-    return normalizeRole(req.user?.role) === "admin";
+    return ["admin", "super_admin", "owner", "director", "ceo"].includes(normalizeRole(req.user?.role));
 }
 
 function hasPermission(req, key) {
