@@ -556,3 +556,14 @@ CREATE INDEX IF NOT EXISTS idx_delivery_lead ON delivery_checklists(lead_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_lead ON bookings(lead_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_inventory ON bookings(inventory_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(booking_status);
+
+
+-- Lead visibility / EV-AD compatibility safety
+ALTER TABLE leads
+ADD COLUMN IF NOT EXISTS vehicle_category VARCHAR(20),
+ADD COLUMN IF NOT EXISTS branch_id INTEGER,
+ADD COLUMN IF NOT EXISTS assigned_branch_id INTEGER;
+
+UPDATE leads
+SET vehicle_category = 'AD'
+WHERE vehicle_category IS NULL OR TRIM(vehicle_category) = '';

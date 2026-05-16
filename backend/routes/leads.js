@@ -85,7 +85,15 @@ function nullableDate(value) {
    USER / PERMISSION HELPERS
 ===================================================== */
 function isAdminUser(req) {
-    return ["admin", "super_admin", "owner", "director", "ceo"].includes(normalizeRole(req.user?.role));
+    if (req.user?.is_higher_authority === true) return true;
+
+    return [
+        "admin",
+        "super_admin",
+        "owner",
+        "director",
+        "ceo"
+    ].includes(normalizeRole(req.user?.role));
 }
 
 function hasPermission(req, key) {
@@ -310,6 +318,26 @@ async function ensureLeadVerificationColumns() {
         ADD COLUMN IF NOT EXISTS verification_otp_expires_at TIMESTAMP,
         ADD COLUMN IF NOT EXISTS verification_otp_sent_at TIMESTAMP,
         ADD COLUMN IF NOT EXISTS verification_otp_attempts INTEGER DEFAULT 0
+    `);
+}
+
+async function ensureLeadScopeColumns() {
+    await db.query(`
+        ALTER TABLE leads
+        ADD COLUMN IF NOT EXISTS vehicle_category VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS branch_id INTEGER,
+        ADD COLUMN IF NOT EXISTS assigned_branch_id INTEGER
+    `);
+
+    /*
+        Compatibility fix for older lead records created before EV/AD scope.
+        Without this, AD/EV scoped users may see an empty Leads page
+        because old rows have NULL/blank vehicle_category.
+    */
+    await db.query(`
+        UPDATE leads
+        SET vehicle_category = 'AD'
+        WHERE vehicle_category IS NULL OR TRIM(vehicle_category) = ''
     `);
 }
 
@@ -672,6 +700,8 @@ router.post("/lead/:id/followup", auth, requireLeadEdit, async (req, res) => {
 ===================================================== */
 router.get("/leads", auth, requireLeadView, async (req, res) => {
     try {
+        await ensureLeadScopeColumns();
+
         const clauses = [];
         const values = [];
 
