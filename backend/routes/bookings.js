@@ -182,6 +182,46 @@ async function logLeadActivity(client, {
     }
 }
 
+
+const ACTIVE_BOOKING_STATUSES = [
+    "BOOKED",
+    "ADVANCE_RECEIVED",
+    "VEHICLE_ALLOCATED",
+    "FINANCE_PENDING",
+    "RETAIL_PENDING",
+    "RETAILED",
+    "DELIVERED"
+];
+
+async function assertNoActiveBookingConflict(client, { leadId, inventoryId, excludeBookingId = null }) {
+    const values = [ACTIVE_BOOKING_STATUSES];
+    const clauses = ["booking_status = ANY($1)"];
+
+    if (leadId) {
+        values.push(leadId);
+        clauses.push(`lead_id = $${values.length}`);
+    }
+
+    if (finalInventoryId) {
+        values.push(inventoryId);
+        clauses.push(`inventory_id = $${values.length}`);
+    }
+
+    if (excludeBookingId) {
+        values.push(excludeBookingId);
+        clauses.push(`id <> $${values.length}`);
+    }
+
+    const result = await client.query(`
+        SELECT id, booking_no, lead_id, inventory_id, booking_status
+        FROM bookings
+        WHERE ${clauses.join(" AND ")}
+        LIMIT 1
+    `, values);
+
+    return result.rows[0] || null;
+}
+
 async function generateBookingNo(client) {
     const today = new Date();
     const prefix = `BK${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
@@ -288,7 +328,7 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
         await client.query("BEGIN");
 
         const leadResult = await client.query(`
-            SELECT id, name, phone, status
+            SELECT id, name, phone, status, allocated_inventory_id
             FROM leads
             WHERE id = $1
             FOR UPDATE
@@ -299,10 +339,43 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
             return res.status(404).json({ message: "Lead not found" });
         }
 
+        const finalInventoryId = inventoryId || leadResult.rows[0].allocated_inventory_id || null;
+
+        if (!finalInventoryId) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                message: "Vehicle allocation is required before creating booking"
+            });
+        }
+
+        const activeLeadBooking = await assertNoActiveBookingConflict(client, {
+            leadId,
+            excludeBookingId: null
+        });
+
+        if (activeLeadBooking) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                message: `This lead already has an active booking: ${activeLeadBooking.booking_no || activeLeadBooking.id}`
+            });
+        }
+
+        const activeInventoryBooking = await assertNoActiveBookingConflict(client, {
+            inventoryId: finalInventoryId,
+            excludeBookingId: null
+        });
+
+        if (activeInventoryBooking) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                message: `This vehicle already has an active booking: ${activeInventoryBooking.booking_no || activeInventoryBooking.id}`
+            });
+        }
+
         let inventory = null;
 
-        if (inventoryId) {
-            const accessValues = [inventoryId];
+        if (finalInventoryId) {
+            const accessValues = [finalInventoryId];
             const accessClauses = ["i.id = $1", "i.status = 'ACTIVE'"];
 
             appendCategoryScope(req, accessClauses, accessValues, "i");
@@ -378,7 +451,7 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
             RETURNING *
         `, [
             leadId,
-            inventoryId,
+            finalInventoryId,
             bookingNo,
             nullableDate(req.body.booking_date) || new Date(),
             parseAmount(req.body.booking_amount),
@@ -393,7 +466,7 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
             bool(req.body.exchange_required),
             cleanText(req.body.exchange_vehicle_details),
             simpleStatus(req.body.exchange_status, "NOT_REQUIRED"),
-            retailStatus(req.body.retail_status),
+            finalRetailStatus,
             cleanText(req.body.retail_invoice_no),
             nullableDate(req.body.retail_date),
             cleanText(req.body.remarks),
@@ -421,7 +494,7 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
                 leadResult.rows[0].name,
                 bookingNo,
                 req.user.id,
-                inventoryId
+                finalInventoryId
             ]);
 
             await client.query(`
@@ -435,7 +508,7 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
                     updated_at = NOW()
                 WHERE id = $3
             `, [
-                inventoryId,
+                finalInventoryId,
                 inventory?.vin_number || "",
                 leadId
             ]);
@@ -510,6 +583,29 @@ router.put("/:id", auth, requireBookingManage, async (req, res) => {
         }
 
         const oldBooking = existing.rows[0];
+
+        const finalRetailStatus = retailStatus(req.body.retail_status);
+
+        if (["INVOICED", "RETAILED"].includes(finalRetailStatus) && !inventoryId) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                message: "Retail cannot be completed without allocated inventory"
+            });
+        }
+
+        if (inventoryId) {
+            const activeInventoryBooking = await assertNoActiveBookingConflict(client, {
+                inventoryId,
+                excludeBookingId: bookingId
+            });
+
+            if (activeInventoryBooking) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({
+                    message: `This vehicle already has another active booking: ${activeInventoryBooking.booking_no || activeInventoryBooking.id}`
+                });
+            }
+        }
 
         const result = await client.query(`
             UPDATE bookings

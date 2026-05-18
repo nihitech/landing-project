@@ -627,6 +627,24 @@ router.post("/:id/allocate-lead", auth, requireInventoryManage, async (req, res)
             });
         }
 
+        const activeBooking = await client.query(`
+            SELECT id, booking_no, lead_id
+            FROM bookings
+            WHERE inventory_id = $1
+            AND booking_status <> 'CANCELLED'
+            LIMIT 1
+        `, [inventoryId]);
+
+        if (
+            activeBooking.rows.length &&
+            Number(activeBooking.rows[0].lead_id) !== Number(leadId)
+        ) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                message: `This vehicle already has an active booking: ${activeBooking.rows[0].booking_no || activeBooking.rows[0].id}`
+            });
+        }
+
         await client.query(`
             UPDATE vehicle_inventory_units
             SET

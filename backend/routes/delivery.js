@@ -249,6 +249,30 @@ router.post("/", auth, requireDeliveryManage, async (req, res) => {
 
         const finalLeadId = leadId || inventory.allocated_lead_id || null;
 
+        if (nullableDate(req.body.actual_delivery_date)) {
+            const bookingCheck = await db.query(`
+                SELECT id, booking_no, retail_status
+                FROM bookings
+                WHERE inventory_id = $1
+                AND lead_id = COALESCE($2, lead_id)
+                AND booking_status <> 'CANCELLED'
+                ORDER BY created_at DESC
+                LIMIT 1
+            `, [inventoryId, finalLeadId]);
+
+            if (!bookingCheck.rows.length) {
+                return res.status(400).json({
+                    message: "Delivery cannot be completed before booking is created"
+                });
+            }
+
+            if (!["INVOICED", "RETAILED"].includes(String(bookingCheck.rows[0].retail_status || "").toUpperCase())) {
+                return res.status(400).json({
+                    message: "Delivery cannot be completed before retail invoice / retail status"
+                });
+            }
+        }
+
         const checklistData = {
             pdi_completed: bool(req.body.pdi_completed),
             accessories_completed: bool(req.body.accessories_completed),
