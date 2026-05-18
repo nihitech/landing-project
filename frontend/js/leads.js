@@ -3,6 +3,37 @@ let users = [], allLeads = [];
 let vehicleModels = [];
 let vehicleVariants = [];
 let vehicleColors = [];
+
+// Lead board constants were missing in the current ZIP.
+// Without these, renderPipeline()/renderTable() throws "STATUSES is not defined"
+// after /api/leads returns data, so the page shows no leads.
+const STATUSES = [
+    "NEW",
+    "CONTACTED",
+    "FOLLOW-UP",
+    "TEST-DRIVE",
+    "BOOKED",
+    "CLOSED",
+    "LOST"
+];
+
+const ZONE_IDS = {
+    "NEW": "zone-new",
+    "CONTACTED": "zone-contacted",
+    "FOLLOW-UP": "zone-follow-up",
+    "TEST-DRIVE": "zone-test-drive",
+    "BOOKED": "zone-booked",
+    "CLOSED": "zone-closed",
+    "LOST": "zone-lost"
+};
+
+function toISTInput(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return offsetDate.toISOString().slice(0, 16);
+}
 async function loadUsers() {
     if (String(user?.role || "").toLowerCase() !== "admin") return;
     users = await request(`${API}/auth/users`, { headers: authHeaders() });
@@ -272,9 +303,12 @@ async function loadPage() {
 
         console.log("LEADS RESPONSE:", allLeads);
 
-        renderPipeline(allLeads);
-        renderTable(allLeads);
-        renderNotificationBell(allLeads);
+        renderPipeline(Array.isArray(allLeads) ? allLeads : []);
+        renderTable(Array.isArray(allLeads) ? allLeads : []);
+
+        if (typeof renderNotificationBell === "function") {
+            renderNotificationBell(Array.isArray(allLeads) ? allLeads : []);
+        }
 
     } catch (err) {
 
@@ -288,7 +322,7 @@ async function loadPage() {
             tb.innerHTML = `
                 <tr>
                     <td colspan="8" class="empty-state">
-                        Failed to load leads
+                        Failed to load leads: ${safe(err.message || "Unknown error")}
                     </td>
                 </tr>
             `;
