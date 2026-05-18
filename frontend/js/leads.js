@@ -242,18 +242,60 @@ async function loadBranches() {
 }
 
 async function loadPage() {
-    const params = new URLSearchParams();
-const priority = document.getElementById("filter")?.value || "";
-const source = document.getElementById("sourceFilter")?.value || "";
-const branchId = document.getElementById("branchFilter")?.value || "";
-const search = document.getElementById("searchInput")?.value.trim() || "";    
-if (priority) params.set("priority", priority);
-if (source) params.set("source", source);
-if (branchId) params.set("branch_id", branchId);
-if (search) params.set("search", search);
-    allLeads = await request(`${API}/leads${params.toString()?`?${params}`:""}`, { headers: authHeaders() });
-    renderPipeline(allLeads); renderTable(allLeads); renderNotificationBell(allLeads);
+    try {
+
+        const params = new URLSearchParams();
+
+        const priority =
+            document.getElementById("filter")?.value || "";
+
+        const source =
+            document.getElementById("sourceFilter")?.value || "";
+
+        const branchId =
+            document.getElementById("branchFilter")?.value || "";
+
+        const search =
+            document.getElementById("searchInput")?.value.trim() || "";
+
+        if (priority) params.set("priority", priority);
+        if (source) params.set("source", source);
+        if (branchId) params.set("branch_id", branchId);
+        if (search) params.set("search", search);
+
+        allLeads = await request(
+            `${API}/leads${params.toString() ? `?${params}` : ""}`,
+            {
+                headers: authHeaders()
+            }
+        );
+
+        console.log("LEADS RESPONSE:", allLeads);
+
+        renderPipeline(allLeads);
+        renderTable(allLeads);
+        renderNotificationBell(allLeads);
+
+    } catch (err) {
+
+        console.error("LOAD LEADS ERROR:", err);
+
+        toast(err.message || "Failed to load leads", true);
+
+        const tb = document.querySelector("#leadTable tbody");
+
+        if (tb) {
+            tb.innerHTML = `
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        Failed to load leads
+                    </td>
+                </tr>
+            `;
+        }
+    }
 }
+
 function renderPipeline(leads) {
     const counters = Object.fromEntries(STATUSES.map(s => [s,0]));
     STATUSES.forEach(s => { const z=document.getElementById(ZONE_IDS[s]); if(z) z.innerHTML=""; });
