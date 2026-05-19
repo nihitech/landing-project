@@ -3,6 +3,7 @@ const router = express.Router();
 
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const { logActivity: auditLogActivity } = require("../utils/activityLogger");
 
 function cleanText(value, fallback = "") {
     return String(value ?? fallback).trim();
@@ -405,6 +406,19 @@ router.post("/", auth, requireDeliveryManage, async (req, res) => {
                 `, [finalLeadId]);
             }
         }
+
+        await auditLogActivity({
+            req,
+            user_id: req.user.id,
+            lead_id: finalLeadId,
+            action: "DELIVERY_CHECKLIST_SAVED",
+            module_name: "DELIVERY",
+            entity_type: "DELIVERY_CHECKLIST",
+            entity_id: result.rows[0].id,
+            new_value: deliveryStatus,
+            severity: deliveryStatus === "BLOCKED" ? "WARNING" : "INFO",
+            remarks: `Delivery checklist saved. Score: ${score}%. Status: ${deliveryStatus}.`
+        });
 
         res.json({
             message: "Delivery checklist saved successfully",

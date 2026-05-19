@@ -3,6 +3,7 @@ const router = express.Router();
 
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const { logActivity: auditLogActivity } = require("../utils/activityLogger");
 
 function normalizeRole(role) {
     return String(role || "").trim().toLowerCase();
@@ -127,32 +128,13 @@ function appendBranchScope(req, clauses, values, alias = "i") {
     }
 }
 
-async function logLeadActivity({
-    lead_id,
-    user_id = null,
-    action,
-    old_value = "",
-    new_value = "",
-    remarks = ""
-}) {
-    try {
-        if (!lead_id || !action) return;
-
-        await db.query(`
-            INSERT INTO activity_logs
-            (lead_id, user_id, action, old_value, new_value, remarks)
-            VALUES ($1,$2,$3,$4,$5,$6)
-        `, [
-            lead_id,
-            user_id,
-            cleanText(action),
-            cleanText(old_value),
-            cleanText(new_value),
-            cleanText(remarks)
-        ]);
-    } catch (err) {
-        console.error("INVENTORY LEAD ACTIVITY LOG ERROR:", err.message);
-    }
+async function logLeadActivity(payload) {
+    return auditLogActivity({
+        ...payload,
+        module_name: payload.module_name || "INVENTORY",
+        entity_type: payload.entity_type || "INVENTORY",
+        entity_id: payload.entity_id || payload.inventory_id || payload.lead_id || null
+    });
 }
 
 /* LIST INVENTORY */

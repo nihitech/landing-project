@@ -3,6 +3,7 @@ const router = express.Router();
 
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const { logActivity: auditLogActivity } = require("../utils/activityLogger");
 
 function cleanText(value, fallback = "") {
     return String(value ?? fallback).trim();
@@ -154,72 +155,13 @@ function appendBranchScope(req, clauses, values, alias = "i") {
     }
 }
 
-async function logLeadActivity(client, {
-    lead_id,
-    user_id = null,
-    action,
-    old_value = "",
-    new_value = "",
-    remarks = ""
-}) {
-    try {
-        if (!lead_id || !action) return;
-
-        await client.query(`
-            INSERT INTO activity_logs
-            (lead_id, user_id, action, old_value, new_value, remarks)
-            VALUES ($1,$2,$3,$4,$5,$6)
-        `, [
-            lead_id,
-            user_id,
-            cleanText(action),
-            cleanText(old_value),
-            cleanText(new_value),
-            cleanText(remarks)
-        ]);
-    } catch (err) {
-        console.error("BOOKING ACTIVITY LOG ERROR:", err.message);
-    }
-}
-
-
-const ACTIVE_BOOKING_STATUSES = [
-    "BOOKED",
-    "ADVANCE_RECEIVED",
-    "VEHICLE_ALLOCATED",
-    "FINANCE_PENDING",
-    "RETAIL_PENDING",
-    "RETAILED",
-    "DELIVERED"
-];
-
-async function assertNoActiveBookingConflict(client, { leadId, inventoryId, excludeBookingId = null }) {
-    const values = [ACTIVE_BOOKING_STATUSES];
-    const clauses = ["booking_status = ANY($1)"];
-
-    if (leadId) {
-        values.push(leadId);
-        clauses.push(`lead_id = $${values.length}`);
-    }
-
-    if (finalInventoryId) {
-        values.push(inventoryId);
-        clauses.push(`inventory_id = $${values.length}`);
-    }
-
-    if (excludeBookingId) {
-        values.push(excludeBookingId);
-        clauses.push(`id <> $${values.length}`);
-    }
-
-    const result = await client.query(`
-        SELECT id, booking_no, lead_id, inventory_id, booking_status
-        FROM bookings
-        WHERE ${clauses.join(" AND ")}
-        LIMIT 1
-    `, values);
-
-    return result.rows[0] || null;
+async function logLeadActivity(client, payload) {
+    return auditLogActivity({
+        ...payload,
+        module_name: payload.module_name || "BOOKINGS",
+        entity_type: payload.entity_type || "BOOKING",
+        entity_id: payload.entity_id || payload.booking_id || payload.lead_id || null
+    });
 }
 
 async function generateBookingNo(client) {

@@ -3,6 +3,7 @@ const db = require("../config/db");
 const sendWhatsApp = require("../services/whatsapp");
 const { calculateScore, getLeadPriority } = require("../services/scoring");
 const auth = require("../middleware/auth");
+const { logActivity: auditLogActivity } = require("../utils/activityLogger");
 
 const router = express.Router();
 
