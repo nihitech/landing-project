@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Activity Intelligence</title>
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+<div id="sidebarContainer"></div>
+<main class="main-content">
+<header class="module-header">
+<div>
+<span class="tag">Field Force Intelligence</span>
+<h1>📍 Field Activity & GPS Validation</h1>
+<p>Create campaigns, assign sales users, validate check-in locations and track activity leads.</p>
+</div>
+<div class="module-actions">
+<button onclick="openActivityModal()" class="save-btn">+ New Activity</button>
+<button onclick="logout()" class="logout-btn">Logout</button>
+</div>
+</header>
+
+<section class="activity-summary-grid">
+<div class="summary-card"><span>Total Activities</span><strong id="totalActivities">0</strong></div>
+<div class="summary-card"><span>Active</span><strong id="activeActivities">0</strong></div>
+<div class="summary-card"><span>Planned</span><strong id="plannedActivities">0</strong></div>
+<div class="summary-card"><span>Completed</span><strong id="completedActivities">0</strong></div>
+<div class="summary-card warning"><span>Today Checks</span><strong id="todayChecks">0</strong></div>
+<div class="summary-card danger"><span>Outside Range</span><strong id="outsideRangeChecks">0</strong></div>
+</section>
+
+<section class="table-card" style="margin-top:20px;">
+<div class="page-header"><h2>Filters</h2><p>Search activities by name, type, location or status.</p></div>
+<div class="form-grid">
+<div class="field-group"><label>Search</label><input id="activitySearch" placeholder="Activity name, location..." oninput="loadActivities()"></div>
+<div class="field-group"><label>Status</label><select id="statusFilter" onchange="loadActivities()"><option value="">All</option><option value="PLANNED">PLANNED</option><option value="ACTIVE">ACTIVE</option><option value="COMPLETED">COMPLETED</option><option value="CANCELLED">CANCELLED</option></select></div>
+<div class="field-group"><label>Type</label><select id="typeFilter" onchange="loadActivities()"><option value="">All</option><option value="STALL">STALL</option><option value="EVENT">EVENT</option><option value="WORKSHOP">WORKSHOP</option><option value="PROMOTION">PROMOTION</option><option value="REFERRAL">REFERRAL</option><option value="FIELD_VISIT">FIELD VISIT</option><option value="ROADSHOW">ROADSHOW</option><option value="CORPORATE_VISIT">CORPORATE VISIT</option><option value="SERVICE_CAMP">SERVICE CAMP</option></select></div>
+</div>
+</section>
+
+<section class="table-card" style="margin-top:20px;">
+<div class="page-header"><h2>Activity List</h2><p>Manager-created field activities with smart GPS validation.</p></div>
+<table class="report-table">
+<thead><tr><th>Activity</th><th>Type</th><th>Location</th><th>Radius</th><th>Date/Time</th><th>Users</th><th>Leads</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="activityTable"></tbody>
+</table>
+</section>
+
+<div id="activityModal" class="followup-modal">
+<div class="followup-modal-card delivery-modal-card">
+<h2 id="activityModalTitle">Field Activity</h2>
+<input type="hidden" id="activityId">
+
+<div class="form-grid">
+<div class="field-group"><label>Activity Name</label><input id="activityName" placeholder="Example: Trichy Mall EV Campaign"></div>
+<div class="field-group"><label>Activity Type</label><select id="activityType"><option value="STALL">STALL</option><option value="EVENT">EVENT</option><option value="WORKSHOP">WORKSHOP</option><option value="PROMOTION">PROMOTION</option><option value="REFERRAL">REFERRAL</option><option value="FIELD_VISIT">FIELD VISIT</option><option value="ROADSHOW">ROADSHOW</option><option value="CORPORATE_VISIT">CORPORATE VISIT</option><option value="SERVICE_CAMP">SERVICE CAMP</option><option value="OTHER">OTHER</option></select></div>
+<div class="field-group"><label>Source Type</label><input id="sourceType" placeholder="Campaign / Field / Event"></div>
+<div class="field-group"><label>Branch</label><select id="branchId"><option value="">Select Branch</option></select></div>
+<div class="field-group"><label>Location Name</label><input id="locationName" placeholder="Mall / Ground / Village / Company"></div>
+<div class="field-group"><label>Address</label><input id="address" placeholder="Full address"></div>
+<div class="field-group"><label>Target Latitude</label><input id="targetLatitude" placeholder="10.7905"></div>
+<div class="field-group"><label>Target Longitude</label><input id="targetLongitude" placeholder="78.7047"></div>
+<div class="field-group"><label>Allowed Radius (meters)</label><input id="allowedRadius" type="number" value="800"></div>
+<div class="field-group"><label>Warning Radius (meters)</label><input id="warningRadius" type="number" value="1500"></div>
+<div class="field-group"><label>Location Mode</label><select id="locationMode"><option value="FIXED">FIXED</option><option value="AREA">AREA</option><option value="MOVING">MOVING</option><option value="MULTI_POINT">MULTI POINT</option></select></div>
+<div class="field-group"><label>Status</label><select id="activityStatus"><option value="PLANNED">PLANNED</option><option value="ACTIVE">ACTIVE</option><option value="COMPLETED">COMPLETED</option><option value="ON_HOLD">ON HOLD</option><option value="CANCELLED">CANCELLED</option></select></div>
+<div class="field-group"><label>Activity Date</label><input id="activityDate" type="date"></div>
+<div class="field-group"><label>Start Time</label><input id="startTime" type="datetime-local"></div>
+<div class="field-group"><label>End Time</label><input id="endTime" type="datetime-local"></div>
+<div class="field-group"><label>Expected Leads</label><input id="expectedLeads" type="number" value="0"></div>
+</div>
+
+<label>Description</label>
+<textarea id="description" placeholder="Activity purpose, instructions and expected outcome"></textarea>
+
+<div class="field-group">
+<label>Assign Sales Users</label>
+<select id="assignedUsers" multiple size="5"></select>
+<small class="muted">Hold CTRL to select multiple users.</small>
+</div>
+
+<div class="followup-modal-actions">
+<button onclick="closeActivityModal()" class="cancel-btn">Cancel</button>
+<button onclick="saveActivity()" class="save-btn">Save Activity</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('field-activities');</script>
+<script src="./js/field-activities.js"></script>
+</body>
+</html>

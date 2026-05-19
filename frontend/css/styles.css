@@ -3401,3 +3401,22 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
         font-size: 38px;
     }
 }
+
+
+/* Field Activity Engine */
+.delivery-modal-card {
+    max-width: 860px;
+}
+
+.muted {
+    color: #64748b;
+    font-size: 12px;
+}
+
+select[multiple] {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 8px;
+    background: #fff;
+}
