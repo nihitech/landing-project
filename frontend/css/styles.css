@@ -3164,3 +3164,240 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
     color: #64748b;
     font-size: 12px;
 }
+
+
+/* NIKRION Login Branding Upgrade */
+.nikrion-login-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.24), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.18), transparent 36%),
+        linear-gradient(135deg, #020617 0%, #0f172a 46%, #111827 100%);
+    font-family: "Poppins", sans-serif;
+}
+
+.nikrion-login-wrapper {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(320px, 1.1fr) minmax(320px, 420px);
+    gap: 40px;
+    align-items: center;
+    padding: 48px;
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.nikrion-login-brand {
+    color: #ffffff;
+}
+
+.nikrion-logo-mark {
+    width: 78px;
+    height: 78px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #2563eb, #f59e0b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin-bottom: 22px;
+    box-shadow: 0 20px 50px rgba(37, 99, 235, 0.35);
+}
+
+.nikrion-logo-mark span {
+    color: #ffffff;
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.nikrion-logo-mark i {
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    right: 13px;
+    top: 13px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 24px rgba(255, 255, 255, 0.9);
+}
+
+.nikrion-login-brand .tag {
+    display: inline-flex;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #bfdbfe;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.nikrion-login-brand h1 {
+    margin: 22px 0 14px;
+    font-size: clamp(34px, 5vw, 60px);
+    line-height: 1.03;
+    letter-spacing: -1.6px;
+    color: #ffffff;
+}
+
+.nikrion-login-brand p {
+    max-width: 620px;
+    color: #cbd5e1;
+    font-size: 16px;
+    line-height: 1.8;
+}
+
+.login-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 30px;
+}
+
+.login-feature-grid div {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 16px;
+    backdrop-filter: blur(12px);
+}
+
+.login-feature-grid strong {
+    color: #ffffff;
+    display: block;
+    font-size: 13px;
+    margin-bottom: 7px;
+}
+
+.login-feature-grid small {
+    color: #94a3b8;
+    line-height: 1.55;
+}
+
+.nikrion-login-card {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 28px;
+    padding: 34px;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.35);
+}
+
+.login-card-header {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 26px;
+}
+
+.login-card-header .mini-logo {
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #2563eb, #f59e0b);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.login-card-header h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 25px;
+}
+
+.login-card-header p {
+    margin: 2px 0 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.nikrion-login-card .login-field {
+    margin-bottom: 18px;
+}
+
+.nikrion-login-card .login-field label {
+    color: #334155;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.nikrion-login-card .login-field input {
+    width: 100%;
+    margin-top: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    padding: 13px 14px;
+    font-size: 14px;
+    outline: none;
+    transition: 0.2s ease;
+}
+
+.nikrion-login-card .login-field input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.nikrion-login-btn {
+    width: 100%;
+    border: none;
+    border-radius: 15px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s ease;
+}
+
+.nikrion-login-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.28);
+}
+
+.login-message {
+    margin-top: 14px;
+    min-height: 20px;
+    font-size: 13px;
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.login-message.success {
+    color: #16a34a;
+}
+
+.login-footer-note {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.login-footer-note span {
+    font-weight: 700;
+    color: #334155;
+}
+
+@media (max-width: 900px) {
+    .nikrion-login-wrapper {
+        grid-template-columns: 1fr;
+        padding: 28px;
+    }
+
+    .login-feature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nikrion-login-brand h1 {
+        font-size: 38px;
+    }
+}

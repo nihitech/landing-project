@@ -3,43 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM Login | Mahindra Lead CRM</title>
+    <title>NIKRION Login | Engineering Intelligent Futures</title>
 
     <link rel="stylesheet" href="./css/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
-<body class="login-page">
+<body class="login-page nikrion-login-page">
 
-    <div class="login-wrapper">
-        <div class="login-brand">
-            <span class="tag">Mahindra Lead CRM</span>
-            <h1>Welcome Back</h1>
-            <p>Login to manage leads, follow-ups, sales pipeline and customer actions.</p>
-        </div>
+    <div class="login-wrapper nikrion-login-wrapper">
 
-        <div class="login-card">
-            <h2>Admin Login</h2>
-            <p>Enter your CRM credentials</p>
+        <section class="login-brand nikrion-login-brand">
+            <div class="nikrion-logo-mark">
+                <span>N</span>
+                <i></i>
+            </div>
+
+            <span class="tag">NIKRION Technologies</span>
+
+            <h1>Engineering Intelligent Futures.</h1>
+
+            <p>
+                AI-powered business intelligence, automation and enterprise operating systems
+                for smarter, faster and scalable business growth.
+            </p>
+
+            <div class="login-feature-grid">
+                <div>
+                    <strong>AI Intelligence</strong>
+                    <small>Smart alerts, insights and operational monitoring.</small>
+                </div>
+
+                <div>
+                    <strong>Enterprise CRM</strong>
+                    <small>Lead, workflow, inventory, booking and delivery control.</small>
+                </div>
+
+                <div>
+                    <strong>Automation</strong>
+                    <small>Human-controlled automation for real-world businesses.</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="login-card nikrion-login-card">
+            <div class="login-card-header">
+                <div class="mini-logo">⚡</div>
+                <div>
+                    <h2>Secure Login</h2>
+                    <p>NIKRION Core Platform</p>
+                </div>
+            </div>
 
             <div class="login-field">
                 <label>Email Address</label>
-                <input type="email" id="email" placeholder="admin@example.com">
+                <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
             </div>
 
             <div class="login-field">
                 <label>Password</label>
-                <input type="password" id="password" placeholder="Enter password">
+                <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
             </div>
 
-            <button onclick="login()" class="login-btn">Login Dashboard</button>
+            <button onclick="login()" class="login-btn nikrion-login-btn">
+                Login to Control Center
+            </button>
 
             <div id="loginMessage" class="login-message"></div>
-        </div>
+
+            <div class="login-footer-note">
+                <span>AI • Automation • CRM • SaaS • Analytics</span>
+                <small>© NIKRION Technologies</small>
+            </div>
+        </section>
     </div>
 
     <script>
         const API = "https://landing-backend-8gvq.onrender.com/api";
+
+        function normalizeRole(role) {
+            return String(role || "").trim().toLowerCase();
+        }
+
+        function isHigherAuthority(user) {
+            return [
+                "admin",
+                "super_admin",
+                "owner",
+                "director",
+                "ceo"
+            ].includes(normalizeRole(user?.role));
+        }
 
         async function login() {
             const email = document.getElementById("email").value.trim();
@@ -47,6 +101,7 @@
             const message = document.getElementById("loginMessage");
 
             message.innerText = "";
+            message.classList.remove("success");
 
             if (!email || !password) {
                 message.innerText = "Please enter email and password.";
@@ -72,7 +127,10 @@
                 sessionStorage.setItem("token", data.token);
                 sessionStorage.setItem("user", JSON.stringify(data.user));
 
-                if (data.user.role === "admin") {
+                message.classList.add("success");
+                message.innerText = "Login successful. Redirecting...";
+
+                if (isHigherAuthority(data.user)) {
                     window.location.href = "dashboard.html";
                 } else {
                     window.location.href = "user-dashboard.html";
@@ -83,6 +141,12 @@
                 message.innerText = "Something went wrong. Try again.";
             }
         }
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                login();
+            }
+        });
     </script>
 
 </body>
