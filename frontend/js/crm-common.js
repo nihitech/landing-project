@@ -283,6 +283,7 @@ const CRM_MENU = [
         title: "Management Reports",
         children: [
           { title: "Reports Center", url: "reports.html", key: "reports" },
+                    { title: "Activity Intelligence", url: "activity.html", key: "activity", adminOnly: true },
           { title: "Settings", url: "settings.html", key: "settings" }
         ]
       }
