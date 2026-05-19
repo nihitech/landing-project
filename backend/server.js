@@ -15,6 +15,7 @@ const inventoryRoutes = require("./routes/inventory");
 const deliveryRoutes = require("./routes/delivery");
 const bookingRoutes = require("./routes/bookings");
 const dashboardRoutes = require("./routes/dashboard");
+const activityRoutes = require("./routes/activity");
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/activity", activityRoutes);
 // Test routes
 app.get("/", (req, res) => {
     res.json({ message: "Mahindra Lead CRM API running" });

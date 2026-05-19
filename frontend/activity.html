@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Intelligence</title>
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+<div id="sidebarContainer"></div>
+<main class="main-content">
+<header class="module-header">
+<div>
+<span class="tag">NIKRION Control Center</span>
+<h1>🧠 Activity Intelligence</h1>
+<p>Monitor user actions, module activity, risks and operational intelligence.</p>
+</div>
+<div class="module-actions">
+<button onclick="loadActivityDashboard()" class="copy-btn">Refresh</button>
+<button onclick="logout()" class="logout-btn">Logout</button>
+</div>
+</header>
+
+<section class="activity-summary-grid">
+<div class="summary-card"><span>Total Activities</span><strong id="totalActivities">0</strong></div>
+<div class="summary-card"><span>Today</span><strong id="todayActivities">0</strong></div>
+<div class="summary-card"><span>Active Users</span><strong id="activeUsers">0</strong></div>
+<div class="summary-card"><span>Active Modules</span><strong id="activeModules">0</strong></div>
+<div class="summary-card warning"><span>Warnings</span><strong id="warningCount">0</strong></div>
+<div class="summary-card danger"><span>Critical</span><strong id="criticalCount">0</strong></div>
+</section>
+
+<section class="table-card" style="margin-top:20px;">
+<div class="page-header"><h2>Activity Filters</h2><p>Filter activity by module, severity, date or keyword.</p></div>
+<div class="form-grid">
+<div class="field-group"><label>Search</label><input id="activitySearch" placeholder="Action, user, lead, remarks..." oninput="loadActivities()"></div>
+<div class="field-group"><label>Module</label><select id="moduleFilter" onchange="loadActivities()"><option value="">All Modules</option></select></div>
+<div class="field-group"><label>Severity</label><select id="severityFilter" onchange="loadActivities()"><option value="">All Severity</option></select></div>
+<div class="field-group"><label>From Date</label><input type="date" id="dateFromFilter" onchange="loadActivities()"></div>
+<div class="field-group"><label>To Date</label><input type="date" id="dateToFilter" onchange="loadActivities()"></div>
+</div>
+</section>
+
+<section class="activity-analytics-grid">
+<div class="table-card"><div class="page-header"><h2>Module Activity</h2><p>Most active modules.</p></div><div id="moduleActivityList" class="mini-analytics-list"></div></div>
+<div class="table-card"><div class="page-header"><h2>User Activity</h2><p>Most active users.</p></div><div id="userActivityList" class="mini-analytics-list"></div></div>
+</section>
+
+<section class="table-card" style="margin-top:20px;">
+<div class="page-header"><h2>Live Activity Feed</h2><p>Latest operational actions across the CRM.</p></div>
+<table class="report-table">
+<thead><tr><th>Time</th><th>User</th><th>Module</th><th>Action</th><th>Entity</th><th>Lead</th><th>Severity</th><th>Remarks</th></tr></thead>
+<tbody id="activityTable"></tbody>
+</table>
+</section>
+</main>
+</div>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('activity');</script>
+<script src="./js/activity.js"></script>
+</body>
+</html>

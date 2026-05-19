@@ -3108,3 +3108,20 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
   padding: 8px;
   font-size: 12px;
 }
+
+
+.activity-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:20px}
+.summary-card{background:#fff;border:1px solid #dbe3ef;border-radius:16px;padding:16px;box-shadow:0 8px 20px rgba(15,23,42,.05)}
+.summary-card span{display:block;color:#64748b;font-size:12px;margin-bottom:8px}
+.summary-card strong{font-size:26px;color:#0f172a}
+.summary-card.warning{border-left:5px solid #f59e0b}
+.summary-card.danger{border-left:5px solid #ef4444}
+.activity-analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:20px}
+.mini-analytics-list{display:flex;flex-direction:column;gap:10px}
+.mini-analytics-item{display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px}
+.mini-analytics-item strong{color:#0f172a}
+.mini-analytics-item small{display:block;color:#64748b;font-size:11px}
+.mini-analytics-item span{background:#e0f2fe;color:#075985;padding:5px 10px;border-radius:999px;font-weight:700}
+.badge.info{background:#e0f2fe;color:#075985}
+.badge.warning{background:#fef3c7;color:#92400e}
+.badge.critical{background:#fee2e2;color:#991b1b}
