@@ -249,19 +249,59 @@ async function getUserBranchId(userId) {
     return result.rows[0]?.branch_id || null;
 }
 
-async function getLeastLoadedSalesUser(branchId = null) {
-    const values = [];
-    let branchClause = "";
+async function getUserAssignmentDetails(userId) {
+    if (!userId) return null;
 
-    if (branchId) {
-        values.push(branchId);
-        branchClause = `AND u.branch_id = $${values.length}`;
+    const result = await db.query(`
+        SELECT
+            id,
+            name,
+            role,
+            branch_id,
+            status,
+            vehicle_category_scope
+        FROM users
+        WHERE id = $1
+        LIMIT 1
+    `, [userId]);
+
+    return result.rows[0] || null;
+}
+
+function normalizeVehicleCategory(value) {
+    const category = cleanText(value || "AD").toUpperCase();
+    return ["AD", "EV"].includes(category) ? category : "AD";
+}
+
+
+async function getLeastLoadedSalesUser(branchId, vehicleCategory = null) {
+    /*
+        Branch-wise intelligent assignment rule:
+        A lead must be assigned only to an active sales user inside the lead branch.
+        This prevents Trichy leads from going to Thanjavur users just because workload is lower.
+    */
+    if (!branchId) return null;
+
+    const values = [branchId];
+    let categoryClause = "";
+
+    const category = vehicleCategory ? normalizeVehicleCategory(vehicleCategory) : null;
+
+    if (category) {
+        values.push(category);
+        categoryClause = `
+            AND (
+                COALESCE(u.vehicle_category_scope, 'ALL') = 'ALL'
+                OR UPPER(u.vehicle_category_scope) = $${values.length}
+            )
+        `;
     }
 
     const result = await db.query(`
         SELECT 
             u.id, 
             u.branch_id,
+            COALESCE(u.vehicle_category_scope, 'ALL') AS vehicle_category_scope,
             COUNT(l.id)::int AS lead_count
         FROM users u
         LEFT JOIN leads l 
@@ -269,8 +309,9 @@ async function getLeastLoadedSalesUser(branchId = null) {
             AND l.status NOT IN ('CLOSED','LOST')
         WHERE LOWER(u.role) = 'sales'
         AND COALESCE(u.status, 'ACTIVE') = 'ACTIVE'
-        ${branchClause}
-        GROUP BY u.id, u.branch_id
+        AND u.branch_id = $1
+        ${categoryClause}
+        GROUP BY u.id, u.branch_id, u.vehicle_category_scope
         ORDER BY lead_count ASC, u.id ASC
         LIMIT 1
     `, values);
@@ -450,21 +491,58 @@ router.post("/lead", async (req, res) => {
             });
         }
 
+        const vehicleCategory = normalizeVehicleCategory(data.vehicle_category);
         let branchId = requestedBranch || await getDefaultBranchId();
         let assignedTo = null;
 
-        if (Number.isInteger(requestedAssign)) {
-            assignedTo = requestedAssign;
+        if (!branchId) {
+            return res.status(400).json({
+                message: "Branch is required for lead assignment. Please configure default branch."
+            });
+        }
 
-            const userBranchId = await getUserBranchId(assignedTo);
-            if (userBranchId) branchId = userBranchId;
+        if (Number.isInteger(requestedAssign)) {
+            const selectedUser = await getUserAssignmentDetails(requestedAssign);
+
+            if (!selectedUser) {
+                return res.status(400).json({
+                    message: "Selected assigned user not found"
+                });
+            }
+
+            if (normalizeRole(selectedUser.role) !== "sales") {
+                return res.status(400).json({
+                    message: "Lead can be assigned only to sales users"
+                });
+            }
+
+            if (String(selectedUser.status || "ACTIVE").toUpperCase() !== "ACTIVE") {
+                return res.status(400).json({
+                    message: "Selected sales user is inactive"
+                });
+            }
+
+            if (Number(selectedUser.branch_id) !== Number(branchId)) {
+                return res.status(400).json({
+                    message: "Selected sales user does not belong to the selected lead branch"
+                });
+            }
+
+            const userCategoryScope = cleanText(selectedUser.vehicle_category_scope || "ALL").toUpperCase();
+
+            if (["AD", "EV"].includes(userCategoryScope) && userCategoryScope !== vehicleCategory) {
+                return res.status(400).json({
+                    message: `Selected sales user can handle only ${userCategoryScope} leads`
+                });
+            }
+
+            assignedTo = selectedUser.id;
 
         } else {
-            const leastLoadedUser = await getLeastLoadedSalesUser(branchId);
+            const leastLoadedUser = await getLeastLoadedSalesUser(branchId, vehicleCategory);
 
             if (leastLoadedUser) {
                 assignedTo = leastLoadedUser.id;
-                branchId = leastLoadedUser.branch_id || branchId;
             }
         }
 
@@ -530,7 +608,7 @@ router.post("/lead", async (req, res) => {
             cleanText(data.district),
             cleanText(data.profession),
             cleanText(data.family_members),
-            cleanText(data.vehicle_category),
+            vehicleCategory,
             cleanText(data.fuel_type),
             cleanText(data.car_interest, "Not Selected"),
             cleanText(data.variant_interest),
