@@ -1,8 +1,85 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="stylesheet" href="./css/styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><title>📊 Dashboard</title></head><body class="crm-v2"><div class="crm-layout"><div id="sidebarContainer"></div><main class="main-content"><header class="module-header"><div><span class="tag">Dealer CRM</span><h1>📊 Dashboard</h1></div><div class="module-actions"><div class="notification-box"><button onclick="toggleNotifications()" class="notification-btn">🔔 <span id="notificationCount">0</span></button><div id="notificationPanel" class="notification-panel"><h3>Notifications</h3><div id="notificationList"></div></div></div><button onclick="logout()" class="logout-btn">Logout</button></div></header>
-<section class="dashboard-stats compact">
-  <div class="dash-card">Total <span id="total">0</span></div><div class="dash-card hot">HOT <span id="hot">0</span></div><div class="dash-card warm">WARM <span id="warm">0</span></div><div class="dash-card cold">COLD <span id="cold">0</span></div>
-  <div class="dash-card">Booked <span id="booked">0</span></div><div class="dash-card">Closed <span id="closed">0</span></div><div class="dash-card">Today Follow-ups <span id="today_followups">0</span></div><div class="dash-card">Overdue <span id="overdue_followups">0</span></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="./css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>📊 NIKRION Dashboard</title>
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+<div id="sidebarContainer"></div>
+<main class="main-content">
+<header class="module-header">
+<div>
+<span class="tag">NIKRION Control Center</span>
+<h1>📊 Operational Intelligence Dashboard</h1>
+<p>Live business KPIs, risks, activity intelligence and stock visibility.</p>
+</div>
+<div class="module-actions">
+<div class="notification-box">
+<button onclick="toggleNotifications()" class="notification-btn">🔔 <span id="notificationCount">0</span></button>
+<div id="notificationPanel" class="notification-panel"><h3>Notifications</h3><div id="notificationList"></div></div>
+</div>
+<button onclick="loadDashboard()" class="copy-btn">Refresh</button>
+<button onclick="logout()" class="logout-btn">Logout</button>
+</div>
+</header>
+
+<section class="dashboard-stats compact intelligence-stats">
+  <div class="dash-card">Total Leads <span id="total">0</span></div>
+  <div class="dash-card">Today Leads <span id="today">0</span></div>
+  <div class="dash-card hot">HOT <span id="hot">0</span></div>
+  <div class="dash-card warm">WARM <span id="warm">0</span></div>
+  <div class="dash-card cold">COLD <span id="cold">0</span></div>
+  <div class="dash-card">Bookings <span id="bookings">0</span></div>
+  <div class="dash-card">Retail <span id="retail">0</span></div>
+  <div class="dash-card">Deliveries <span id="deliveries">0</span></div>
+  <div class="dash-card">Today Follow-ups <span id="today_followups">0</span></div>
+  <div class="dash-card danger">Overdue <span id="overdue_followups">0</span></div>
+  <div class="dash-card">Available Stock <span id="available_stock">0</span></div>
+  <div class="dash-card warning">Aged Stock <span id="aged_stock">0</span></div>
 </section>
-<section class="two-column"><div class="chart-card"><h3>Lead Priority</h3><canvas id="priorityChart"></canvas></div><div class="chart-card"><h3>Customer Actions</h3><canvas id="actionChart"></canvas></div></section>
-<section class="two-column"><div class="module-card"><h2>📞 Today's Follow-ups</h2><div id="todayFollowups"></div></div><div class="module-card"><h2>⚠ Missed Follow-ups</h2><div id="overdueFollowups"></div></div></section>
-</main></div><script src="./js/crm-common.js"></script><script>loadLayout('dashboard');</script><script src="./js/dashboard.js"></script></body></html>
+
+<section class="activity-summary-grid">
+  <div class="summary-card danger"><span>Missed Follow-ups</span><strong id="alertMissedFollowups">0</strong></div>
+  <div class="summary-card warning"><span>Blocked Deliveries</span><strong id="alertBlockedDeliveries">0</strong></div>
+  <div class="summary-card warning"><span>Aged Stock Risk</span><strong id="alertAgedStock">0</strong></div>
+  <div class="summary-card"><span>Retail Pending Delivery</span><strong id="alertPendingDelivery">0</strong></div>
+</section>
+
+<section class="two-column">
+  <div class="chart-card"><h3>Lead Priority</h3><canvas id="priorityChart"></canvas></div>
+  <div class="chart-card"><h3>Lead Status Pipeline</h3><canvas id="statusChart"></canvas></div>
+</section>
+
+<section class="activity-analytics-grid">
+  <div class="table-card">
+    <div class="page-header"><h2>📞 Today's Follow-ups</h2><p>Leads requiring attention today.</p></div>
+    <div id="todayFollowups"></div>
+  </div>
+  <div class="table-card">
+    <div class="page-header"><h2>⚠ Missed Follow-ups</h2><p>Overdue follow-ups requiring escalation.</p></div>
+    <div id="overdueFollowups"></div>
+  </div>
+</section>
+
+<section class="activity-analytics-grid">
+  <div class="table-card">
+    <div class="page-header"><h2>🧠 Recent Activity</h2><p>Latest system activity from Activity Intelligence.</p></div>
+    <div id="recentActivityList" class="mini-analytics-list"></div>
+  </div>
+  <div class="table-card">
+    <div class="page-header"><h2>🏆 Top Active Users</h2><p>Most active users in the last 7 days.</p></div>
+    <div id="topUsersList" class="mini-analytics-list"></div>
+  </div>
+</section>
+
+</main>
+</div>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('dashboard');</script>
+<script src="./js/dashboard.js"></script>
+</body>
+</html>

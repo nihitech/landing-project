@@ -3125,3 +3125,42 @@ button{font-family:inherit}.card-actions{display:flex;gap:8px;margin-top:10px;}.
 .badge.info{background:#e0f2fe;color:#075985}
 .badge.warning{background:#fef3c7;color:#92400e}
 .badge.critical{background:#fee2e2;color:#991b1b}
+
+
+/* Dashboard Intelligence Upgrade */
+.intelligence-stats .dash-card {
+    min-height: 78px;
+}
+
+.activity-mini-item span {
+    font-size: 10px;
+    min-width: 58px;
+    text-align: center;
+}
+
+.empty-text {
+    color: #64748b;
+    padding: 12px;
+}
+
+.followup-mini-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #2563eb;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.followup-mini-card strong {
+    display: block;
+    color: #0f172a;
+}
+
+.followup-mini-card span,
+.followup-mini-card small {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+}
