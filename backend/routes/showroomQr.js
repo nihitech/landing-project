@@ -135,6 +135,32 @@ router.post("/public/submit/:code", async(req,res)=>{
  }catch(e){ console.error("PUBLIC QR SUBMIT ERROR:",e); res.status(500).json({message:"Failed to submit showroom enquiry"}); }
 });
 
+
+router.post("/assisted-submit/:sessionId", auth, canManage, async(req,res)=>{
+ try{
+  await ensureSchema();
+  const sessionId=parseId(req.params.sessionId);
+  if(!sessionId) return res.status(400).json({message:"Invalid QR session"});
+  const sr=await db.query(`SELECT * FROM showroom_qr_sessions WHERE id=$1 LIMIT 1`,[sessionId]);
+  if(!sr.rows.length) return res.status(404).json({message:"QR session not found"});
+  const s=sr.rows[0];
+  if(s.qr_status!=="ACTIVE") return res.status(400).json({message:"QR session is not active"});
+  const data=req.body||{};
+  const p=phone(data.phone);
+  if(!clean(data.customer_name||data.name)||p.length!==10) return res.status(400).json({message:"Customer name and valid phone are required"});
+  if(data.consent_accepted!==true && data.consent_accepted!=="true") return res.status(400).json({message:"Consent confirmation is required"});
+  const reason=clean(data.assisted_reason||"CUSTOMER_PHONE_UNAVAILABLE");
+  const notes=[clean(data.notes), `Assisted entry reason: ${reason}`].filter(Boolean).join("\\n");
+  const r=await db.query(`
+  INSERT INTO showroom_qr_submissions(session_id,session_code,submission_method,customer_name,phone,alternate_phone,email,area,district,pincode,vehicle_category,fuel_type,car_interest,variant_interest,preferred_color,notes,consent_accepted,consent_text,consent_accepted_at,consent_ip,consent_user_agent,receptionist_id,assigned_branch_id)
+  VALUES($1,$2,'RECEPTIONIST_SYSTEM',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,true,$16,NOW(),$17,$18,$19,$20) RETURNING *`,
+  [s.id,s.session_code,clean(data.customer_name||data.name),p,phone(data.alternate_phone),clean(data.email),clean(data.area),clean(data.district),clean(data.pincode),cat(data.vehicle_category),clean(data.fuel_type),clean(data.car_interest),clean(data.variant_interest),clean(data.preferred_color),notes,CONSENT_TEXT,clean(req.headers["x-forwarded-for"]||req.socket?.remoteAddress),clean(req.headers["user-agent"]),req.user.id,s.branch_id]);
+  await audit({req,user_id:req.user.id,action:"SHOWROOM_ASSISTED_ENQUIRY_CREATED",module_name:"SHOWROOM_QR",entity_type:"SHOWROOM_QR_SUBMISSION",entity_id:r.rows[0].id,branch_id:s.branch_id,remarks:`Receptionist assisted enquiry created. Reason: ${reason}`});
+  res.status(201).json({message:"Assisted showroom enquiry created",submission:r.rows[0]});
+ }catch(e){ console.error("ASSISTED QR ERROR:",e); res.status(500).json({message:"Failed to create assisted showroom enquiry"}); }
+});
+
+
 router.get("/submissions", auth, canReview, async(req,res)=>{
  try{
   await ensureSchema();

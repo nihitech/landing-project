@@ -1,1 +1,118 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Showroom QR Enquiries</title><link rel="stylesheet" href="./css/styles.css"></head><body class="crm-v2"><div class="crm-layout"><div id="sidebarContainer"></div><main class="main-content"><header class="module-header"><div><span class="tag">Showroom Intelligence</span><h1>📱 Showroom QR Enquiries</h1><p>Create daily QR sessions, review submissions and convert to leads.</p></div><div class="module-actions"><button onclick="createQrSession()" class="save-btn">Create Today QR</button><button onclick="logout()" class="logout-btn">Logout</button></div></header><section class="table-card"><div class="page-header"><h2>QR Sessions</h2><p>Use the QR link for customer self-entry.</p></div><table class="report-table"><thead><tr><th>Session</th><th>Branch</th><th>Status</th><th>Submissions</th><th>QR Link</th></tr></thead><tbody id="sessionTable"></tbody></table></section><section class="table-card" style="margin-top:20px;"><div class="page-header"><h2>QR Submissions</h2><p>Review, assign and convert showroom enquiries.</p></div><table class="report-table"><thead><tr><th>Customer</th><th>Vehicle</th><th>Method</th><th>Consent</th><th>Status</th><th>Assigned</th><th>Action</th></tr></thead><tbody id="submissionTable"></tbody></table></section></main></div><script src="./js/crm-common.js"></script><script>loadLayout('showroom-qr');</script><script src="./js/showroom-qr.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Showroom QR Enquiries</title>
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+<div id="sidebarContainer"></div>
+<main class="main-content">
+<header class="module-header">
+<div>
+<span class="tag">Showroom Intelligence</span>
+<h1>📱 Showroom QR Operations</h1>
+<p>Daily QR, customer self-entry, receptionist assisted entry, consent capture and conversion queue.</p>
+</div>
+<div class="module-actions">
+<button onclick="createQrSession()" class="save-btn">Create Today QR</button>
+<button onclick="logout()" class="logout-btn">Logout</button>
+</div>
+</header>
+
+<section class="qr-ops-grid">
+  <div class="table-card qr-session-panel">
+    <div class="page-header">
+      <h2>Today / Recent QR Sessions</h2>
+      <p>Display, print, copy or open QR for customer self-entry.</p>
+    </div>
+    <div id="sessionCards" class="qr-session-cards"></div>
+  </div>
+
+  <div class="table-card qr-preview-panel">
+    <div class="page-header">
+      <h2>Live QR Display</h2>
+      <p id="qrPreviewTitle">Select a session to show QR.</p>
+    </div>
+    <div class="qr-display-box">
+      <canvas id="qrCanvas" width="260" height="260"></canvas>
+      <div id="qrPlaceholder" class="empty-state">No QR selected</div>
+    </div>
+    <div class="qr-actions">
+      <button onclick="printSelectedQr()" class="copy-btn">Print QR</button>
+      <button onclick="downloadSelectedQr()" class="copy-btn">Download PNG</button>
+      <button onclick="copySelectedQr()" class="copy-btn">Copy Link</button>
+      <button onclick="openSelectedQr()" class="save-btn">Open Form</button>
+    </div>
+  </div>
+</section>
+
+<section class="table-card" style="margin-top:20px;">
+<div class="page-header">
+<h2>QR Submissions</h2>
+<p>Review, assign and convert showroom enquiries to leads.</p>
+</div>
+<table class="report-table">
+<thead><tr><th>Customer</th><th>Vehicle</th><th>Method</th><th>Consent</th><th>Status</th><th>Assigned</th><th>Action</th></tr></thead>
+<tbody id="submissionTable"></tbody>
+</table>
+</section>
+
+<div id="assistModal" class="followup-modal">
+  <div class="followup-modal-card delivery-modal-card">
+    <h2>Receptionist Assisted Entry</h2>
+    <p class="muted">Use this when customer has no smartphone, battery/network issue, or requests staff support.</p>
+    <input type="hidden" id="assistSessionId">
+
+    <div class="form-grid">
+      <div class="field-group"><label>Customer Name *</label><input id="assistName"></div>
+      <div class="field-group"><label>Phone *</label><input id="assistPhone"></div>
+      <div class="field-group"><label>Alternate Phone</label><input id="assistAltPhone"></div>
+      <div class="field-group"><label>Email</label><input id="assistEmail"></div>
+      <div class="field-group"><label>Area</label><input id="assistArea"></div>
+      <div class="field-group"><label>District</label><input id="assistDistrict"></div>
+      <div class="field-group"><label>Pincode</label><input id="assistPincode"></div>
+      <div class="field-group"><label>Vehicle Category</label><select id="assistVehicleCategory"><option value="AD">Diesel / Petrol</option><option value="EV">Electric Vehicle</option></select></div>
+      <div class="field-group"><label>Fuel Type</label><input id="assistFuelType"></div>
+      <div class="field-group"><label>Model Interest</label><input id="assistCarInterest"></div>
+      <div class="field-group"><label>Variant</label><input id="assistVariant"></div>
+      <div class="field-group"><label>Preferred Color</label><input id="assistColor"></div>
+      <div class="field-group">
+        <label>Assisted Reason</label>
+        <select id="assistReason">
+          <option value="NO_SMARTPHONE">No smartphone</option>
+          <option value="NETWORK_ISSUE">Network issue</option>
+          <option value="BATTERY_LOW">Battery low</option>
+          <option value="CUSTOMER_REQUEST">Customer requested staff support</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Notes</label>
+    <textarea id="assistNotes"></textarea>
+
+    <div class="consent-box">
+      <label>
+        <input type="checkbox" id="assistConsent">
+        <span>I confirm consent was explained to the customer and accepted for service improvement, future suggestions, analytics and AI-assisted business intelligence.</span>
+      </label>
+    </div>
+
+    <div class="followup-modal-actions">
+      <button onclick="closeAssistModal()" class="cancel-btn">Cancel</button>
+      <button onclick="submitAssistedEntry()" class="save-btn">Submit Assisted Entry</button>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('showroom-qr');</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="./js/showroom-qr.js"></script>
+</body>
+</html>
