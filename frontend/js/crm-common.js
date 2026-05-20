@@ -203,29 +203,33 @@ function renderMiniFollowupCard(lead) {
 
 const CRM_MENU = [
   {
-    title: "Dashboard",
-    icon: "🏠",
-    key: "dashboard",
+    title: "Command",
+    icon: "⌁",
+    key: "command",
+    tone: "command",
     children: [
-      { title: "Overview", url: "dashboard.html", key: "dashboard" },
+      { title: "Control Center", url: "dashboard.html", key: "dashboard" },
+      { title: "Activity Intelligence", url: "activity.html", key: "activity", adminOnly: true },
       { title: "Analytics", url: "analytics.html", key: "analytics" },
       { title: "Performance", url: "performance.html", key: "performance" }
     ]
   },
   {
-    title: "Lead Management",
-    icon: "👥",
-    key: "leads",
+    title: "Customer Flow",
+    icon: "◈",
+    key: "customer-flow",
+    tone: "customer",
     children: [
       {
-        title: "Lead Operations",
+        title: "Capture",
         children: [
           { title: "All Leads", url: "leads.html", key: "leads" },
+          { title: "Showroom QR", url: "showroom-qr-admin.html", key: "showroom-qr" },
           { title: "Follow-ups", url: "followups.html", key: "followups" }
         ]
       },
       {
-        title: "Customer Pipeline",
+        title: "Conversion",
         children: [
           { title: "Bookings", url: "bookings.html", key: "bookings" },
           { title: "Delivery / PDI", url: "delivery.html", key: "delivery" }
@@ -234,9 +238,19 @@ const CRM_MENU = [
     ]
   },
   {
-    title: "Vehicle & Stock",
-    icon: "🚗",
-    key: "vehicle",
+    title: "Field Ops",
+    icon: "◎",
+    key: "field-ops",
+    tone: "field",
+    children: [
+      { title: "Field Activities", url: "field-activities.html", key: "field-activities" }
+    ]
+  },
+  {
+    title: "Vehicle Grid",
+    icon: "▣",
+    key: "vehicle-grid",
+    tone: "stock",
     children: [
       {
         title: "Vehicle Master",
@@ -255,38 +269,35 @@ const CRM_MENU = [
   },
   {
     title: "Organization",
-    icon: "🏢",
-    key: "masters",
+    icon: "▤",
+    key: "organization",
+    tone: "org",
+    adminOnly: true,
     children: [
       {
-        title: "Branch Setup",
+        title: "Structure",
         children: [
-          { title: "Branches", url: "branches.html", key: "branches" },
-          { title: "Departments", url: "departments.html", key: "departments" }
+          { title: "Branches", url: "branches.html", key: "branches", adminOnly: true },
+          { title: "Departments", url: "departments.html", key: "departments", adminOnly: true }
         ]
       },
       {
-        title: "Access Control",
+        title: "Access",
         children: [
-          { title: "Users", url: "users.html", key: "users" },
-          { title: "Roles & Permissions", url: "permissions.html", key: "permissions" }
+          { title: "Users", url: "users.html", key: "users", adminOnly: true },
+          { title: "Roles & Permissions", url: "permissions.html", key: "permissions", adminOnly: true }
         ]
       }
     ]
   },
   {
     title: "Reports",
-    icon: "📊",
+    icon: "◫",
     key: "reports",
+    tone: "reports",
     children: [
-      {
-        title: "Management Reports",
-        children: [
-          { title: "Reports Center", url: "reports.html", key: "reports" },
-                    { title: "Activity Intelligence", url: "activity.html", key: "activity", adminOnly: true },
-          { title: "Settings", url: "settings.html", key: "settings" }
-        ]
-      }
+      { title: "Reports Center", url: "reports.html", key: "reports" },
+      { title: "Settings", url: "settings.html", key: "settings" }
     ]
   }
 ];
@@ -295,33 +306,53 @@ function loadLayout(activeKey = "") {
   const sidebar = document.getElementById("sidebarContainer");
   if (!sidebar) return;
 
+  const roleLabel = String(user?.role || "user").replace(/_/g, " ").toUpperCase();
+  const userLabel = user?.name || user?.email || "Operator";
+
   sidebar.innerHTML = `
-    <aside class="crm-sidebar">
-      <div class="sidebar-brand">
-        <div class="brand-logo">N</div>
+    <aside class="crm-sidebar nikrion-shell">
+      <div class="sidebar-brand nikrion-brand-panel">
+        <div class="brand-logo nikrion-mark">N</div>
         <div>
           <h2>NIKRION</h2>
-          <span>Engineering Intelligent Futures</span>
+          <span>Operational Intelligence</span>
         </div>
       </div>
-      <nav class="sidebar-tree">
+
+      <div class="operator-chip">
+        <span>${safe(userLabel)}</span>
+        <small>${safe(roleLabel)}</small>
+      </div>
+
+      <nav class="sidebar-tree nikrion-tree">
         ${CRM_MENU.map(group => renderMenuGroup(group, activeKey)).join("")}
       </nav>
+
+      <div class="sidebar-signature">
+        <strong>DealerOS Core</strong>
+        <span>Engineering Intelligent Futures</span>
+      </div>
     </aside>
   `;
 
-  document.querySelectorAll(".admin-only").forEach(el => {
+  document.querySelectorAll("[data-admin-only='true'], .admin-only").forEach(el => {
     const role = String(user?.role || "").toLowerCase();
-    if (!isHigherAuthority(role) && !["manager", "branch_manager"].includes(role)) el.style.display = "none";
+    if (!isHigherAuthority(role) && !["manager", "branch_manager"].includes(role)) {
+      el.style.display = "none";
+    }
   });
+
+  document.body.classList.add("nikrion-ops-ui");
 }
 
 function renderMenuGroup(group, activeKey) {
   const isOpen = isGroupActive(group, activeKey);
+  const adminAttr = group.adminOnly ? `data-admin-only="true"` : "";
   return `
-    <div class="menu-group ${isOpen ? "open" : ""}">
+    <div class="menu-group ${isOpen ? "open" : ""} tone-${group.tone || "default"}" ${adminAttr}>
       <button class="menu-main" type="button" onclick="toggleMenuGroup(this)">
-        <span>${group.icon || "•"} ${safe(group.title)}</span>
+        <span class="menu-symbol">${group.icon || "•"}</span>
+        <span class="menu-title-text">${safe(group.title)}</span>
         <b>⌄</b>
       </button>
       <div class="menu-children">
@@ -332,14 +363,18 @@ function renderMenuGroup(group, activeKey) {
 }
 
 function renderMenuNode(node, activeKey, level = 1) {
+  const adminAttr = node.adminOnly ? `data-admin-only="true"` : "";
+
   if (node.url) {
     const active = node.key === activeKey ? "active" : "";
-    return `<a class="menu-link level-${level} ${active}" href="${node.url}">${safe(node.title)}</a>`;
+    return `<a class="menu-link level-${level} ${active}" href="${node.url}" ${adminAttr}>
+      <span>${safe(node.title)}</span>
+    </a>`;
   }
 
   const isOpen = isGroupActive(node, activeKey);
   return `
-    <div class="menu-node ${isOpen ? "open" : ""}">
+    <div class="menu-node ${isOpen ? "open" : ""}" ${adminAttr}>
       <button class="menu-sub" type="button" onclick="toggleMenuNode(this)">
         <span>${safe(node.title)}</span>
         <b>⌄</b>

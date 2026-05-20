@@ -3423,3 +3423,408 @@ select[multiple] {
 
 /* Showroom QR Enquiry Engine */
 .public-qr-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}.public-qr-card{width:min(760px,100%);background:rgba(255,255,255,.98);border-radius:28px;padding:28px;box-shadow:0 28px 70px rgba(0,0,0,.3)}.public-qr-card h1{margin:12px 0 4px;color:#0f172a}.public-qr-card p{color:#64748b}.consent-box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:16px;padding:14px;margin:16px 0;color:#334155;line-height:1.6}.consent-box label{display:flex;gap:10px;align-items:flex-start}.consent-box input{margin-top:5px}
+
+/* =====================================================
+   NIKRION Operational Intelligence Design System
+   Custom human-workflow UI identity layer
+   ===================================================== */
+:root {
+    --nik-bg: #eef2f6;
+    --nik-ink: #101828;
+    --nik-muted: #667085;
+    --nik-panel: rgba(255, 255, 255, 0.88);
+    --nik-line: #d8e0ea;
+    --nik-navy: #07111f;
+    --nik-blue: #1e5bff;
+    --nik-cyan: #00a7c4;
+    --nik-amber: #f59e0b;
+    --nik-green: #16a34a;
+    --nik-red: #dc2626;
+    --nik-radius: 22px;
+}
+
+body.nikrion-ops-ui,
+body.crm-v2 {
+    background:
+        radial-gradient(circle at 15% 15%, rgba(30, 91, 255, 0.10), transparent 30%),
+        radial-gradient(circle at 85% 8%, rgba(0, 167, 196, 0.08), transparent 30%),
+        linear-gradient(135deg, #edf2f7 0%, #f8fafc 48%, #eef2f6 100%);
+    color: var(--nik-ink);
+}
+
+.crm-layout {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 292px minmax(0, 1fr);
+}
+
+.crm-sidebar.nikrion-shell {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background:
+        linear-gradient(180deg, #06111f 0%, #0b1729 48%, #09101c 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 18px 14px;
+    box-shadow: 24px 0 60px rgba(2, 6, 23, 0.14);
+}
+
+.crm-sidebar.nikrion-shell::-webkit-scrollbar {
+    width: 6px;
+}
+
+.crm-sidebar.nikrion-shell::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 99px;
+}
+
+.nikrion-brand-panel {
+    background:
+        linear-gradient(135deg, rgba(30, 91, 255, 0.24), rgba(0, 167, 196, 0.10)),
+        rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 24px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.nikrion-mark {
+    width: 48px;
+    height: 48px;
+    border-radius: 17px;
+    background: linear-gradient(135deg, #1e5bff, #00a7c4 58%, #f59e0b);
+    color: white;
+    display: grid;
+    place-items: center;
+    font-size: 25px;
+    font-weight: 900;
+    box-shadow: 0 16px 30px rgba(30, 91, 255, 0.28);
+}
+
+.nikrion-brand-panel h2 {
+    margin: 0;
+    color: #ffffff;
+    letter-spacing: 0.08em;
+    font-size: 18px;
+}
+
+.nikrion-brand-panel span {
+    color: #9fb3c8;
+    font-size: 11px;
+}
+
+.operator-chip {
+    margin: 0 0 15px;
+    padding: 12px 13px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.075);
+}
+
+.operator-chip span {
+    display: block;
+    color: #e5edf7;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.operator-chip small {
+    display: block;
+    color: #7dd3fc;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    margin-top: 3px;
+}
+
+.nikrion-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.nikrion-tree .menu-group {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.065);
+    background: rgba(255,255,255,0.035);
+}
+
+.nikrion-tree .menu-main,
+.nikrion-tree .menu-sub {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #d8e8f7;
+    cursor: pointer;
+    text-align: left;
+    padding: 12px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+    font-weight: 700;
+}
+
+.nikrion-tree .menu-main:hover,
+.nikrion-tree .menu-sub:hover {
+    background: rgba(255,255,255,0.075);
+}
+
+.nikrion-tree .menu-symbol {
+    width: 26px;
+    height: 26px;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: rgba(255,255,255,0.08);
+    color: #93c5fd;
+}
+
+.nikrion-tree .menu-title-text {
+    flex: 1;
+}
+
+.nikrion-tree .menu-children,
+.nikrion-tree .menu-node-children {
+    display: none;
+    padding: 0 8px 10px 8px;
+}
+
+.nikrion-tree .menu-group.open > .menu-children,
+.nikrion-tree .menu-node.open > .menu-node-children {
+    display: block;
+}
+
+.nikrion-tree .menu-link {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    margin: 5px 0;
+    padding: 9px 10px 9px 14px;
+    border-radius: 13px;
+    color: #aec1d6;
+    text-decoration: none;
+    font-size: 13px;
+    border: 1px solid transparent;
+}
+
+.nikrion-tree .menu-link.level-2 {
+    margin-left: 12px;
+}
+
+.nikrion-tree .menu-link:hover {
+    color: white;
+    background: rgba(255,255,255,0.07);
+}
+
+.nikrion-tree .menu-link.active {
+    color: #ffffff;
+    background:
+        linear-gradient(135deg, rgba(30, 91, 255, 0.95), rgba(0, 167, 196, 0.62));
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: 0 12px 25px rgba(30,91,255,0.20);
+}
+
+.tone-command .menu-symbol { color: #60a5fa; }
+.tone-customer .menu-symbol { color: #22d3ee; }
+.tone-field .menu-symbol { color: #34d399; }
+.tone-stock .menu-symbol { color: #fbbf24; }
+.tone-org .menu-symbol { color: #c4b5fd; }
+.tone-reports .menu-symbol { color: #fda4af; }
+
+.sidebar-signature {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(255,255,255,0.12);
+}
+
+.sidebar-signature strong {
+    display: block;
+    color: white;
+    font-size: 12px;
+}
+
+.sidebar-signature span {
+    display: block;
+    margin-top: 4px;
+    color: #8aa0b7;
+    font-size: 10px;
+}
+
+.main-content {
+    padding: 26px;
+    min-width: 0;
+}
+
+.module-header {
+    background:
+        linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.70)),
+        radial-gradient(circle at 10% 10%, rgba(30, 91, 255, 0.12), transparent 35%);
+    border: 1px solid rgba(216, 224, 234, 0.9);
+    border-radius: 28px;
+    padding: 22px 24px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.06);
+    margin-bottom: 20px;
+}
+
+.module-header .tag,
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #eaf1ff;
+    color: #1e5bff;
+    border: 1px solid #cfe0ff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.module-header h1 {
+    margin: 10px 0 4px;
+    letter-spacing: -0.04em;
+    color: #101828;
+}
+
+.module-header p {
+    color: #667085;
+    margin: 0;
+}
+
+.table-card,
+.module-card,
+.chart-card,
+.summary-card,
+.dash-card,
+.login-card,
+.public-qr-card {
+    border-radius: var(--nik-radius) !important;
+    border: 1px solid rgba(216, 224, 234, 0.9) !important;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06) !important;
+}
+
+.table-card {
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(10px);
+}
+
+.report-table {
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+.report-table thead th {
+    color: #667085;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 0;
+}
+
+.report-table tbody tr {
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
+}
+
+.report-table tbody td {
+    border-top: 1px solid #eef2f6;
+    border-bottom: 1px solid #eef2f6;
+}
+
+.report-table tbody td:first-child {
+    border-left: 1px solid #eef2f6;
+    border-top-left-radius: 15px;
+    border-bottom-left-radius: 15px;
+}
+
+.report-table tbody td:last-child {
+    border-right: 1px solid #eef2f6;
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+}
+
+.save-btn,
+.copy-btn,
+.login-btn,
+.logout-btn,
+.cancel-btn,
+.icon-btn {
+    border-radius: 14px !important;
+    font-weight: 800;
+}
+
+.save-btn,
+.login-btn {
+    background: linear-gradient(135deg, #1e5bff, #00a7c4) !important;
+    color: #ffffff !important;
+}
+
+.copy-btn {
+    background: #eaf1ff !important;
+    color: #1e5bff !important;
+}
+
+.logout-btn,
+.cancel-btn {
+    background: #fff1f2 !important;
+    color: #be123c !important;
+}
+
+input,
+select,
+textarea {
+    border-radius: 14px !important;
+}
+
+.badge {
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.badge.active,
+.badge.converted,
+.badge.valid {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge.submitted,
+.badge.planned,
+.badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge.outside_range,
+.badge.rejected,
+.badge.cancelled,
+.badge.expired {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+@media (max-width: 900px) {
+    .crm-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .crm-sidebar.nikrion-shell {
+        position: relative;
+        height: auto;
+        max-height: none;
+    }
+
+    .main-content {
+        padding: 16px;
+    }
+}
