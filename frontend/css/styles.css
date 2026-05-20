@@ -3905,3 +3905,71 @@ textarea {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Showroom QR Open Button Polish */
+.qr-open-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 8px 13px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #101828, #1e5bff);
+    color: #ffffff !important;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid rgba(30, 91, 255, 0.35);
+    box-shadow: 0 10px 22px rgba(30, 91, 255, 0.18);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    white-space: nowrap;
+}
+
+.qr-open-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(30, 91, 255, 0.24);
+    opacity: 0.95;
+}
+
+.qr-session-actions .copy-btn,
+.qr-session-actions .save-btn,
+.qr-session-actions .qr-open-btn {
+    min-width: 96px;
+}
+
+
+/* Receptionist Assisted Entry Scroll Fix */
+#assistModal.followup-modal {
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 24px 14px;
+}
+
+#assistModal .followup-modal-card {
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0 auto;
+    scrollbar-width: thin;
+}
+
+#assistModal .followup-modal-card::-webkit-scrollbar {
+    width: 7px;
+}
+
+#assistModal .followup-modal-card::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 99px;
+}
+
+#assistModal .followup-modal-actions {
+    position: sticky;
+    bottom: -1px;
+    background: rgba(255,255,255,0.96);
+    border-top: 1px solid #e2e8f0;
+    padding-top: 12px;
+    margin-top: 16px;
+    backdrop-filter: blur(8px);
+}

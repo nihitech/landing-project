@@ -84,7 +84,7 @@ function renderSessions() {
                 <div class="qr-session-actions">
                     <button onclick="selectQr('${safe(s.session_code)}','${safe(s.session_name || s.session_code)}')" class="copy-btn">Show QR</button>
                     <button onclick="openAssistModal(${s.id})" class="save-btn">Assisted Entry</button>
-                    <a href="${url}" target="_blank" class="icon-link">Open</a>
+                    <a href="${url}" target="_blank" class="qr-open-btn">↗ Open Form</a>
                 </div>
             </div>
         `;
