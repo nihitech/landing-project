@@ -4014,3 +4014,9 @@ textarea {
 }
 
 /* Quick Enquiry Modal Scroll Fix */#quickModal.followup-modal,#otpModal.followup-modal{align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 14px}#quickModal .followup-modal-card,#otpModal .followup-modal-card{max-height:calc(100vh - 48px);overflow-y:auto;overscroll-behavior:contain;margin:0 auto;scrollbar-width:thin}#quickModal .followup-modal-actions,#otpModal .followup-modal-actions{position:sticky;bottom:-1px;background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;padding-top:12px;margin-top:16px;backdrop-filter:blur(8px);z-index:2}
+
+/* Vehicle Intelligence Binding */
+select.vehicle-intel-select,
+.field-group select {
+    min-height: 42px;
+}

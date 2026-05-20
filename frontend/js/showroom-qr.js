@@ -297,4 +297,15 @@ window.openAssistModal = openAssistModal;
 window.closeAssistModal = closeAssistModal;
 window.submitAssistedEntry = submitAssistedEntry;
 
-window.onload = loadQrData;
+window.onload = () => {
+    if (window.bindVehicleIntelligence) {
+        bindVehicleIntelligence({
+            category: "assistVehicleCategory",
+            model: "assistCarInterest",
+            variant: "assistVariant",
+            fuel: "assistFuelType",
+            color: "assistColor"
+        });
+    }
+    loadQrData();
+};
