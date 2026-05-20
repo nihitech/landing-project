@@ -27,7 +27,7 @@ async function loadManagers() {
         select.innerHTML = `<option value="">Select Manager</option>` +
             managers.map(u => `
                 <option value="${u.id}">
-                    ${safe(u.name)} (${safe(u.role || "user")})
+                    ${safe(u.name)} (${safe(u.role || "user")})${u.branch_name ? " - " + safe(u.branch_name) : ""}
                 </option>
             `).join("");
 
@@ -35,6 +35,27 @@ async function loadManagers() {
         console.error("Load managers failed:", err.message);
     }
 }
+
+
+function getSelectedManager() {
+    const managerId = Number(document.getElementById("managerId")?.value || 0);
+    return managers.find(m => Number(m.id) === managerId) || null;
+}
+
+function autoFillManagerContact() {
+    const manager = getSelectedManager();
+    if (!manager) return;
+
+    const phone = manager.phone || manager.mobile || "";
+    const email = manager.email || "";
+
+    const phoneEl = document.getElementById("branchPhone");
+    const emailEl = document.getElementById("branchEmail");
+
+    if (phoneEl && !phoneEl.value.trim()) phoneEl.value = phone;
+    if (emailEl && !emailEl.value.trim()) emailEl.value = email;
+}
+
 
 async function loadBranches() {
     try {
@@ -163,6 +184,10 @@ function editBranch(branch) {
     document.getElementById("branchLatitude").value = branch.latitude || "";
     document.getElementById("branchLongitude").value = branch.longitude || "";
 
+    if (!branch.phone || !branch.email) {
+        autoFillManagerContact();
+    }
+
     window.scrollTo({
         top: 0,
         behavior: "smooth"
@@ -232,5 +257,11 @@ window.onload = async () => {
     }
 
     await loadManagers();
+
+    const managerSelect = document.getElementById("managerId");
+    if (managerSelect) {
+        managerSelect.addEventListener("change", autoFillManagerContact);
+    }
+
     await loadBranches();
 };

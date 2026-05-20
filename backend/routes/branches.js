@@ -25,13 +25,34 @@ function parseId(value) {
     return Number.isInteger(id) && id > 0 ? id : NaN;
 }
 
+async function getManagerDetails(client, managerId) {
+    if (!managerId) return null;
+
+    const result = await client.query(`
+        SELECT id, name, phone, mobile, email, role, status
+        FROM users
+        WHERE id = $1
+        LIMIT 1
+    `, [managerId]);
+
+    return result.rows[0] || null;
+}
+
+function managerPhone(manager) {
+    return cleanText(manager?.phone || manager?.mobile || "");
+}
+
 /* LIST BRANCHES */
 router.get("/", auth, async (req, res) => {
     try {
         const result = await db.query(`
             SELECT
                 b.*,
-                u.name AS manager_name
+                u.name AS manager_name,
+                u.email AS manager_email,
+                COALESCE(u.phone, u.mobile) AS manager_phone,
+                u.role AS manager_role,
+                u.branch_id AS manager_current_branch_id
             FROM branches b
             LEFT JOIN users u ON b.manager_id = u.id
             ORDER BY b.id DESC
@@ -46,14 +67,24 @@ router.get("/", auth, async (req, res) => {
 
 /* CREATE BRANCH */
 router.post("/", auth, requireAdmin, async (req, res) => {
+    const client = await db.connect();
+
     try {
+        await client.query("BEGIN");
+
         const managerId = parseId(req.body.manager_id);
 
         if (Number.isNaN(managerId)) {
+            await client.query("ROLLBACK");
             return res.status(400).json({ message: "Invalid manager selected" });
         }
 
-        const result = await db.query(`
+        const manager = await getManagerDetails(client, managerId);
+
+        const branchPhone = cleanText(req.body.phone) || managerPhone(manager);
+        const branchEmail = cleanText(req.body.email) || cleanText(manager?.email);
+
+        const result = await client.query(`
             INSERT INTO branches
             (
                 branch_name,
@@ -86,37 +117,70 @@ router.post("/", auth, requireAdmin, async (req, res) => {
             req.body.latitude || null,
             req.body.longitude || null,
             managerId,
-            cleanText(req.body.phone),
-            cleanText(req.body.email),
+            branchPhone,
+            branchEmail,
             cleanText(req.body.status || "ACTIVE").toUpperCase()
         ]);
 
+        const branch = result.rows[0];
+
+        if (managerId) {
+            await client.query(`
+                UPDATE users
+                SET
+                    branch_id = $1,
+                    role = CASE
+                        WHEN LOWER(COALESCE(role, '')) IN ('admin','super_admin','owner','director','ceo')
+                        THEN role
+                        ELSE COALESCE(NULLIF(role, ''), 'branch_manager')
+                    END,
+                    updated_at = COALESCE(updated_at, NOW())
+                WHERE id = $2
+            `, [branch.id, managerId]);
+        }
+
+        await client.query("COMMIT");
+
         res.status(201).json({
-            message: "Branch created successfully",
-            branch: result.rows[0]
+            message: "Branch created successfully and manager assigned to this branch",
+            branch
         });
 
     } catch (err) {
+        await client.query("ROLLBACK");
         console.error("BRANCH CREATE ERROR:", err);
         res.status(500).json({ message: "Failed to create branch" });
+    } finally {
+        client.release();
     }
 });
 
 /* UPDATE BRANCH */
 router.put("/:id", auth, requireAdmin, async (req, res) => {
+    const client = await db.connect();
+
     try {
+        await client.query("BEGIN");
+
         const id = parseId(req.params.id);
         const managerId = parseId(req.body.manager_id);
 
         if (!id || Number.isNaN(id)) {
+            await client.query("ROLLBACK");
             return res.status(400).json({ message: "Invalid branch id" });
         }
 
         if (Number.isNaN(managerId)) {
+            await client.query("ROLLBACK");
             return res.status(400).json({ message: "Invalid manager selected" });
         }
 
-        const result = await db.query(`
+        const manager = await getManagerDetails(client, managerId);
+
+        const branchPhone = cleanText(req.body.phone) || managerPhone(manager);
+        const branchEmail = cleanText(req.body.email) || cleanText(manager?.email);
+
+        const result = await client.query(`
             UPDATE branches
             SET
                 branch_name = $1,
@@ -148,24 +212,45 @@ router.put("/:id", auth, requireAdmin, async (req, res) => {
             req.body.latitude || null,
             req.body.longitude || null,
             managerId,
-            cleanText(req.body.phone),
-            cleanText(req.body.email),
+            branchPhone,
+            branchEmail,
             cleanText(req.body.status || "ACTIVE").toUpperCase(),
             id
         ]);
 
         if (!result.rows.length) {
+            await client.query("ROLLBACK");
             return res.status(404).json({ message: "Branch not found" });
         }
 
+        if (managerId) {
+            await client.query(`
+                UPDATE users
+                SET
+                    branch_id = $1,
+                    role = CASE
+                        WHEN LOWER(COALESCE(role, '')) IN ('admin','super_admin','owner','director','ceo')
+                        THEN role
+                        ELSE COALESCE(NULLIF(role, ''), 'branch_manager')
+                    END,
+                    updated_at = COALESCE(updated_at, NOW())
+                WHERE id = $2
+            `, [id, managerId]);
+        }
+
+        await client.query("COMMIT");
+
         res.json({
-            message: "Branch updated successfully",
+            message: "Branch updated successfully and manager branch assignment synced",
             branch: result.rows[0]
         });
 
     } catch (err) {
+        await client.query("ROLLBACK");
         console.error("BRANCH UPDATE ERROR:", err);
         res.status(500).json({ message: "Failed to update branch" });
+    } finally {
+        client.release();
     }
 });
 
