@@ -4020,3 +4020,14 @@ select.vehicle-intel-select,
 .field-group select {
     min-height: 42px;
 }
+
+
+/* Quick Enquiry Workspace Integration */
+.quick-workspace-panel {
+    margin-top: 20px;
+}
+
+.workspace-kpi-grid .summary-card strong#kpiQuick,
+.workspace-kpi-grid .summary-card strong#kpiQuickVerified {
+    color: #1e5bff;
+}
