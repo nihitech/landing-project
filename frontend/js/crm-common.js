@@ -224,6 +224,7 @@ const CRM_MENU = [
         title: "Capture",
         children: [
           { title: "All Leads", url: "leads.html", key: "leads" },
+          { title: "Quick Enquiries", url: "quick-enquiries.html", key: "quick-enquiries" },
           { title: "Showroom QR", url: "showroom-qr-admin.html", key: "showroom-qr" },
           { title: "Follow-ups", url: "followups.html", key: "followups" }
         ]
