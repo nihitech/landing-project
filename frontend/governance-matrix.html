@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Governance Matrix</title><link rel="stylesheet" href="./css/styles.css"></head>
+<body class="crm-v2"><div class="crm-layout"><div id="sidebarContainer"></div><main class="main-content">
+<header class="module-header"><div><span class="tag">Enterprise Governance</span><h1>🧭 Governance Matrix v2</h1><p>Human-management authority, data scope, approvals and restrictions.</p></div><div class="module-actions"><button onclick="loadGovernance()" class="copy-btn">Refresh</button><button onclick="logout()" class="logout-btn">Logout</button></div></header>
+<section class="workspace-kpi-grid"><div class="summary-card"><span>Your Authority</span><strong id="myAuthority">-</strong></div><div class="summary-card"><span>Data Scope</span><strong id="myScope">-</strong></div><div class="summary-card"><span>Vehicle Control</span><strong id="vehicleControl">-</strong></div><div class="summary-card"><span>Org Control</span><strong id="orgControl">-</strong></div></section>
+<section class="table-card"><div class="page-header"><h2>Authority Matrix</h2><p>Who can view, edit, approve and report.</p></div><div id="matrixGrid" class="governance-grid"></div></section>
+<section class="table-card" style="margin-top:20px;"><div class="page-header"><h2>Approval Requests</h2><p>Generic approval queue for operational changes.</p></div><table class="report-table"><thead><tr><th>Type</th><th>Requested By</th><th>Status</th><th>Reason</th><th>Action</th></tr></thead><tbody id="approvalTable"></tbody></table></section>
+</main></div><script src="./js/crm-common.js"></script><script>loadLayout('governance-matrix');</script><script src="./js/governance-matrix.js"></script></body></html>

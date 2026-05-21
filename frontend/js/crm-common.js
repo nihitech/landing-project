@@ -210,7 +210,6 @@ const CRM_MENU = [
     children: [
       { title: "Control Center", url: "dashboard.html", key: "dashboard" },
       { title: "Activity Intelligence", url: "activity.html", key: "activity", adminOnly: true },
-      { title: "Lead Edit Approvals", url: "lead-edit-approvals.html", key: "lead-edit-approvals" },
       { title: "Analytics", url: "analytics.html", key: "analytics" },
       { title: "Performance", url: "performance.html", key: "performance" }
     ]
@@ -287,7 +286,8 @@ const CRM_MENU = [
         title: "Access",
         children: [
           { title: "Users", url: "users.html", key: "users", adminOnly: true },
-          { title: "Roles & Permissions", url: "permissions.html", key: "permissions", adminOnly: true }
+          { title: "Roles & Permissions", url: "permissions.html", key: "permissions", adminOnly: true },
+          { title: "Governance Matrix", url: "governance-matrix.html", key: "governance-matrix" }
         ]
       }
     ]
