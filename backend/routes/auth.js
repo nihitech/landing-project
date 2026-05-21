@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const access = require("../middleware/accessControl");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
@@ -679,9 +680,24 @@ router.get("/me", auth, async (req, res) => {
 /* =====================================================
    LIST USERS
 ===================================================== */
-router.get("/users", auth, requireAdmin, async (req, res) => {
+router.get("/users", auth, async (req, res) => {
     try {
         await ensureAuthSchema();
+
+        const values = [];
+        const clauses = ["1=1"];
+
+        if (!access.isHigherAuthority(req)) {
+            if (req.user?.branch_id) {
+                values.push(req.user.branch_id);
+                clauses.push(`u.branch_id = $${values.length}`);
+            } else {
+                clauses.push("1=0");
+            }
+        }
+
+        const where = `WHERE ${clauses.join(" AND ")}`;
+
         const result = await db.query(`
             SELECT 
                 u.id,
@@ -715,6 +731,7 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
             LEFT JOIN departments d ON u.department_id = d.id
             LEFT JOIN branches b ON u.branch_id = b.id
             LEFT JOIN users m ON u.manager_id = m.id
+            ${where}
             ORDER BY 
                 CASE 
                     WHEN LOWER(u.role) = 'admin' THEN 1
@@ -723,7 +740,7 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
                     ELSE 4
                 END,
                 u.name ASC
-        `);
+        `, values);
 
         res.json(result.rows);
 
