@@ -100,30 +100,6 @@
                     </select>
                 </div>
 
-                
-                <div class="permission-preset-panel">
-                    <h3>Permission Preset</h3>
-                    <div class="form-grid">
-                        <div class="field-group">
-                            <label>Apply Role Preset</label>
-                            <select id="permissionPreset" onchange="applyPermissionPreset(this.value)">
-                                <option value="">Select preset</option>
-                                <option value="admin">Admin / CEO Full Access</option>
-                                <option value="branch_manager">Branch Manager</option>
-                                <option value="sales">Salesperson</option>
-                                <option value="telecaller">Telecaller / CRM</option>
-                                <option value="receptionist">Receptionist</option>
-                                <option value="field">Field Executive</option>
-                                <option value="finance">Finance / Insurance</option>
-                                <option value="service">Service</option>
-                                <option value="marketing">Marketing</option>
-                                <option value="view_only">View Only</option>
-                            </select>
-                        </div>
-                    </div>
-                    <p class="muted">Preset updates role, data scope, action permissions and dashboard access. Admin can still customize manually.</p>
-                </div>
-
                 <div class="permission-box">
                     <h3>Permissions</h3>
 
@@ -134,35 +110,6 @@
                     <label><input type="checkbox" id="can_delete"> Delete</label>
                     <label><input type="checkbox" id="can_export"> Export</label>
                     <label><input type="checkbox" id="can_monitor"> Monitor</label>
-                </div>
-
-                
-                <div class="permission-box dashboard-permission-box">
-                    <h3>Dashboard / Module Access</h3>
-                    <p class="muted">User can only open and operate selected dashboards/modules.</p>
-
-                    <label><input type="checkbox" class="dashboard-access" value="dashboard"> Admin Command Dashboard</label>
-                    <label><input type="checkbox" class="dashboard-access" value="manager-dashboard"> Manager Workspace</label>
-                    <label><input type="checkbox" class="dashboard-access" value="receptionist-dashboard"> Receptionist Workspace</label>
-                    <label><input type="checkbox" class="dashboard-access" value="sales-dashboard"> Sales Workspace</label>
-                    <label><input type="checkbox" class="dashboard-access" value="telecaller-dashboard"> Telecaller Workspace</label>
-                    <label><input type="checkbox" class="dashboard-access" value="field-dashboard"> Field Workspace</label>
-                    <label><input type="checkbox" class="dashboard-access" value="finance-dashboard"> Finance / Insurance Workspace</label>
-                    <label><input type="checkbox" class="dashboard-access" value="service-dashboard"> Service Workspace</label>
-                    <label><input type="checkbox" class="dashboard-access" value="marketing-dashboard"> Marketing Workspace</label>
-
-                    <label><input type="checkbox" class="dashboard-access" value="leads"> Leads</label>
-                    <label><input type="checkbox" class="dashboard-access" value="quick-enquiries"> Quick Enquiries</label>
-                    <label><input type="checkbox" class="dashboard-access" value="showroom-qr"> Showroom QR</label>
-                    <label><input type="checkbox" class="dashboard-access" value="activity"> Activity Intelligence</label>
-                    <label><input type="checkbox" class="dashboard-access" value="reports"> Reports</label>
-                    <label><input type="checkbox" class="dashboard-access" value="bookings"> Bookings</label>
-                    <label><input type="checkbox" class="dashboard-access" value="delivery"> Delivery / PDI</label>
-                    <label><input type="checkbox" class="dashboard-access" value="vehicles"> Vehicles</label>
-                    <label><input type="checkbox" class="dashboard-access" value="stock"> Stock</label>
-                    <label><input type="checkbox" class="dashboard-access" value="inventory"> Inventory</label>
-                    <label><input type="checkbox" class="dashboard-access" value="branches"> Branches</label>
-                    <label><input type="checkbox" class="dashboard-access" value="users"> Users</label>
                 </div>
 
                 <div class="form-actions">

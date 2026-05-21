@@ -201,19 +201,6 @@ function renderMiniFollowupCard(lead) {
   `;
 }
 
-
-function hasDashboardAccess(key) {
-  if (!user) return false;
-  const role = String(user.role || "").toLowerCase();
-  if (["admin", "super_admin", "owner", "director", "ceo"].includes(role) || user.is_higher_authority === true) return true;
-
-  const access = Array.isArray(user.dashboard_access) ? user.dashboard_access : [];
-  if (!access.length) return true; // backward compatibility for old users
-
-  return access.includes(key);
-}
-
-
 const CRM_MENU = [
   {
     title: "Command",
@@ -223,6 +210,7 @@ const CRM_MENU = [
     children: [
       { title: "Control Center", url: "dashboard.html", key: "dashboard" },
       { title: "Activity Intelligence", url: "activity.html", key: "activity", adminOnly: true },
+      { title: "Lead Edit Approvals", url: "lead-edit-approvals.html", key: "lead-edit-approvals" },
       { title: "Analytics", url: "analytics.html", key: "analytics" },
       { title: "Performance", url: "performance.html", key: "performance" }
     ]
@@ -377,7 +365,6 @@ function renderMenuGroup(group, activeKey) {
 }
 
 function renderMenuNode(node, activeKey, level = 1) {
-  if (node.url && !hasDashboardAccess(node.key)) return "";
   const adminAttr = node.adminOnly ? `data-admin-only="true"` : "";
 
   if (node.url) {

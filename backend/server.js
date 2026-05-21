@@ -20,6 +20,7 @@ const fieldActivityRoutes = require("./routes/fieldActivities");
 const showroomQrRoutes = require("./routes/showroomQr");
 const quickEnquiryRoutes = require("./routes/quickEnquiries");
 const vehicleIntelligenceRoutes = require("./routes/vehicleIntelligence");
+const leadEditRequestRoutes = require("./routes/leadEditRequests");
 
 const app = express();
 
@@ -61,6 +62,7 @@ app.use("/api/field-activities", fieldActivityRoutes);
 app.use("/api/showroom-qr", showroomQrRoutes);
 app.use("/api/quick-enquiries", quickEnquiryRoutes);
 app.use("/api/vehicle-intelligence", vehicleIntelligenceRoutes);
+app.use("/api/lead-edit-requests", leadEditRequestRoutes);
 // Test routes
 app.get("/", (req, res) => {
     res.json({ message: "Mahindra Lead CRM API running" });

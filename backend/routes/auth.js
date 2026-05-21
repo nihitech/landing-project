@@ -3,7 +3,6 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 const auth = require("../middleware/auth");
-const access = require("../middleware/accessControl");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
@@ -55,63 +54,6 @@ function normalizeScope(scope, role) {
     return role === "admin" ? "ALL" : "OWN";
 }
 
-
-function normalizeDashboardAccess(value, role) {
-    const allowed = [
-        "dashboard",
-        "receptionist-dashboard",
-        "sales-dashboard",
-        "telecaller-dashboard",
-        "manager-dashboard",
-        "field-dashboard",
-        "finance-dashboard",
-        "service-dashboard",
-        "marketing-dashboard",
-        "reports",
-        "activity",
-        "quick-enquiries",
-        "showroom-qr",
-        "leads",
-        "branches",
-        "users",
-        "vehicles",
-        "stock",
-        "inventory",
-        "bookings",
-        "delivery"
-    ];
-
-    let incoming = [];
-
-    if (Array.isArray(value)) {
-        incoming = value;
-    } else if (typeof value === "string") {
-        try {
-            incoming = JSON.parse(value);
-        } catch (err) {
-            incoming = value.split(",");
-        }
-    }
-
-    const cleaned = [...new Set(incoming.map(v => String(v || "").trim()).filter(v => allowed.includes(v)))];
-
-    if (cleaned.length) return cleaned;
-
-    const r = normalizeRole(role);
-
-    if (r === "admin") return allowed;
-    if (["manager", "branch_manager", "team_leader"].includes(r)) return ["manager-dashboard", "dashboard", "leads", "quick-enquiries", "showroom-qr", "reports", "activity", "bookings", "delivery"];
-    if (r === "telecaller") return ["telecaller-dashboard", "quick-enquiries", "leads", "showroom-qr"];
-    if (r === "field") return ["field-dashboard", "field-activities", "quick-enquiries", "leads"];
-    if (r === "finance" || r === "insurance") return ["finance-dashboard", "bookings", "leads", "reports"];
-    if (r === "service") return ["service-dashboard", "delivery", "leads", "reports"];
-    if (r === "marketing") return ["marketing-dashboard", "leads", "reports"];
-    if (r === "view_only") return ["sales-dashboard", "leads"];
-
-    return ["sales-dashboard", "leads", "quick-enquiries", "followups", "bookings"];
-}
-
-
 function parseId(value) {
     if (value === "" || value === null || value === undefined) return null;
     const id = Number(value);
@@ -154,7 +96,6 @@ async function ensureAuthSchema() {
         ADD COLUMN IF NOT EXISTS can_delete BOOLEAN DEFAULT false,
         ADD COLUMN IF NOT EXISTS can_export BOOLEAN DEFAULT false,
         ADD COLUMN IF NOT EXISTS can_monitor BOOLEAN DEFAULT false,
-        ADD COLUMN IF NOT EXISTS dashboard_access JSONB DEFAULT '[]'::jsonb,
         ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE',
         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW(),
         ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ
@@ -410,7 +351,6 @@ async function getFullUserById(userId) {
             u.can_delete,
             u.can_export,
             u.can_monitor,
-                u.dashboard_access,
             u.status,
             u.created_at,
             u.last_login_at
@@ -514,8 +454,6 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
             ? req.body.can_monitor === true
             : defaultAdmin;
 
-        const dashboardAccess = normalizeDashboardAccess(req.body.dashboard_access, role);
-
         const hash = await bcrypt.hash(password, 10);
 
         const result = await db.query(`
@@ -539,12 +477,11 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
                 can_delete,
                 can_export,
                 can_monitor,
-                dashboard_access,
                 status
             )
             VALUES (
                 $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-                $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+                $11,$12,$13,$14,$15,$16,$17,$18,$19,$20
             )
             RETURNING id
         `, [
@@ -567,7 +504,6 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
             canDelete,
             canExport,
             canMonitor,
-            JSON.stringify(dashboardAccess),
             "ACTIVE"
         ]);
 
@@ -659,7 +595,6 @@ router.post("/login", async (req, res) => {
                 u.can_delete,
                 u.can_export,
                 u.can_monitor,
-                u.dashboard_access,
                 u.status,
                 u.created_at,
                 u.last_login_at
@@ -744,24 +679,9 @@ router.get("/me", auth, async (req, res) => {
 /* =====================================================
    LIST USERS
 ===================================================== */
-router.get("/users", auth, async (req, res) => {
+router.get("/users", auth, requireAdmin, async (req, res) => {
     try {
         await ensureAuthSchema();
-
-        const values = [];
-        const clauses = ["1=1"];
-
-        if (!access.isHigherAuthority(req)) {
-            if (req.user?.branch_id) {
-                values.push(req.user.branch_id);
-                clauses.push(`u.branch_id = $${values.length}`);
-            } else {
-                clauses.push("1=0");
-            }
-        }
-
-        const where = `WHERE ${clauses.join(" AND ")}`;
-
         const result = await db.query(`
             SELECT 
                 u.id,
@@ -787,7 +707,6 @@ router.get("/users", auth, async (req, res) => {
                 u.can_delete,
                 u.can_export,
                 u.can_monitor,
-                u.dashboard_access,
                 u.status,
                 u.created_at,
                 u.last_login_at,
@@ -796,7 +715,6 @@ router.get("/users", auth, async (req, res) => {
             LEFT JOIN departments d ON u.department_id = d.id
             LEFT JOIN branches b ON u.branch_id = b.id
             LEFT JOIN users m ON u.manager_id = m.id
-            ${where}
             ORDER BY 
                 CASE 
                     WHEN LOWER(u.role) = 'admin' THEN 1
@@ -805,7 +723,7 @@ router.get("/users", auth, async (req, res) => {
                     ELSE 4
                 END,
                 u.name ASC
-        `, values);
+        `);
 
         res.json(result.rows);
 
@@ -866,10 +784,9 @@ router.put("/user/:id", auth, requireAdmin, async (req, res) => {
                 can_delete = $15,
                 can_export = $16,
                 can_monitor = $17,
-                dashboard_access = $18::jsonb,
-                status = $19,
+                status = $18,
                 updated_at = NOW()
-            WHERE id = $20
+            WHERE id = $19
             RETURNING id
         `, [
             cleanText(req.body.user_code),
@@ -889,7 +806,6 @@ router.put("/user/:id", auth, requireAdmin, async (req, res) => {
             req.body.can_delete === true,
             req.body.can_export === true,
             req.body.can_monitor === true,
-            JSON.stringify(normalizeDashboardAccess(req.body.dashboard_access, role)),
             String(req.body.status || "ACTIVE").toUpperCase(),
             userId
         ]);
