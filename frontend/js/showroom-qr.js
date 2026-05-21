@@ -1,7 +1,6 @@
 let sessions = [];
 let submissions = [];
 let selectedQrUrl = "";
-let selectedQrDataUrl = "";
 let selectedQrSession = null;
 
 if (!token) {
@@ -83,7 +82,7 @@ function renderSessions() {
                     <small>${safe(s.session_code)} • ${Number(s.submissions_count || 0)} submissions</small>
                 </div>
                 <div class="qr-session-actions">
-                    <button onclick="selectQr('${safe(s.session_code)}','${safe(s.session_name || s.session_code)}', ${s.id})" class="copy-btn">Show QR</button>
+                    <button onclick="selectQr('${safe(s.session_code)}','${safe(s.session_name || s.session_code)}')" class="copy-btn">Show QR</button>
                     <button onclick="openAssistModal(${s.id})" class="save-btn">Assisted Entry</button>
                     <a href="${url}" target="_blank" class="qr-open-btn">↗ Open Form</a>
                 </div>
@@ -92,61 +91,24 @@ function renderSessions() {
     }).join("");
 }
 
-async function selectQr(code, title, sessionId = null) {
+async function selectQr(code, title) {
     selectedQrUrl = qrUrl(code);
     selectedQrSession = code;
-    selectedQrDataUrl = "";
 
-    const titleEl = document.getElementById("qrPreviewTitle");
-    if (titleEl) titleEl.innerText = title || code;
-
-    const placeholder = document.getElementById("qrPlaceholder");
-    if (placeholder) {
-        placeholder.style.display = "grid";
-        placeholder.innerText = "Generating QR...";
-    }
+    document.getElementById("qrPreviewTitle").innerText = title || code;
+    document.getElementById("qrPlaceholder").style.display = "none";
 
     const canvas = document.getElementById("qrCanvas");
-    if (canvas) canvas.style.display = "none";
+    canvas.style.display = "block";
 
-    let img = document.getElementById("qrImage");
-    if (!img) {
-        img = document.createElement("img");
-        img.id = "qrImage";
-        img.className = "qr-image";
-        const box = document.querySelector(".qr-display-box");
-        if (box) box.appendChild(img);
-    }
-
-    try {
-        let qrData = null;
-
-        const session = sessions.find(s => String(s.session_code) === String(code));
-        const id = sessionId || session?.id;
-
-        if (id) {
-            qrData = await request(`${API}/showroom-qr/sessions/${id}/qr`, {
-                headers: authHeaders()
-            });
-        }
-
-        selectedQrUrl = qrData?.url || selectedQrUrl;
-        selectedQrDataUrl = qrData?.data_url || "";
-
-        if (selectedQrDataUrl) {
-            img.src = selectedQrDataUrl;
-            img.style.display = "block";
-            if (placeholder) placeholder.style.display = "none";
-        } else {
-            if (placeholder) placeholder.innerText = selectedQrUrl;
-        }
-    } catch (err) {
-        console.error("QR generation failed:", err);
-        if (placeholder) {
-            placeholder.style.display = "grid";
-            placeholder.innerText = "QR generation failed. Use Copy/Open link.";
-        }
-        toast(err.message || "QR generation failed", true);
+    if (window.QRCode) {
+        await QRCode.toCanvas(canvas, selectedQrUrl, {
+            width: 260,
+            margin: 2,
+            errorCorrectionLevel: "M"
+        });
+    } else {
+        toast("QR library not loaded. Use Copy/Open link.", true);
     }
 }
 
@@ -217,25 +179,20 @@ function openSelectedQr() {
 }
 
 function downloadSelectedQr() {
-    if (!selectedQrUrl) return toast("Select QR first", true);
-
-    const img = document.getElementById("qrImage");
-    const href = selectedQrDataUrl || img?.src;
-
-    if (!href) return toast("QR image not ready", true);
+    const canvas = document.getElementById("qrCanvas");
+    if (!selectedQrUrl || !canvas) return toast("Select QR first", true);
 
     const link = document.createElement("a");
     link.download = `showroom-qr-${selectedQrSession || "session"}.png`;
-    link.href = href;
+    link.href = canvas.toDataURL("image/png");
     link.click();
 }
 
 function printSelectedQr() {
-    if (!selectedQrUrl) return toast("Select QR first", true);
+    const canvas = document.getElementById("qrCanvas");
+    if (!selectedQrUrl || !canvas) return toast("Select QR first", true);
 
-    const imgSrc = selectedQrDataUrl || document.getElementById("qrImage")?.src;
-    if (!imgSrc) return toast("QR image not ready", true);
-
+    const img = canvas.toDataURL("image/png");
     const win = window.open("", "_blank");
 
     win.document.write(`
@@ -247,14 +204,14 @@ function printSelectedQr() {
                 .card{border:2px solid #111827;border-radius:20px;padding:30px;display:inline-block;}
                 img{width:320px;height:320px;}
                 h1{margin:0 0 10px;}
-                p{color:#475569;max-width:560px;word-break:break-all;}
+                p{color:#475569;}
             </style>
         </head>
         <body>
             <div class="card">
                 <h1>NIKRION Showroom Enquiry</h1>
                 <p>Scan QR and submit your enquiry</p>
-                <img src="${imgSrc}">
+                <img src="${img}">
                 <p>${selectedQrUrl}</p>
             </div>
         </body>
