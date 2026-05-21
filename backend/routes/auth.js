@@ -55,6 +55,63 @@ function normalizeScope(scope, role) {
     return role === "admin" ? "ALL" : "OWN";
 }
 
+
+function normalizeDashboardAccess(value, role) {
+    const allowed = [
+        "dashboard",
+        "receptionist-dashboard",
+        "sales-dashboard",
+        "telecaller-dashboard",
+        "manager-dashboard",
+        "field-dashboard",
+        "finance-dashboard",
+        "service-dashboard",
+        "marketing-dashboard",
+        "reports",
+        "activity",
+        "quick-enquiries",
+        "showroom-qr",
+        "leads",
+        "branches",
+        "users",
+        "vehicles",
+        "stock",
+        "inventory",
+        "bookings",
+        "delivery"
+    ];
+
+    let incoming = [];
+
+    if (Array.isArray(value)) {
+        incoming = value;
+    } else if (typeof value === "string") {
+        try {
+            incoming = JSON.parse(value);
+        } catch (err) {
+            incoming = value.split(",");
+        }
+    }
+
+    const cleaned = [...new Set(incoming.map(v => String(v || "").trim()).filter(v => allowed.includes(v)))];
+
+    if (cleaned.length) return cleaned;
+
+    const r = normalizeRole(role);
+
+    if (r === "admin") return allowed;
+    if (["manager", "branch_manager", "team_leader"].includes(r)) return ["manager-dashboard", "dashboard", "leads", "quick-enquiries", "showroom-qr", "reports", "activity", "bookings", "delivery"];
+    if (r === "telecaller") return ["telecaller-dashboard", "quick-enquiries", "leads", "showroom-qr"];
+    if (r === "field") return ["field-dashboard", "field-activities", "quick-enquiries", "leads"];
+    if (r === "finance" || r === "insurance") return ["finance-dashboard", "bookings", "leads", "reports"];
+    if (r === "service") return ["service-dashboard", "delivery", "leads", "reports"];
+    if (r === "marketing") return ["marketing-dashboard", "leads", "reports"];
+    if (r === "view_only") return ["sales-dashboard", "leads"];
+
+    return ["sales-dashboard", "leads", "quick-enquiries", "followups", "bookings"];
+}
+
+
 function parseId(value) {
     if (value === "" || value === null || value === undefined) return null;
     const id = Number(value);
@@ -97,6 +154,7 @@ async function ensureAuthSchema() {
         ADD COLUMN IF NOT EXISTS can_delete BOOLEAN DEFAULT false,
         ADD COLUMN IF NOT EXISTS can_export BOOLEAN DEFAULT false,
         ADD COLUMN IF NOT EXISTS can_monitor BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS dashboard_access JSONB DEFAULT '[]'::jsonb,
         ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE',
         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW(),
         ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ
@@ -352,6 +410,7 @@ async function getFullUserById(userId) {
             u.can_delete,
             u.can_export,
             u.can_monitor,
+                u.dashboard_access,
             u.status,
             u.created_at,
             u.last_login_at
@@ -455,6 +514,8 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
             ? req.body.can_monitor === true
             : defaultAdmin;
 
+        const dashboardAccess = normalizeDashboardAccess(req.body.dashboard_access, role);
+
         const hash = await bcrypt.hash(password, 10);
 
         const result = await db.query(`
@@ -478,11 +539,12 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
                 can_delete,
                 can_export,
                 can_monitor,
+                dashboard_access,
                 status
             )
             VALUES (
                 $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-                $11,$12,$13,$14,$15,$16,$17,$18,$19,$20
+                $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
             )
             RETURNING id
         `, [
@@ -505,6 +567,7 @@ router.post("/register", optionalAdminForRegister, async (req, res) => {
             canDelete,
             canExport,
             canMonitor,
+            JSON.stringify(dashboardAccess),
             "ACTIVE"
         ]);
 
@@ -596,6 +659,7 @@ router.post("/login", async (req, res) => {
                 u.can_delete,
                 u.can_export,
                 u.can_monitor,
+                u.dashboard_access,
                 u.status,
                 u.created_at,
                 u.last_login_at
@@ -723,6 +787,7 @@ router.get("/users", auth, async (req, res) => {
                 u.can_delete,
                 u.can_export,
                 u.can_monitor,
+                u.dashboard_access,
                 u.status,
                 u.created_at,
                 u.last_login_at,
@@ -801,9 +866,10 @@ router.put("/user/:id", auth, requireAdmin, async (req, res) => {
                 can_delete = $15,
                 can_export = $16,
                 can_monitor = $17,
-                status = $18,
+                dashboard_access = $18::jsonb,
+                status = $19,
                 updated_at = NOW()
-            WHERE id = $19
+            WHERE id = $20
             RETURNING id
         `, [
             cleanText(req.body.user_code),
@@ -823,6 +889,7 @@ router.put("/user/:id", auth, requireAdmin, async (req, res) => {
             req.body.can_delete === true,
             req.body.can_export === true,
             req.body.can_monitor === true,
+            JSON.stringify(normalizeDashboardAccess(req.body.dashboard_access, role)),
             String(req.body.status || "ACTIVE").toUpperCase(),
             userId
         ]);

@@ -3,6 +3,95 @@ let departments = [];
 let branches = [];
 let roles = [];
 
+const ROLE_PERMISSION_PRESETS = {
+    admin: {
+        role: "admin",
+        data_scope: "ALL",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: true, can_delete: true, can_export: true, can_monitor: true },
+        dashboards: ["dashboard","manager-dashboard","receptionist-dashboard","sales-dashboard","telecaller-dashboard","field-dashboard","finance-dashboard","service-dashboard","marketing-dashboard","leads","quick-enquiries","showroom-qr","activity","reports","bookings","delivery","vehicles","stock","inventory","branches","users"]
+    },
+    branch_manager: {
+        role: "branch_manager",
+        data_scope: "BRANCH",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: true, can_delete: false, can_export: true, can_monitor: true },
+        dashboards: ["manager-dashboard","dashboard","leads","quick-enquiries","showroom-qr","activity","reports","bookings","delivery"]
+    },
+    sales: {
+        role: "sales",
+        data_scope: "OWN",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: false, can_delete: false, can_export: false, can_monitor: false },
+        dashboards: ["sales-dashboard","leads","quick-enquiries","bookings"]
+    },
+    telecaller: {
+        role: "telecaller",
+        data_scope: "BRANCH",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: false, can_delete: false, can_export: false, can_monitor: false },
+        dashboards: ["telecaller-dashboard","quick-enquiries","leads","showroom-qr"]
+    },
+    receptionist: {
+        role: "telecaller",
+        data_scope: "BRANCH",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: true, can_delete: false, can_export: false, can_monitor: false },
+        dashboards: ["receptionist-dashboard","showroom-qr","leads","quick-enquiries"]
+    },
+    field: {
+        role: "field",
+        data_scope: "OWN",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: false, can_delete: false, can_export: false, can_monitor: false },
+        dashboards: ["field-dashboard","quick-enquiries","leads"]
+    },
+    finance: {
+        role: "finance",
+        data_scope: "BRANCH",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: false, can_delete: false, can_export: true, can_monitor: false },
+        dashboards: ["finance-dashboard","bookings","leads","reports"]
+    },
+    service: {
+        role: "service",
+        data_scope: "BRANCH",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: false, can_delete: false, can_export: true, can_monitor: false },
+        dashboards: ["service-dashboard","delivery","leads","reports"]
+    },
+    marketing: {
+        role: "marketing",
+        data_scope: "BRANCH",
+        flags: { can_view: true, can_create: true, can_edit: true, can_assign: false, can_delete: false, can_export: true, can_monitor: true },
+        dashboards: ["marketing-dashboard","leads","reports"]
+    },
+    view_only: {
+        role: "view_only",
+        data_scope: "VIEW_ONLY",
+        flags: { can_view: true, can_create: false, can_edit: false, can_assign: false, can_delete: false, can_export: false, can_monitor: false },
+        dashboards: ["sales-dashboard","leads"]
+    }
+};
+
+function getDashboardAccess() {
+    return [...document.querySelectorAll(".dashboard-access:checked")].map(el => el.value);
+}
+
+function setDashboardAccess(values = []) {
+    const allowed = new Set(Array.isArray(values) ? values : []);
+    document.querySelectorAll(".dashboard-access").forEach(el => {
+        el.checked = allowed.has(el.value);
+    });
+}
+
+function applyPermissionPreset(key) {
+    const preset = ROLE_PERMISSION_PRESETS[key];
+    if (!preset) return;
+
+    setValue("urole", preset.role);
+    setValue("u_data_scope", preset.data_scope);
+
+    Object.entries(preset.flags).forEach(([id, checked]) => setCheckbox(id, checked));
+    setDashboardAccess(preset.dashboards);
+
+    toast("Permission preset applied");
+}
+
+
+
 function checkbox(id) {
     return document.getElementById(id)?.checked === true;
 }
@@ -219,7 +308,8 @@ function buildUserPayload(isEdit = false) {
         can_assign: checkbox("can_assign"),
         can_delete: checkbox("can_delete"),
         can_export: checkbox("can_export"),
-        can_monitor: checkbox("can_monitor")
+        can_monitor: checkbox("can_monitor"),
+        dashboard_access: getDashboardAccess()
     };
 
     if (!isEdit) {
@@ -300,6 +390,7 @@ function editUser(id) {
     setCheckbox("can_delete", u.can_delete === true);
     setCheckbox("can_export", u.can_export === true);
     setCheckbox("can_monitor", u.can_monitor === true);
+    setDashboardAccess(Array.isArray(u.dashboard_access) ? u.dashboard_access : []);
 
     document.getElementById("userFormTitle").innerText = "Edit User";
     document.getElementById("saveUserBtn").innerText = "Update User";
@@ -334,6 +425,7 @@ function resetUserForm() {
     setCheckbox("can_delete", false);
     setCheckbox("can_export", false);
     setCheckbox("can_monitor", false);
+    setDashboardAccess(ROLE_PERMISSION_PRESETS.sales.dashboards);
 
     const emailInput = document.getElementById("uemail");
     if (emailInput) emailInput.disabled = false;
@@ -361,3 +453,4 @@ async function deleteUser(id) {
 }
 
 window.onload = () => loadPage().catch(e => toast(e.message, true));
+window.applyPermissionPreset = applyPermissionPreset;

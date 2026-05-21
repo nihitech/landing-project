@@ -201,6 +201,19 @@ function renderMiniFollowupCard(lead) {
   `;
 }
 
+
+function hasDashboardAccess(key) {
+  if (!user) return false;
+  const role = String(user.role || "").toLowerCase();
+  if (["admin", "super_admin", "owner", "director", "ceo"].includes(role) || user.is_higher_authority === true) return true;
+
+  const access = Array.isArray(user.dashboard_access) ? user.dashboard_access : [];
+  if (!access.length) return true; // backward compatibility for old users
+
+  return access.includes(key);
+}
+
+
 const CRM_MENU = [
   {
     title: "Command",
@@ -364,6 +377,7 @@ function renderMenuGroup(group, activeKey) {
 }
 
 function renderMenuNode(node, activeKey, level = 1) {
+  if (node.url && !hasDashboardAccess(node.key)) return "";
   const adminAttr = node.adminOnly ? `data-admin-only="true"` : "";
 
   if (node.url) {
