@@ -4074,3 +4074,15 @@ select.vehicle-intel-select,
     box-shadow: 0 10px 22px rgba(30, 91, 255, 0.18);
     white-space: nowrap;
 }
+
+
+/* CDN-free QR image rendering */
+.qr-image {
+    width: 280px;
+    height: 280px;
+    object-fit: contain;
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 12px;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.10);
+}

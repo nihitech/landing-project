@@ -1,6 +1,7 @@
 
 const express = require("express");
 const crypto = require("crypto");
+const QRCode = require("qrcode");
 const router = express.Router();
 const db = require("../config/db");
 const auth = require("../middleware/auth");
@@ -73,6 +74,11 @@ async function leastLoaded(branchId, vehicleCategory){
  return r.rows[0] || null;
 }
 
+
+function publicFormUrl(req, sessionCode) {
+    return `${baseUrl(req)}/showroom-qr.html?code=${encodeURIComponent(sessionCode)}`;
+}
+
 router.post("/sessions", auth, canManage, async(req,res)=>{
  try{
   await ensureSchema();
@@ -87,6 +93,26 @@ router.post("/sessions", auth, canManage, async(req,res)=>{
   res.status(201).json({message:"Showroom QR session created",session:r.rows[0],public_url:`${baseUrl(req)}/showroom-qr.html?code=${encodeURIComponent(sessionCode)}`});
  }catch(e){ console.error("QR SESSION ERROR:",e); res.status(500).json({message:"Failed to create QR session"}); }
 });
+
+
+router.get("/sessions/:id/qr", auth, canManage, async(req,res)=>{
+ try{
+  await ensureSchema();
+  const id=parseId(req.params.id);
+  if(!id) return res.status(400).json({message:"Invalid QR session"});
+  const r=await db.query(`SELECT * FROM showroom_qr_sessions WHERE id=$1 LIMIT 1`,[id]);
+  if(!r.rows.length) return res.status(404).json({message:"QR session not found"});
+  const session=r.rows[0];
+  const url=publicFormUrl(req, session.session_code);
+  const svg=await QRCode.toString(url,{type:"svg",margin:2,errorCorrectionLevel:"M",width:280});
+  const data_url=await QRCode.toDataURL(url,{margin:2,errorCorrectionLevel:"M",width:280});
+  res.json({session_id:session.id,session_code:session.session_code,url,svg,data_url});
+ }catch(e){
+  console.error("QR GENERATE ERROR:",e);
+  res.status(500).json({message:"Failed to generate QR"});
+ }
+});
+
 
 router.get("/sessions", auth, canManage, async(req,res)=>{
  try{
