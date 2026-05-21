@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const router = express.Router();
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const assignmentEngine = require("../services/assignmentEngine");
 
 let logger=null; try{ logger=require("../utils/activityLogger"); }catch(e){}
 let scoring=null; try{ scoring=require("../services/scoring"); }catch(e){}
@@ -78,11 +79,15 @@ router.post("/:id/verify-otp",auth,canReview,async(req,res)=>{
 router.post("/:id/convert",auth,canReview,async(req,res)=>{
  const client=await db.connect();
  try{await ensureSchema();const id=parseId(req.params.id);await client.query("BEGIN");const r=await client.query(`SELECT * FROM quick_enquiries WHERE id=$1 FOR UPDATE`,[id]);if(!r.rows.length){await client.query("ROLLBACK");return res.status(404).json({message:"Quick enquiry not found"});}const q=r.rows[0];if(q.lead_id){await client.query("ROLLBACK");return res.status(400).json({message:"Already converted"});}if(q.quick_status!=="OTP_VERIFIED"&&req.body.force_convert!==true&&req.body.force_convert!=="true"){await client.query("ROLLBACK");return res.status(400).json({message:"OTP verification required before conversion"});}
- const vc=cat(q.vehicle_category);const branchId=parseId(req.body.branch_id||q.branch_id)||await defaultBranch();let assigned=parseId(req.body.assigned_to||q.assigned_to);if(!assigned){const u=await leastLoaded(branchId,vc);assigned=u?.id||null;}const sc=scoreSafe({phone:q.phone,car_interest:q.car_interest,source:q.source_type});const pr=prioritySafe(sc);
+ const vc=cat(q.vehicle_category);
+ const assignment=await assignmentEngine.resolveAssignment(client,{branch_id:req.body.branch_id||q.branch_id,vehicle_category:vc,source_type:q.source_type,field_activity_id:q.field_activity_id,created_by:q.created_by,preferred_user_id:req.body.assigned_to||q.assigned_to});
+ const branchId=assignment.branch_id;
+ const assigned=assignment.assigned_to;
+ const sc=scoreSafe({phone:q.phone,car_interest:q.car_interest,source:q.source_type});const pr=prioritySafe(sc);
  const dup=await client.query(`SELECT id FROM leads WHERE phone=$1 ORDER BY created_at DESC LIMIT 1`,[q.phone]);let leadId;
  if(dup.rows.length){leadId=dup.rows[0].id;await client.query(`UPDATE leads SET updated_at=NOW(),notes=COALESCE(notes,'')||$1,quick_enquiry_id=$2,enquiry_origin='QUICK_ENQUIRY',field_activity_id=COALESCE($3,field_activity_id),field_activity_source=COALESCE($4,field_activity_source) WHERE id=$5`,[`\\nQuick enquiry converted. Source: ${q.source_type}`,q.id,q.field_activity_id,q.source_type,leadId]);}
  else{const lr=await client.query(`INSERT INTO leads(name,phone,alternate_phone,email,area,district,pincode,vehicle_category,fuel_type,car_interest,variant_interest,preferred_color,source,lead_type,action_type,score,priority,status,assigned_to,branch_id,assigned_branch_id,notes,quick_enquiry_id,enquiry_origin,field_activity_id,field_activity_source,lead_capture_latitude,lead_capture_longitude,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'DETAILED_ENQUIRY','QUICK_ENQUIRY',$14,$15,'NEW',$16,$17,$17,$18,$19,'QUICK_ENQUIRY',$20,$21,$22,$23,NOW(),NOW()) RETURNING id`,[q.customer_name,q.phone,q.alternate_phone,q.email,q.area,q.district,q.pincode,vc,q.fuel_type,q.car_interest,q.variant_interest,q.preferred_color,q.source_type,sc,pr,assigned,branchId,q.notes,q.id,q.field_activity_id,q.source_type,q.capture_latitude,q.capture_longitude]);leadId=lr.rows[0].id;}
- await client.query(`UPDATE quick_enquiries SET quick_status='CONVERTED',reviewed_by=$1,reviewed_at=NOW(),assigned_to=$2,branch_id=$3,lead_id=$4,updated_at=NOW() WHERE id=$5`,[req.user.id,assigned,branchId,leadId,id]);await audit({req,user_id:req.user.id,lead_id:leadId,action:"QUICK_ENQUIRY_CONVERTED_TO_LEAD",module_name:"QUICK_ENQUIRY",entity_type:"LEAD",entity_id:leadId,branch_id:branchId,new_value:"CONVERTED",remarks:`Quick enquiry converted. Source: ${q.source_type}`});await client.query("COMMIT");res.json({message:"Quick enquiry converted to lead",lead_id:leadId,assigned_to:assigned,branch_id:branchId});
+ await client.query(`UPDATE quick_enquiries SET quick_status='CONVERTED',reviewed_by=$1,reviewed_at=NOW(),assigned_to=$2,branch_id=$3,lead_id=$4,updated_at=NOW() WHERE id=$5`,[req.user.id,assigned,branchId,leadId,id]);await audit({req,user_id:req.user.id,lead_id:leadId,action:"QUICK_ENQUIRY_CONVERTED_TO_LEAD",module_name:"QUICK_ENQUIRY",entity_type:"LEAD",entity_id:leadId,branch_id:branchId,new_value:"CONVERTED",remarks:`Quick enquiry converted. Source: ${q.source_type}. Assignment: ${assignment?.assignment_reason || "AUTO"}. Confidence: ${assignment?.confidence_score || 0}`});await client.query("COMMIT");res.json({message:"Quick enquiry converted to lead",lead_id:leadId,assigned_to:assigned,branch_id:branchId});
  }catch(e){await client.query("ROLLBACK");console.error("CONVERT ERROR:",e);res.status(500).json({message:"Failed to convert quick enquiry"});}finally{client.release();}
 });
 

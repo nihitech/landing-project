@@ -4031,3 +4031,46 @@ select.vehicle-intel-select,
 .workspace-kpi-grid .summary-card strong#kpiQuickVerified {
     color: #1e5bff;
 }
+
+
+/* QR Visibility Restore */
+.qr-display-box {
+    min-height: 300px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 22px;
+    background: #f8fafc;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+#qrCanvas {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 12px;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.10);
+}
+
+.qr-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.qr-open-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 8px 13px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, #101828, #1e5bff);
+    color: #ffffff !important;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 800;
+    border: 1px solid rgba(30, 91, 255, 0.35);
+    box-shadow: 0 10px 22px rgba(30, 91, 255, 0.18);
+    white-space: nowrap;
+}

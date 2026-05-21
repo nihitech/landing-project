@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const router = express.Router();
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const assignmentEngine = require("../services/assignmentEngine");
 const { calculateScore, getLeadPriority } = require("../services/scoring");
 
 let logger = null;
@@ -210,7 +211,7 @@ router.post("/submissions/:id/convert", auth, canReview, async(req,res)=>{
     leadId=lr.rows[0].id;
   }
   await client.query(`UPDATE showroom_qr_submissions SET submission_status='CONVERTED',reviewed_by=$1,reviewed_at=NOW(),assigned_to=$2,assigned_branch_id=$3,lead_id=$4,updated_at=NOW() WHERE id=$5`,[req.user.id,assignedTo,branchId,leadId,id]);
-  await audit({req,user_id:req.user.id,lead_id:leadId,action:"SHOWROOM_QR_CONVERTED_TO_LEAD",module_name:"SHOWROOM_QR",entity_type:"LEAD",entity_id:leadId,branch_id:branchId,new_value:"NEW",remarks:`QR submission converted. Assigned to ${assignedTo||"Unassigned"}`});
+  await audit({req,user_id:req.user.id,lead_id:leadId,action:"SHOWROOM_QR_CONVERTED_TO_LEAD",module_name:"SHOWROOM_QR",entity_type:"LEAD",entity_id:leadId,branch_id:branchId,new_value:"NEW",remarks:`QR submission converted. Assigned to ${assignedTo||"Unassigned"}. Assignment: ${assignment?.assignment_reason || "AUTO"}. Confidence: ${assignment?.confidence_score || 0}`});
   await client.query("COMMIT");
   res.json({message:"QR submission converted to lead",lead_id:leadId,assigned_to:assignedTo,branch_id:branchId});
  }catch(e){ await client.query("ROLLBACK"); console.error("QR CONVERT ERROR:",e); res.status(500).json({message:"Failed to convert QR submission"}); }
