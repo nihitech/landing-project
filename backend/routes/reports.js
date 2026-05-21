@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require("../config/db");
 const auth = require("../middleware/auth");
 const { sendEmailReport } = require("../services/emailService");
+const governanceEnforcement = require("../services/governanceEnforcement");
 
 function normalizeRole(role) {
     return String(role || "").trim().toLowerCase();
@@ -425,7 +426,7 @@ router.delete("/email-settings/:id", auth, requireAdmin, async (req, res) => {
     }
 });
 
-router.get("/logs/list", auth, requireAdmin, async (req, res) => {
+router.get("/logs/list", auth, governanceEnforcement.requireReportAccess, async (req, res) => {
     try {
         const result = await db.query(`
             SELECT
@@ -499,7 +500,7 @@ router.get("/:type", auth, requireAdmin, async (req, res) => {
         });
     }
 });
-router.post("/send-email", auth, requireAdmin, async (req, res) => {
+router.post("/send-email", auth, governanceEnforcement.requireReportAccess, async (req, res) => {
     try {
         const {
             report_type,

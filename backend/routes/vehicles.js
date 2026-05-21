@@ -3,6 +3,7 @@ const router = express.Router();
 
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const governanceEnforcement = require("../services/governanceEnforcement");
 
 function normalizeRole(role) {
     return String(role || "").trim().toLowerCase();
@@ -114,7 +115,7 @@ router.get("/models", auth, async (req, res) => {
     }
 });
 
-router.post("/models", auth, requireVehicleManage, async (req, res) => {
+router.post("/models", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const modelName = cleanText(req.body.model_name);
 
@@ -158,7 +159,7 @@ router.post("/models", auth, requireVehicleManage, async (req, res) => {
     }
 });
 
-router.put("/models/:id", auth, requireVehicleManage, async (req, res) => {
+router.put("/models/:id", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 
@@ -207,7 +208,7 @@ router.put("/models/:id", auth, requireVehicleManage, async (req, res) => {
     }
 });
 
-router.delete("/models/:id", auth, requireVehicleManage, async (req, res) => {
+router.delete("/models/:id", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 
@@ -273,7 +274,7 @@ router.get("/variants", auth, async (req, res) => {
     }
 });
 
-router.post("/variants", auth, requireVehicleManage, async (req, res) => {
+router.post("/variants", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const modelId = parseId(req.body.model_id);
 
@@ -323,7 +324,7 @@ router.post("/variants", auth, requireVehicleManage, async (req, res) => {
     }
 });
 
-router.put("/variants/:id", auth, requireVehicleManage, async (req, res) => {
+router.put("/variants/:id", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const id = parseId(req.params.id);
         const modelId = parseId(req.body.model_id);
@@ -373,7 +374,7 @@ router.put("/variants/:id", auth, requireVehicleManage, async (req, res) => {
     }
 });
 
-router.delete("/variants/:id", auth, requireVehicleManage, async (req, res) => {
+router.delete("/variants/:id", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 
@@ -435,7 +436,7 @@ router.get("/colors", auth, async (req, res) => {
     }
 });
 
-router.post("/colors", auth, requireVehicleManage, async (req, res) => {
+router.post("/colors", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const modelId = parseId(req.body.model_id);
 
@@ -479,7 +480,7 @@ router.post("/colors", auth, requireVehicleManage, async (req, res) => {
     }
 });
 
-router.put("/colors/:id", auth, requireVehicleManage, async (req, res) => {
+router.put("/colors/:id", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const id = parseId(req.params.id);
         const modelId = parseId(req.body.model_id);
@@ -522,7 +523,7 @@ router.put("/colors/:id", auth, requireVehicleManage, async (req, res) => {
     }
 });
 
-router.delete("/colors/:id", auth, requireVehicleManage, async (req, res) => {
+router.delete("/colors/:id", auth, governanceEnforcement.requireVehicleMasterModify, async (req, res) => {
     try {
         const id = parseId(req.params.id);
 

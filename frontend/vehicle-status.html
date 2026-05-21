@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vehicle Status</title>
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+<div id="sidebarContainer"></div>
+<main class="main-content">
+<header class="module-header">
+<div>
+<span class="tag">Sales Vehicle View</span>
+<h1>🚘 Vehicle Status</h1>
+<p>Read-only model, variant, fuel and color availability view for sales operations.</p>
+</div>
+<div class="module-actions">
+<button onclick="loadVehicleStatus()" class="copy-btn">Refresh</button>
+<button onclick="logout()" class="logout-btn">Logout</button>
+</div>
+</header>
+
+<section class="table-card">
+<div class="page-header"><h2>Vehicle Availability Status</h2><p>This page does not allow master modification.</p></div>
+<div class="form-grid">
+<div class="field-group"><label>Category</label><select id="categoryFilter" onchange="loadVehicleStatus()"><option value="AD">AD</option><option value="EV">EV</option></select></div>
+</div>
+<table class="report-table">
+<thead><tr><th>Model</th><th>Variants</th><th>Fuels</th><th>Colors</th></tr></thead>
+<tbody id="vehicleStatusTable"></tbody>
+</table>
+</section>
+</main>
+</div>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('vehicle-status');</script>
+<script src="./js/vehicle-status.js"></script>
+</body>
+</html>

@@ -256,6 +256,7 @@ const CRM_MENU = [
       {
         title: "Vehicle Master",
         children: [
+          { title: "Vehicle Status", url: "vehicle-status.html", key: "vehicle-status" },
           { title: "Models / Variants", url: "vehicles.html", key: "vehicles" }
         ]
       },
@@ -345,6 +346,7 @@ function loadLayout(activeKey = "") {
   });
 
   document.body.classList.add("nikrion-ops-ui");
+  applyGovernanceUiRules();
 }
 
 function renderMenuGroup(group, activeKey) {
@@ -430,3 +432,34 @@ window.renderOverdueFollowups = renderOverdueFollowups;
 window.toggleNotifications = toggleNotifications;
 window.loadLayout = loadLayout;
 window.logout = logout;
+
+
+async function applyGovernanceUiRules() {
+  try {
+    if (!window.API || !window.token) return;
+    const res = await fetch(`${API}/governance/me`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const gov = await res.json();
+
+    // Sales users should not see full vehicle master/dashboard controls.
+    if (!gov.can_modify_vehicle_master) {
+      document.querySelectorAll('a[href="vehicles.html"], a[data-nav="vehicles"]').forEach(el => {
+        el.style.display = "none";
+      });
+    }
+
+    if (!gov.can_modify_organization) {
+      document.querySelectorAll('a[href="branches.html"], a[href="departments.html"], a[href="permissions.html"]').forEach(el => {
+        if (String(user?.role || "").toLowerCase() !== "admin") el.style.display = "none";
+      });
+    }
+
+    if (!gov.can_generate_reports) {
+      document.querySelectorAll('a[href="reports.html"]').forEach(el => {
+        if (String(user?.role || "").toLowerCase() !== "admin") el.style.display = "none";
+      });
+    }
+  } catch (err) {
+    console.warn("Governance UI rules failed:", err.message);
+  }
+}
