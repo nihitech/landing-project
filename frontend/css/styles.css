@@ -4112,3 +4112,6 @@ select.vehicle-intel-select,
     background: #eef2ff;
     color: #3730a3;
 }
+
+/* Customer Journey Timeline */
+.timeline-list{display:grid;gap:14px}.timeline-item{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start}.timeline-dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#eef2ff;border:1px solid #c7d2fe}.timeline-content{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:14px;box-shadow:0 8px 20px rgba(15,23,42,.04)}.timeline-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.timeline-head span{font-size:12px;color:#64748b}.timeline-content p{margin:8px 0;color:#334155}.timeline-meta{display:flex;flex-wrap:wrap;gap:8px}.timeline-meta span{font-size:11px;background:#f1f5f9;border-radius:999px;padding:4px 8px;color:#475569}
