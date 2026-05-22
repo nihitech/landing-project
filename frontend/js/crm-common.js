@@ -303,6 +303,7 @@ const CRM_MENU = [
       { title: "Communications", url: "communications.html", key: "communications" },
       { title: "Notifications", url: "notifications.html", key: "notifications" },
       { title: "Customer Timeline", url: "customer-timeline.html", key: "customer-timeline" },
+      { title: "Sales Workspace", url: "sales-dashboard.html", key: "sales-dashboard" },
       { title: "Data Change Approvals", url: "data-change-approvals.html", key: "data-change-approvals" },
       { title: "Settings", url: "settings.html", key: "settings" }
     ]
