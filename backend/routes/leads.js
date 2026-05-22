@@ -782,7 +782,7 @@ router.get("/leads", auth, requireLeadView, async (req, res) => {
     try {
         await ensureLeadScopeColumns();
 
-        const clauses = [];
+        const clauses = ["COALESCE(l.is_deleted,false)=false"];
         const values = [];
 
         appendLeadAccessScope(req, clauses, values, "l");

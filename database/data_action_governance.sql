@@ -24,3 +24,11 @@ INSERT INTO permission_master(permission_key,permission_label,module_name) VALUE
 ('data_change.approve','Approve Data Change Requests','Data Governance'),
 ('customer.progress.update','Update Customer Progress','Data Governance')
 ON CONFLICT(permission_key) DO NOTHING;
+
+-- Approval Application Engine additions
+ALTER TABLE leads
+ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id),
+ADD COLUMN IF NOT EXISTS delete_reason TEXT;
+CREATE INDEX IF NOT EXISTS idx_leads_is_deleted ON leads(is_deleted);
