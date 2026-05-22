@@ -301,6 +301,7 @@ const CRM_MENU = [
     children: [
       { title: "Reports Center", url: "reports.html", key: "reports" },
       { title: "Communications", url: "communications.html", key: "communications" },
+      { title: "Notifications", url: "notifications.html", key: "notifications" },
       { title: "Data Change Approvals", url: "data-change-approvals.html", key: "data-change-approvals" },
       { title: "Settings", url: "settings.html", key: "settings" }
     ]

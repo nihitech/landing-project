@@ -23,6 +23,7 @@ const vehicleIntelligenceRoutes = require("./routes/vehicleIntelligence");
 const governanceRoutes = require("./routes/governance");
 const dataChangeRequestRoutes = require("./routes/dataChangeRequests");
 const communicationRoutes = require("./routes/communications");
+const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 
@@ -100,6 +101,7 @@ app.use("/api/vehicle-intelligence", vehicleIntelligenceRoutes);
 app.use("/api/governance", governanceRoutes);
 app.use("/api/data-change-requests", dataChangeRequestRoutes);
 app.use("/api/communications", communicationRoutes);
+app.use("/api/notifications", notificationRoutes);
 // Test routes
 app.get("/", (req, res) => {
     res.json({ message: "Mahindra Lead CRM API running" });
