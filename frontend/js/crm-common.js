@@ -215,6 +215,20 @@ const CRM_MENU = [
     ]
   },
   {
+    title: "Workspaces",
+    icon: "▰",
+    key: "workspaces",
+    tone: "workspace",
+    children: [
+      { title: "My Workspace", url: "workspace-router.html", key: "workspace-router" },
+      { title: "Sales Workspace", url: "sales-dashboard.html", key: "sales-dashboard" },
+      { title: "Reception Workspace", url: "receptionist-dashboard.html", key: "receptionist-dashboard" },
+      { title: "Manager Workspace", url: "manager-dashboard.html", key: "manager-dashboard" },
+      { title: "Field Workspace", url: "field-dashboard.html", key: "field-dashboard" },
+      { title: "Executive Workspace", url: "executive-dashboard.html", key: "executive-dashboard", adminOnly: true }
+    ]
+  },
+  {
     title: "Customer Flow",
     icon: "◈",
     key: "customer-flow",
@@ -303,7 +317,6 @@ const CRM_MENU = [
       { title: "Communications", url: "communications.html", key: "communications" },
       { title: "Notifications", url: "notifications.html", key: "notifications" },
       { title: "Customer Timeline", url: "customer-timeline.html", key: "customer-timeline" },
-      { title: "Sales Workspace", url: "sales-dashboard.html", key: "sales-dashboard" },
       { title: "Data Change Approvals", url: "data-change-approvals.html", key: "data-change-approvals" },
       { title: "Settings", url: "settings.html", key: "settings" }
     ]
@@ -466,5 +479,31 @@ async function applyGovernanceUiRules() {
     }
   } catch (err) {
     console.warn("Governance UI rules failed:", err.message);
+  }
+}
+
+
+function workspaceForRole(roleValue = user?.role) {
+  const role = String(roleValue || "sales").toLowerCase();
+
+  if (["receptionist", "front_office", "cre", "customer_relation_executive"].includes(role)) return "receptionist-dashboard.html";
+  if (["manager", "sales_manager", "team_leader", "branch_manager", "bm"].includes(role)) return "manager-dashboard.html";
+  if (["field", "field_executive"].includes(role)) return "field-dashboard.html";
+  if (["gm", "dgm", "md", "ceo", "director", "owner"].includes(role)) return "executive-dashboard.html";
+  if (["admin", "super_admin", "system_admin"].includes(role)) return "dashboard.html";
+
+  return "sales-dashboard.html";
+}
+
+function goToMyWorkspace() {
+  window.location.href = workspaceForRole(user?.role);
+}
+
+function maybeRedirectDashboardToWorkspace() {
+  const page = String(window.location.pathname || "").split("/").pop();
+  const role = String(user?.role || "").toLowerCase();
+  if (page === "dashboard.html" && !["admin", "super_admin", "system_admin"].includes(role)) {
+    const target = workspaceForRole(role);
+    if (target && target !== "dashboard.html") window.location.replace(target);
   }
 }
