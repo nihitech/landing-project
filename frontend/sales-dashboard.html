@@ -2,8 +2,130 @@
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Sales Workspace</title><link rel="stylesheet" href="./css/styles.css"></head>
 <body class="crm-v2"><div class="crm-layout"><div id="sidebarContainer"></div><main class="main-content">
-<header class="module-header"><div><span class="tag">Sales Workspace</span><h1>🚀 My Sales Workspace</h1><p>Daily leads, follow-ups, communications, notifications and customer journey shortcuts.</p></div><div class="module-actions"><button onclick="loadSalesWorkspace()" class="copy-btn">Refresh</button><button onclick="logout()" class="logout-btn">Logout</button></div></header>
+<header class="module-header"><div><span class="tag">Sales Workspace</span><h1>🚀 My Sales Workspace</h1><p>Daily leads, follow-ups, communications, notifications and customer journey shortcuts.</p></div><div class="module-actions">
+<button onclick="openSalesEnquiryModal()" class="save-btn">+ New Enquiry</button><button onclick="loadSalesWorkspace()" class="copy-btn">Refresh</button><button onclick="logout()" class="logout-btn">Logout</button></div></header>
 <section class="workspace-kpi-grid role-kpi-grid"><div class="summary-card"><span>My Leads</span><strong id="myLeads">0</strong></div><div class="summary-card"><span>Today's Follow-ups</span><strong id="todayFollowups">0</strong></div><div class="summary-card"><span>Missed Follow-ups</span><strong id="missedFollowups">0</strong></div><div class="summary-card"><span>Unread Alerts</span><strong id="unreadNotifications">0</strong></div></section>
-<section class="role-workspace-layout"><div class="table-card"><div class="page-header"><h2>Today's Action Queue</h2><p>Prioritized tasks from your assigned leads.</p></div><div id="taskQueue" class="role-task-list"></div></div><div class="table-card"><div class="page-header"><h2>Quick Actions</h2><p>Daily sales shortcuts.</p></div><div class="role-quick-actions"><a href="quick-enquiries.html" class="save-btn">⚡ Create Quick Enquiry</a><a href="leads.html" class="copy-btn">📋 Open Leads</a><a href="communications.html" class="copy-btn">💬 Communications</a><a href="customer-timeline.html" class="copy-btn">🧬 Customer Timeline</a><a href="notifications.html" class="copy-btn">🔔 Notifications</a></div></div></section>
-<section class="role-workspace-layout"><div class="table-card"><div class="page-header"><h2>Recent Notifications</h2><p>Alerts, approvals and escalations assigned to you.</p></div><table class="report-table"><thead><tr><th>Alert</th><th>Type</th><th>Priority</th><th>Time</th></tr></thead><tbody id="notificationTable"></tbody></table></div><div class="table-card"><div class="page-header"><h2>Productivity Snapshot</h2><p>Daily operational view.</p></div><div id="productivityBox" class="productivity-box"></div></div></section>
+
+<section class="sales-primary-grid">
+  <div class="table-card">
+    <div class="page-header">
+      <h2>Today's Follow-up Leads</h2>
+      <p>Customers to contact today.</p>
+    </div>
+    <div id="todayFollowupList" class="role-task-list"></div>
+  </div>
+
+  <div class="table-card">
+    <div class="page-header">
+      <h2>Reminder & Escalation</h2>
+      <p>Missed follow-ups and urgent actions.</p>
+    </div>
+    <div id="reminderList" class="role-task-list"></div>
+  </div>
+</section>
+
+<section class="sales-primary-grid">
+  <div class="table-card">
+    <div class="page-header">
+      <h2>Lead Status Board</h2>
+      <p>My lead pipeline status.</p>
+    </div>
+    <div id="statusBoard" class="sales-status-board"></div>
+  </div>
+
+  <div class="table-card">
+    <div class="page-header">
+      <h2>Customer Vehicle Check</h2>
+      <p>Check available model / variant / fuel / color before customer confirmation.</p>
+    </div>
+
+    <div class="form-grid compact-form-grid">
+      <div class="field-group">
+        <label>Category</label>
+        <select id="dashVehicleCategory" onchange="loadDashboardVehicleOptions()">
+          <option value="AD">AD</option>
+          <option value="EV">EV</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label>Model</label>
+        <select id="dashVehicleModel" onchange="loadDashboardVariantOptions()">
+          <option value="">Select Model</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label>Variant</label>
+        <select id="dashVehicleVariant">
+          <option value="">Select Variant</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label>Fuel</label>
+        <select id="dashVehicleFuel">
+          <option value="">Select Fuel</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label>Color</label>
+        <select id="dashVehicleColor">
+          <option value="">Select Color</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="dashboardVehicleStatusBox" class="vehicle-status-box">
+      Select customer preferred vehicle to check status.
+    </div>
+
+    <button onclick="openVehicleStatusFromWorkspace()" class="copy-btn full-width-btn">Open Full Vehicle Status</button>
+  </div>
+</section>
+
+<section class="sales-primary-grid">
+  <div class="table-card">
+    <div class="page-header">
+      <h2>Notifications</h2>
+      <p>Alerts, approvals and task reminders.</p>
+    </div>
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th>Alert</th>
+          <th>Type</th>
+          <th>Priority</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="notificationTable"></tbody>
+    </table>
+  </div>
+
+  <div class="table-card">
+    <div class="page-header">
+      <h2>Quick Actions</h2>
+      <p>Fast sales operations.</p>
+    </div>
+    <div class="role-quick-actions">
+      <button onclick="openSalesEnquiryModal()" class="save-btn">+ New Enquiry</button>
+      <a href="leads.html" class="copy-btn">📋 All My Leads</a>
+      <a href="quick-enquiries.html" class="copy-btn">⚡ Quick Enquiries</a>
+      <a href="communications.html" class="copy-btn">💬 Communications</a>
+      <a href="customer-timeline.html" class="copy-btn">🧬 Customer Timeline</a>
+      <a href="notifications.html" class="copy-btn">🔔 Notifications</a>
+      <a href="vehicle-status.html" class="copy-btn">🚘 Vehicle Status</a>
+    </div>
+  </div>
+</section>
+
+<section class="table-card">
+  <div class="page-header">
+    <h2>Recent Lead Task Queue</h2>
+    <p>New and active customers requiring attention.</p>
+  </div>
+  <div id="taskQueue" class="role-task-list"></div>
+</section>
 </main></div><script src="./js/crm-common.js"></script><script>loadLayout('sales-dashboard');</script><script src="./js/sales-dashboard.js"></script></body></html>
