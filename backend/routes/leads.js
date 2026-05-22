@@ -83,6 +83,22 @@ function nullableDate(value) {
     return Number.isNaN(d.getTime()) ? null : d;
 }
 
+
+async function ensureApprovalApplicationColumns() {
+    try {
+        await db.query(`
+            ALTER TABLE leads
+            ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false,
+            ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id),
+            ADD COLUMN IF NOT EXISTS delete_reason TEXT
+        `);
+        await db.query(`CREATE INDEX IF NOT EXISTS idx_leads_is_deleted ON leads(is_deleted)`);
+    } catch (err) {
+        console.error("ENSURE APPROVAL APPLICATION COLUMNS ERROR:", err.message);
+    }
+}
+
 /* =====================================================
    USER / PERMISSION HELPERS
 ===================================================== */
@@ -781,6 +797,7 @@ router.post("/lead/:id/followup", auth, requireLeadEdit, async (req, res) => {
 router.get("/leads", auth, requireLeadView, async (req, res) => {
     try {
         await ensureLeadScopeColumns();
+        await ensureApprovalApplicationColumns();
 
         const clauses = ["COALESCE(l.is_deleted,false)=false"];
         const values = [];

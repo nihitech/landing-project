@@ -1,0 +1,32 @@
+-- NIKRION Emergency 500 Stability Fix
+-- Run this immediately if /api/leads or /api/branches gives 500 after latest deployment.
+
+ALTER TABLE leads
+ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP,
+ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id),
+ADD COLUMN IF NOT EXISTS delete_reason TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_leads_is_deleted ON leads(is_deleted);
+
+ALTER TABLE branches
+ADD COLUMN IF NOT EXISTS manager_id INTEGER REFERENCES users(id),
+ADD COLUMN IF NOT EXISTS phone TEXT,
+ADD COLUMN IF NOT EXISTS email TEXT,
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE',
+ADD COLUMN IF NOT EXISTS address TEXT,
+ADD COLUMN IF NOT EXISTS area TEXT,
+ADD COLUMN IF NOT EXISTS city TEXT,
+ADD COLUMN IF NOT EXISTS district TEXT,
+ADD COLUMN IF NOT EXISTS state TEXT,
+ADD COLUMN IF NOT EXISTS pincode TEXT,
+ADD COLUMN IF NOT EXISTS latitude NUMERIC(12,8),
+ADD COLUMN IF NOT EXISTS longitude NUMERIC(12,8),
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id),
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_branches_manager_id ON branches(manager_id);
+CREATE INDEX IF NOT EXISTS idx_users_branch_id ON users(branch_id);
