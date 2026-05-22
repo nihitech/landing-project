@@ -1,0 +1,14 @@
+function clean(v,f=""){return String(v??f).trim();}
+function roleOf(u){return clean(u?.role).toLowerCase();}
+function authorityLevel(u){const e=clean(u?.authority_level).toUpperCase();if(e)return e;const r=roleOf(u);if(r==="ceo")return"CEO";if(["md","managing_director"].includes(r))return"MD";if(["gm","general_manager"].includes(r))return"GM";if(["dgm","deputy_general_manager"].includes(r))return"DGM";if(["bm","branch_manager"].includes(r))return"BM";if(["manager","sales_manager"].includes(r))return"MANAGER";if(r==="team_leader")return"TEAM_LEADER";if(["admin","super_admin","system_admin"].includes(r))return"ADMIN";return"SALES";}
+function hasPermission(u,k){return Array.isArray(u?.permissions)&&u.permissions.includes(k);}
+function canApproveDataChange(u){return["MANAGER","BM","DGM","GM","MD","CEO"].includes(authorityLevel(u))||hasPermission(u,"data_change.approve");}
+function canModifyConfidential(u){return["BM","DGM","GM","MD","CEO"].includes(authorityLevel(u))||hasPermission(u,"data.confidential.modify");}
+function canDeleteConfidential(u){return["GM","MD","CEO"].includes(authorityLevel(u))||hasPermission(u,"data.confidential.delete");}
+function basicProgressFields(){return["status","followup_status","next_followup_at","next_followup_date","notes","remarks","call_status","appointment_date","visit_status","customer_response","test_drive_status"];}
+function confidentialFields(){return["name","customer_name","phone","alternate_phone","email","address","area","district","pincode","source","assigned_to","branch_id","assigned_branch_id","budget","finance_required","exchange_required","vehicle_category","car_interest","variant_interest","preferred_color","booking_amount","payment_status"];}
+function classifyFields(changes={}){const basic=[],confidential=[],unknown=[];Object.keys(changes||{}).forEach(k=>{if(basicProgressFields().includes(k))basic.push(k);else if(confidentialFields().includes(k))confidential.push(k);else unknown.push(k);});return{basic,confidential,unknown};}
+function requiresApprovalForEdit(u,changes={}){const cls=classifyFields(changes);return cls.confidential.length>0&&!canModifyConfidential(u);}
+function requiresApprovalForDelete(u){return !canDeleteConfidential(u);}
+function actionRights(u){return{authority_level:authorityLevel(u),can_basic_progress_update:true,can_confidential_modify:canModifyConfidential(u),can_confidential_delete:canDeleteConfidential(u),can_approve_data_change:canApproveDataChange(u),basic_progress_fields:basicProgressFields(),confidential_fields:confidentialFields()};}
+module.exports={authorityLevel,actionRights,basicProgressFields,confidentialFields,classifyFields,canModifyConfidential,canDeleteConfidential,canApproveDataChange,requiresApprovalForEdit,requiresApprovalForDelete};

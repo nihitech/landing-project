@@ -21,6 +21,7 @@ const showroomQrRoutes = require("./routes/showroomQr");
 const quickEnquiryRoutes = require("./routes/quickEnquiries");
 const vehicleIntelligenceRoutes = require("./routes/vehicleIntelligence");
 const governanceRoutes = require("./routes/governance");
+const dataChangeRequestRoutes = require("./routes/dataChangeRequests");
 
 const app = express();
 
@@ -45,6 +46,17 @@ app.use(cors({
 }));
 
 // Routes
+
+// Render deployment live version check
+app.get("/api/version-check", (req, res) => {
+    res.json({
+        version: "governance-live-check-v1",
+        service: "NIKRION DealerOS Backend",
+        governance_route_expected: "/api/governance/me",
+        deployed_at: new Date().toISOString()
+    });
+});
+
 app.use("/api", leadRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
@@ -63,6 +75,7 @@ app.use("/api/showroom-qr", showroomQrRoutes);
 app.use("/api/quick-enquiries", quickEnquiryRoutes);
 app.use("/api/vehicle-intelligence", vehicleIntelligenceRoutes);
 app.use("/api/governance", governanceRoutes);
+app.use("/api/data-change-requests", dataChangeRequestRoutes);
 // Test routes
 app.get("/", (req, res) => {
     res.json({ message: "Mahindra Lead CRM API running" });
