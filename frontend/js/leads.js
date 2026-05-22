@@ -1,5 +1,6 @@
 
 let users = [], allLeads = [];
+let leadActionRights = null;
 let vehicleModels = [];
 let vehicleVariants = [];
 let vehicleColors = [];
@@ -274,6 +275,9 @@ async function loadBranches() {
 
 async function loadPage() {
     try {
+        if (typeof loadDataActionRights === 'function') {
+            leadActionRights = await loadDataActionRights();
+        }
 
         const params = new URLSearchParams();
 
@@ -337,6 +341,100 @@ function renderPipeline(leads) {
     STATUSES.forEach(s => { const h=document.querySelector(`[data-status="${s}"] h3`); if(h) h.innerText=`${s} (${counters[s]})`; });
 }
 function initDragDrop() { document.querySelectorAll(".dropzone").forEach(z => { z.addEventListener("dragover",e=>e.preventDefault()); z.addEventListener("drop", async e => { e.preventDefault(); await updateStatus(e.dataTransfer.getData("id"), z.parentElement.dataset.status); }); }); }
+
+function canDirectConfidentialEdit() {
+    return !!leadActionRights?.can_confidential_modify;
+}
+
+function canDirectConfidentialDelete() {
+    return !!leadActionRights?.can_confidential_delete;
+}
+
+function leadActionControls(lead) {
+    const id = Number(lead.id);
+
+    const editBtn = canDirectConfidentialEdit()
+        ? `<button onclick="openEnquiryModal(${id})" class="icon-btn enquiry-btn" title="Edit Lead">✏️</button>`
+        : `<button onclick="requestLeadEdit(${id})" class="icon-btn enquiry-btn" title="Request Edit Approval">📝</button>`;
+
+    const deleteBtn = canDirectConfidentialDelete()
+        ? `<button onclick="deleteLeadData(${id})" class="icon-btn danger-btn" title="Delete Lead">🗑</button>`
+        : `<button onclick="requestLeadDelete(${id})" class="icon-btn danger-btn" title="Request Delete Approval">🛡</button>`;
+
+    return editBtn + deleteBtn;
+}
+
+async function requestLeadEdit(id) {
+    const lead = allLeads.find(l => Number(l.id) === Number(id));
+    if (!lead) return toast("Lead not found", true);
+
+    const field = prompt(
+        "Which confidential field do you want to change?\nExample: phone, email, car_interest, variant_interest, assigned_to"
+    );
+
+    if (!field) return;
+
+    const allowed = (leadActionRights?.confidential_fields || []);
+    if (!allowed.includes(field.trim())) {
+        return toast("This field is not classified as confidential editable field", true);
+    }
+
+    const value = prompt(`Enter new value for ${field}`);
+    if (value === null) return;
+
+    const reason = prompt("Reason for this edit request") || "";
+    if (!reason.trim()) return toast("Reason is required", true);
+
+    try {
+        await submitDataChangeRequest({
+            entity_type: "LEAD",
+            entity_id: id,
+            action_type: "EDIT",
+            current_payload: { [field]: lead[field] || "" },
+            requested_payload: { [field]: value },
+            reason
+        });
+
+        toast("Edit request submitted for approval");
+    } catch (err) {
+        toast(err.message || "Failed to submit edit request", true);
+    }
+}
+
+async function requestLeadDelete(id) {
+    const lead = allLeads.find(l => Number(l.id) === Number(id));
+    if (!lead) return toast("Lead not found", true);
+
+    const reason = prompt("Reason for delete request");
+    if (!reason || !reason.trim()) return toast("Delete request reason is required", true);
+
+    try {
+        await submitDataChangeRequest({
+            entity_type: "LEAD",
+            entity_id: id,
+            action_type: "DELETE",
+            current_payload: {
+                name: lead.name,
+                phone: lead.phone,
+                status: lead.status
+            },
+            requested_payload: {
+                delete_requested: true
+            },
+            reason
+        });
+
+        toast("Delete request submitted for approval");
+    } catch (err) {
+        toast(err.message || "Failed to submit delete request", true);
+    }
+}
+
+async function deleteLeadData(id) {
+    toast("Direct lead delete endpoint is not enabled yet. Use approval request for audit safety.", true);
+}
+
+
 function renderTable(leads) {
     const tb=document.querySelector("#leadTable tbody"); if(!tb) return;
     if(!leads.length){ tb.innerHTML=`<tr><td colspan="8" class="empty-state">No leads found</td></tr>`; return; }
@@ -368,13 +466,7 @@ function renderTable(leads) {
     🔐
 </button>
 
-<button 
-    onclick="openEnquiryModal(${lead.id})"
-    class="icon-btn enquiry-btn"
-    title="Detailed Enquiry"
->
-    📝
-</button>
+${leadActionControls(lead)}
 
 <a 
     href="tel:${phone}"
@@ -1062,3 +1154,7 @@ window.onload = async () => {
         toast(e.message, true);
     }
 };
+
+window.requestLeadEdit = requestLeadEdit;
+window.requestLeadDelete = requestLeadDelete;
+window.deleteLeadData = deleteLeadData;

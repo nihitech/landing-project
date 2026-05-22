@@ -4099,3 +4099,16 @@ select.vehicle-intel-select,
 .governance-columns b,.governance-columns small{display:block}
 .governance-columns b{margin-bottom:6px;color:#0f172a}
 .governance-columns small{color:#475569;margin:3px 0}
+
+
+/* Leads Data Action Governance */
+.compact-actions .danger-btn.icon-btn {
+    background: #fff1f2;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+
+.compact-actions .enquiry-btn {
+    background: #eef2ff;
+    color: #3730a3;
+}
