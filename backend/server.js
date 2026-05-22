@@ -22,6 +22,7 @@ const quickEnquiryRoutes = require("./routes/quickEnquiries");
 const vehicleIntelligenceRoutes = require("./routes/vehicleIntelligence");
 const governanceRoutes = require("./routes/governance");
 const dataChangeRequestRoutes = require("./routes/dataChangeRequests");
+const communicationRoutes = require("./routes/communications");
 
 const app = express();
 
@@ -57,6 +58,28 @@ app.get("/api/version-check", (req, res) => {
     });
 });
 
+
+app.get("/api/db-health-check", async (req, res) => {
+    try {
+        const db = require("./config/db");
+        const branches = await db.query("SELECT COUNT(*)::int AS count FROM branches");
+        const leads = await db.query("SELECT COUNT(*)::int AS count FROM leads");
+        res.json({
+            ok: true,
+            branches: branches.rows[0].count,
+            leads: leads.rows[0].count,
+            time: new Date().toISOString()
+        });
+    } catch (err) {
+        res.status(500).json({
+            ok: false,
+            message: err.message,
+            code: err.code,
+            detail: err.detail
+        });
+    }
+});
+
 app.use("/api", leadRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
@@ -76,6 +99,7 @@ app.use("/api/quick-enquiries", quickEnquiryRoutes);
 app.use("/api/vehicle-intelligence", vehicleIntelligenceRoutes);
 app.use("/api/governance", governanceRoutes);
 app.use("/api/data-change-requests", dataChangeRequestRoutes);
+app.use("/api/communications", communicationRoutes);
 // Test routes
 app.get("/", (req, res) => {
     res.json({ message: "Mahindra Lead CRM API running" });

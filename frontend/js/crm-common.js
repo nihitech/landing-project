@@ -300,6 +300,7 @@ const CRM_MENU = [
     tone: "reports",
     children: [
       { title: "Reports Center", url: "reports.html", key: "reports" },
+      { title: "Communications", url: "communications.html", key: "communications" },
       { title: "Data Change Approvals", url: "data-change-approvals.html", key: "data-change-approvals" },
       { title: "Settings", url: "settings.html", key: "settings" }
     ]

@@ -19,6 +19,30 @@ function cleanText(value) {
     return String(value ?? "").trim();
 }
 
+
+async function ensureBranchSchema() {
+    await db.query(`
+        ALTER TABLE branches
+        ADD COLUMN IF NOT EXISTS branch_name VARCHAR(200),
+        ADD COLUMN IF NOT EXISTS branch_code VARCHAR(80),
+        ADD COLUMN IF NOT EXISTS address TEXT,
+        ADD COLUMN IF NOT EXISTS area VARCHAR(150),
+        ADD COLUMN IF NOT EXISTS city VARCHAR(150),
+        ADD COLUMN IF NOT EXISTS district VARCHAR(150),
+        ADD COLUMN IF NOT EXISTS state VARCHAR(150),
+        ADD COLUMN IF NOT EXISTS pincode VARCHAR(30),
+        ADD COLUMN IF NOT EXISTS latitude NUMERIC(12,8),
+        ADD COLUMN IF NOT EXISTS longitude NUMERIC(12,8),
+        ADD COLUMN IF NOT EXISTS manager_id INTEGER,
+        ADD COLUMN IF NOT EXISTS phone VARCHAR(30),
+        ADD COLUMN IF NOT EXISTS email VARCHAR(200),
+        ADD COLUMN IF NOT EXISTS status VARCHAR(40) DEFAULT 'ACTIVE',
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW(),
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
+    `);
+}
+
+
 function parseId(value) {
     if (value === "" || value === null || value === undefined) return null;
     const id = Number(value);
@@ -29,7 +53,7 @@ async function getManagerDetails(client, managerId) {
     if (!managerId) return null;
 
     const result = await client.query(`
-        SELECT id, name, phone, mobile, email, role, status
+        SELECT id, name, phone, email, role, status
         FROM users
         WHERE id = $1
         LIMIT 1
@@ -39,45 +63,19 @@ async function getManagerDetails(client, managerId) {
 }
 
 function managerPhone(manager) {
-    return cleanText(manager?.phone || manager?.mobile || "");
-}
-
-
-async function ensureBranchManagementColumns() {
-    try {
-        await db.query(`
-            ALTER TABLE branches
-            ADD COLUMN IF NOT EXISTS manager_id INTEGER REFERENCES users(id),
-            ADD COLUMN IF NOT EXISTS phone TEXT,
-            ADD COLUMN IF NOT EXISTS email TEXT,
-            ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE',
-            ADD COLUMN IF NOT EXISTS address TEXT,
-            ADD COLUMN IF NOT EXISTS area TEXT,
-            ADD COLUMN IF NOT EXISTS city TEXT,
-            ADD COLUMN IF NOT EXISTS district TEXT,
-            ADD COLUMN IF NOT EXISTS state TEXT,
-            ADD COLUMN IF NOT EXISTS pincode TEXT,
-            ADD COLUMN IF NOT EXISTS latitude NUMERIC(12,8),
-            ADD COLUMN IF NOT EXISTS longitude NUMERIC(12,8),
-            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
-        `);
-        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)`);
-        await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`);
-    } catch (err) {
-        console.error("ENSURE BRANCH MANAGEMENT COLUMNS ERROR:", err.message);
-    }
+    return cleanText(manager?.phone || "");
 }
 
 /* LIST BRANCHES */
 router.get("/", auth, async (req, res) => {
     try {
-        await ensureBranchManagementColumns();
+        await ensureBranchSchema();
         const result = await db.query(`
             SELECT
                 b.*,
                 u.name AS manager_name,
                 u.email AS manager_email,
-                COALESCE(u.phone, u.mobile) AS manager_phone,
+                u.phone AS manager_phone,
                 u.role AS manager_role,
                 u.branch_id AS manager_current_branch_id
             FROM branches b
@@ -97,7 +95,7 @@ router.post("/", auth, requireAdmin, async (req, res) => {
     const client = await db.connect();
 
     try {
-        await ensureBranchManagementColumns();
+        await ensureBranchSchema();
         await client.query("BEGIN");
 
         const managerId = parseId(req.body.manager_id);
@@ -161,8 +159,7 @@ router.post("/", auth, requireAdmin, async (req, res) => {
                         WHEN LOWER(COALESCE(role, '')) IN ('admin','super_admin','owner','director','ceo')
                         THEN role
                         ELSE COALESCE(NULLIF(role, ''), 'branch_manager')
-                    END,
-                    updated_at = NOW()
+                    END
                 WHERE id = $2
             `, [branch.id, managerId]);
         }
@@ -188,7 +185,7 @@ router.put("/:id", auth, requireAdmin, async (req, res) => {
     const client = await db.connect();
 
     try {
-        await ensureBranchManagementColumns();
+        await ensureBranchSchema();
         await client.query("BEGIN");
 
         const id = parseId(req.params.id);
@@ -261,8 +258,7 @@ router.put("/:id", auth, requireAdmin, async (req, res) => {
                         WHEN LOWER(COALESCE(role, '')) IN ('admin','super_admin','owner','director','ceo')
                         THEN role
                         ELSE COALESCE(NULLIF(role, ''), 'branch_manager')
-                    END,
-                    updated_at = NOW()
+                    END
                 WHERE id = $2
             `, [id, managerId]);
         }
@@ -286,7 +282,7 @@ router.put("/:id", auth, requireAdmin, async (req, res) => {
 /* DELETE / DEACTIVATE BRANCH */
 router.delete("/:id", auth, requireAdmin, async (req, res) => {
     try {
-        await ensureBranchManagementColumns();
+        await ensureBranchSchema();
         const id = parseId(req.params.id);
 
         if (!id || Number.isNaN(id)) {

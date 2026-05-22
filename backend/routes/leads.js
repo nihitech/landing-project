@@ -83,22 +83,6 @@ function nullableDate(value) {
     return Number.isNaN(d.getTime()) ? null : d;
 }
 
-
-async function ensureApprovalApplicationColumns() {
-    try {
-        await db.query(`
-            ALTER TABLE leads
-            ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false,
-            ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP,
-            ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES users(id),
-            ADD COLUMN IF NOT EXISTS delete_reason TEXT
-        `);
-        await db.query(`CREATE INDEX IF NOT EXISTS idx_leads_is_deleted ON leads(is_deleted)`);
-    } catch (err) {
-        console.error("ENSURE APPROVAL APPLICATION COLUMNS ERROR:", err.message);
-    }
-}
-
 /* =====================================================
    USER / PERMISSION HELPERS
 ===================================================== */
@@ -385,18 +369,27 @@ async function ensureLeadScopeColumns() {
         ALTER TABLE leads
         ADD COLUMN IF NOT EXISTS vehicle_category VARCHAR(20),
         ADD COLUMN IF NOT EXISTS branch_id INTEGER,
-        ADD COLUMN IF NOT EXISTS assigned_branch_id INTEGER
+        ADD COLUMN IF NOT EXISTS assigned_branch_id INTEGER,
+        ADD COLUMN IF NOT EXISTS assigned_to INTEGER,
+        ADD COLUMN IF NOT EXISTS next_followup_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS next_followup_date TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS deleted_by INTEGER,
+        ADD COLUMN IF NOT EXISTS delete_reason TEXT,
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
     `);
 
-    /*
-        Compatibility fix for older lead records created before EV/AD scope.
-        Without this, AD/EV scoped users may see an empty Leads page
-        because old rows have NULL/blank vehicle_category.
-    */
     await db.query(`
         UPDATE leads
         SET vehicle_category = 'AD'
         WHERE vehicle_category IS NULL OR TRIM(vehicle_category) = ''
+    `);
+
+    await db.query(`
+        UPDATE leads
+        SET is_deleted = false
+        WHERE is_deleted IS NULL
     `);
 }
 
@@ -797,7 +790,6 @@ router.post("/lead/:id/followup", auth, requireLeadEdit, async (req, res) => {
 router.get("/leads", auth, requireLeadView, async (req, res) => {
     try {
         await ensureLeadScopeColumns();
-        await ensureApprovalApplicationColumns();
 
         const clauses = ["COALESCE(l.is_deleted,false)=false"];
         const values = [];
