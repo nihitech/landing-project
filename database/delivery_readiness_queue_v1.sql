@@ -1,0 +1,3 @@
+-- Delivery Readiness Queue v1
+-- Uses existing bookings, leads, vehicle_inventory_units, delivery_checklists.
+-- No destructive DB changes.

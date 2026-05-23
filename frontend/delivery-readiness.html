@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delivery Readiness Queue</title>
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+<div id="sidebarContainer"></div>
+<main class="main-content">
+<header class="module-header">
+<div>
+<span class="tag">Delivery Readiness</span>
+<h1>✅ Delivery / PDI Readiness Queue</h1>
+<p>Allocated bookings waiting for PDI, finance, insurance, invoice and customer confirmation.</p>
+</div>
+<div class="module-actions">
+<button onclick="loadReadinessQueue()" class="copy-btn">Refresh</button>
+<button onclick="logout()" class="logout-btn">Logout</button>
+</div>
+</header>
+
+<section class="workspace-kpi-grid">
+<div class="summary-card"><span>Total Allocated</span><strong id="totalCount">0</strong></div>
+<div class="summary-card"><span>Ready</span><strong id="readyCount">0</strong></div>
+<div class="summary-card"><span>Blocked</span><strong id="blockedCount">0</strong></div>
+<div class="summary-card"><span>Delivered</span><strong id="deliveredCount">0</strong></div>
+</section>
+
+<section class="table-card">
+<div class="page-header">
+<h2>Readiness Queue</h2>
+<p>Update checklist and move vehicle toward delivery.</p>
+</div>
+<div id="readinessQueue" class="role-task-list"></div>
+</section>
+</main>
+</div>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('delivery-readiness');</script>
+<script src="./js/delivery-readiness.js"></script>
+</body>
+</html>

@@ -123,6 +123,262 @@ function calculateDeliveryStatus(score, blockerReason = "") {
     return "PENDING";
 }
 
+
+/* DELIVERY READINESS QUEUE */
+router.get("/readiness-queue", auth, requireDeliveryView, async (req, res) => {
+    try {
+        const clauses = [
+            "b.inventory_id IS NOT NULL",
+            "COALESCE(b.booking_status,'BOOKED') NOT IN ('CANCELLED','DELIVERED')"
+        ];
+        const values = [];
+
+        appendBranchScope(req, clauses, values, "i");
+        appendCategoryScope(req, clauses, values, "i");
+
+        const result = await db.query(`
+            SELECT
+                b.id AS booking_id,
+                b.booking_no,
+                b.booking_status,
+                b.retail_status,
+                b.finance_required,
+                b.loan_status,
+                b.insurance_required,
+                b.insurance_status,
+                b.exchange_required,
+                b.exchange_status,
+                b.created_at AS booking_created_at,
+
+                l.id AS lead_id,
+                l.name AS customer_name,
+                l.phone AS customer_phone,
+                l.status AS lead_status,
+
+                i.id AS inventory_id,
+                i.vin_number,
+                i.chassis_number,
+                i.vehicle_category,
+                i.vehicle_status,
+                i.current_location,
+                i.location,
+
+                m.model_name,
+                v.variant_name,
+                c.color_name,
+                br.branch_name,
+
+                d.id AS checklist_id,
+                d.delivery_ready_score,
+                d.delivery_status,
+                d.planned_delivery_date,
+                d.actual_delivery_date,
+                d.blocker_reason,
+                d.pdi_completed,
+                d.accessories_completed,
+                d.finance_completed,
+                d.insurance_completed,
+                d.rto_completed,
+                d.fastag_completed,
+                d.payment_completed,
+                d.invoice_completed,
+                d.customer_confirmation
+
+            FROM bookings b
+            JOIN leads l ON l.id = b.lead_id
+            JOIN vehicle_inventory_units i ON i.id = b.inventory_id
+            LEFT JOIN delivery_checklists d ON d.inventory_id = i.id
+            LEFT JOIN vehicle_models m ON m.id = i.model_id
+            LEFT JOIN vehicle_variants v ON v.id = i.variant_id
+            LEFT JOIN vehicle_colors c ON c.id = i.color_id
+            LEFT JOIN branches br ON br.id = COALESCE(l.branch_id, l.assigned_branch_id)
+            WHERE ${clauses.join(" AND ")}
+            ORDER BY COALESCE(d.delivery_ready_score,0) ASC, b.created_at DESC
+            LIMIT 300
+        `, values);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error("DELIVERY READINESS QUEUE ERROR:", err);
+        res.status(500).json({ message: "Failed to load delivery readiness queue" });
+    }
+});
+
+router.post("/booking/:bookingId/readiness", auth, requireDeliveryManage, async (req, res) => {
+    try {
+        const bookingId = parseId(req.params.bookingId);
+        if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
+
+        const bookingResult = await db.query(`
+            SELECT b.*, l.id AS lead_id
+            FROM bookings b
+            LEFT JOIN leads l ON l.id = b.lead_id
+            WHERE b.id=$1
+            LIMIT 1
+        `, [bookingId]);
+
+        if (!bookingResult.rows.length) return res.status(404).json({ message: "Booking not found" });
+
+        const booking = bookingResult.rows[0];
+
+        if (!booking.inventory_id) {
+            return res.status(400).json({ message: "Vehicle allocation required before delivery readiness" });
+        }
+
+        req.body.inventory_id = booking.inventory_id;
+        req.body.lead_id = booking.lead_id;
+
+        const checklistData = {
+            pdi_completed: bool(req.body.pdi_completed),
+            accessories_completed: bool(req.body.accessories_completed),
+            finance_completed: bool(req.body.finance_completed),
+            insurance_completed: bool(req.body.insurance_completed),
+            rto_completed: bool(req.body.rto_completed),
+            fastag_completed: bool(req.body.fastag_completed),
+            payment_completed: bool(req.body.payment_completed),
+            invoice_completed: bool(req.body.invoice_completed),
+            delivery_photo_uploaded: bool(req.body.delivery_photo_uploaded),
+            customer_confirmation: bool(req.body.customer_confirmation)
+        };
+
+        const blockerReason = cleanText(req.body.blocker_reason);
+        const score = calculateDeliveryScore(checklistData);
+        const deliveryStatus = calculateDeliveryStatus(score, blockerReason);
+
+        const result = await db.query(`
+            INSERT INTO delivery_checklists
+            (
+                inventory_id, lead_id,
+                pdi_completed, accessories_completed, finance_completed, insurance_completed,
+                rto_completed, fastag_completed, payment_completed, invoice_completed,
+                delivery_photo_uploaded, customer_confirmation,
+                delivery_ready_score, delivery_status,
+                planned_delivery_date, actual_delivery_date,
+                blocker_reason, remarks, created_by, updated_by
+            )
+            VALUES
+            ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+            ON CONFLICT (inventory_id)
+            DO UPDATE SET
+                lead_id=EXCLUDED.lead_id,
+                pdi_completed=EXCLUDED.pdi_completed,
+                accessories_completed=EXCLUDED.accessories_completed,
+                finance_completed=EXCLUDED.finance_completed,
+                insurance_completed=EXCLUDED.insurance_completed,
+                rto_completed=EXCLUDED.rto_completed,
+                fastag_completed=EXCLUDED.fastag_completed,
+                payment_completed=EXCLUDED.payment_completed,
+                invoice_completed=EXCLUDED.invoice_completed,
+                delivery_photo_uploaded=EXCLUDED.delivery_photo_uploaded,
+                customer_confirmation=EXCLUDED.customer_confirmation,
+                delivery_ready_score=EXCLUDED.delivery_ready_score,
+                delivery_status=EXCLUDED.delivery_status,
+                planned_delivery_date=EXCLUDED.planned_delivery_date,
+                actual_delivery_date=EXCLUDED.actual_delivery_date,
+                blocker_reason=EXCLUDED.blocker_reason,
+                remarks=EXCLUDED.remarks,
+                updated_by=EXCLUDED.updated_by,
+                updated_at=NOW()
+            RETURNING *
+        `, [
+            booking.inventory_id,
+            booking.lead_id,
+            checklistData.pdi_completed,
+            checklistData.accessories_completed,
+            checklistData.finance_completed,
+            checklistData.insurance_completed,
+            checklistData.rto_completed,
+            checklistData.fastag_completed,
+            checklistData.payment_completed,
+            checklistData.invoice_completed,
+            checklistData.delivery_photo_uploaded,
+            checklistData.customer_confirmation,
+            score,
+            deliveryStatus,
+            nullableDate(req.body.planned_delivery_date),
+            nullableDate(req.body.actual_delivery_date),
+            blockerReason,
+            cleanText(req.body.remarks),
+            req.user.id,
+            req.user.id
+        ]);
+
+        if (deliveryStatus === "READY") {
+            await db.query(`
+                UPDATE vehicle_inventory_units
+                SET vehicle_status = CASE
+                    WHEN vehicle_status NOT IN ('DELIVERED','RETAIL_DONE') THEN 'PDI_DONE'
+                    ELSE vehicle_status
+                END,
+                updated_by=$1,
+                updated_at=NOW()
+                WHERE id=$2
+            `, [req.user.id, booking.inventory_id]);
+
+            await db.query(`
+                UPDATE bookings
+                SET booking_status = CASE
+                    WHEN booking_status NOT IN ('DELIVERED','CANCELLED') THEN 'VEHICLE_ALLOCATED'
+                    ELSE booking_status
+                END,
+                updated_by=$1,
+                updated_at=NOW()
+                WHERE id=$2
+            `, [req.user.id, bookingId]);
+        }
+
+        if (nullableDate(req.body.actual_delivery_date)) {
+            await db.query(`
+                UPDATE vehicle_inventory_units
+                SET vehicle_status='DELIVERED',
+                    delivery_date=$1,
+                    updated_by=$2,
+                    updated_at=NOW()
+                WHERE id=$3
+            `, [nullableDate(req.body.actual_delivery_date), req.user.id, booking.inventory_id]);
+
+            await db.query(`
+                UPDATE leads
+                SET status='CLOSED',
+                    vehicle_allocation_status='DELIVERED',
+                    updated_at=NOW()
+                WHERE id=$1
+            `, [booking.lead_id]);
+
+            await db.query(`
+                UPDATE bookings
+                SET booking_status='DELIVERED',
+                    updated_by=$1,
+                    updated_at=NOW()
+                WHERE id=$2
+            `, [req.user.id, bookingId]);
+        }
+
+        await auditLogActivity({
+            req,
+            user_id: req.user.id,
+            lead_id: booking.lead_id,
+            action: "DELIVERY_READINESS_UPDATED",
+            module_name: "DELIVERY",
+            entity_type: "BOOKING",
+            entity_id: bookingId,
+            new_value: deliveryStatus,
+            severity: deliveryStatus === "BLOCKED" ? "WARNING" : "INFO",
+            remarks: `Delivery readiness updated. Score: ${score}%. Status: ${deliveryStatus}.`
+        });
+
+        res.json({
+            message: "Delivery readiness updated",
+            checklist: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error("DELIVERY BOOKING READINESS ERROR:", err);
+        res.status(500).json({ message: "Failed to update delivery readiness" });
+    }
+});
+
+
 /* LIST DELIVERY CHECKLISTS */
 router.get("/", auth, requireDeliveryView, async (req, res) => {
     try {

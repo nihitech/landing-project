@@ -248,7 +248,8 @@ const CRM_MENU = [
         children: [
           { title: "Bookings", url: "bookings.html", key: "bookings" },
           { title: "Booking Allocation", url: "booking-allocation.html", key: "booking-allocation" },
-          { title: "Delivery / PDI", url: "delivery.html", key: "delivery" }
+          { title: "Delivery / PDI", url: "delivery.html", key: "delivery" },
+          { title: "Delivery Readiness", url: "delivery-readiness.html", key: "delivery-readiness" }
         ]
       }
     ]
