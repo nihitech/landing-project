@@ -1,0 +1,6 @@
+-- Booking Allotment Fix
+-- No destructive DB changes.
+-- Fixes:
+-- 1. Adds missing booking allocation endpoints.
+-- 2. Adds assertNoActiveBookingConflict helper.
+-- 3. Stores booking_id as booking table id instead of booking_no string.

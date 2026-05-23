@@ -164,6 +164,39 @@ async function logLeadActivity(client, payload) {
     });
 }
 
+
+async function assertNoActiveBookingConflict(client, { leadId = null, inventoryId = null, excludeBookingId = null }) {
+    const values = [];
+    const clauses = ["COALESCE(booking_status,'BOOKED') NOT IN ('CANCELLED','DELIVERED')"];
+
+    if (leadId) {
+        values.push(leadId);
+        clauses.push(`lead_id = $${values.length}`);
+    }
+
+    if (inventoryId) {
+        values.push(inventoryId);
+        clauses.push(`inventory_id = $${values.length}`);
+    }
+
+    if (excludeBookingId) {
+        values.push(excludeBookingId);
+        clauses.push(`id <> $${values.length}`);
+    }
+
+    if (!leadId && !inventoryId) return null;
+
+    const result = await client.query(`
+        SELECT id, booking_no, lead_id, inventory_id, booking_status
+        FROM bookings
+        WHERE ${clauses.join(" AND ")}
+        ORDER BY created_at DESC
+        LIMIT 1
+    `, values);
+
+    return result.rows[0] || null;
+}
+
 async function generateBookingNo(client) {
     const today = new Date();
     const prefix = `BK${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
@@ -436,7 +469,7 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
             `, [
                 leadId,
                 leadResult.rows[0].name,
-                bookingNo,
+                result.rows[0].id,
                 req.user.id,
                 finalInventoryId
             ]);
@@ -496,6 +529,242 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
         client.release();
     }
 });
+
+
+/* BOOKING ALLOCATION QUEUE */
+router.get("/pending-allocation", auth, requireBookingView, async (req, res) => {
+    try {
+        const clauses = [
+            "COALESCE(b.booking_status,'BOOKED') NOT IN ('CANCELLED','DELIVERED')",
+            "b.inventory_id IS NULL"
+        ];
+        const values = [];
+
+        appendBranchScope(req, clauses, values, "l");
+        appendCategoryScope(req, clauses, values, "l");
+
+        const result = await db.query(`
+            SELECT
+                b.*,
+                l.name AS customer_name,
+                l.phone AS customer_phone,
+                l.car_interest,
+                l.variant_interest,
+                l.vehicle_category,
+                l.preferred_color,
+                l.fuel_type,
+                l.vehicle_allocation_status,
+                u.name AS sales_person_name,
+                br.branch_name
+            FROM bookings b
+            LEFT JOIN leads l ON l.id = b.lead_id
+            LEFT JOIN users u ON u.id = l.assigned_to
+            LEFT JOIN branches br ON br.id = COALESCE(l.branch_id, l.assigned_branch_id)
+            WHERE ${clauses.join(" AND ")}
+            ORDER BY b.created_at DESC
+            LIMIT 300
+        `, values);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error("BOOKING PENDING ALLOCATION ERROR:", err);
+        res.status(500).json({ message: "Failed to load pending allocation bookings" });
+    }
+});
+
+router.get("/:id/available-inventory", auth, requireBookingView, async (req, res) => {
+    try {
+        const bookingId = parseId(req.params.id);
+        if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
+
+        const bookingResult = await db.query(`
+            SELECT b.*, l.vehicle_category, l.car_interest, l.variant_interest, l.preferred_color, l.fuel_type, l.branch_id, l.assigned_branch_id
+            FROM bookings b
+            LEFT JOIN leads l ON l.id = b.lead_id
+            WHERE b.id=$1
+            LIMIT 1
+        `, [bookingId]);
+
+        if (!bookingResult.rows.length) return res.status(404).json({ message: "Booking not found" });
+
+        const booking = bookingResult.rows[0];
+        const values = [];
+        const clauses = [
+            "COALESCE(i.vehicle_status,'AVAILABLE') NOT IN ('DELIVERED','RETAIL_DONE','ALLOCATED_TO_CUSTOMER')",
+            "COALESCE(i.status,'ACTIVE')='ACTIVE'"
+        ];
+
+        if (booking.vehicle_category) {
+            values.push(booking.vehicle_category);
+            clauses.push(`i.vehicle_category=$${values.length}`);
+        }
+
+        if (booking.car_interest) {
+            values.push(booking.car_interest);
+            clauses.push(`LOWER(m.model_name)=LOWER($${values.length})`);
+        }
+
+        if (booking.variant_interest) {
+            values.push(booking.variant_interest);
+            clauses.push(`LOWER(v.variant_name)=LOWER($${values.length})`);
+        }
+
+        if (booking.preferred_color) {
+            values.push(booking.preferred_color);
+            clauses.push(`LOWER(c.color_name)=LOWER($${values.length})`);
+        }
+
+        appendBranchScope(req, clauses, values, "i");
+        appendCategoryScope(req, clauses, values, "i");
+
+        const result = await db.query(`
+            SELECT
+                i.*,
+                m.model_name,
+                v.variant_name,
+                c.color_name
+            FROM vehicle_inventory_units i
+            LEFT JOIN vehicle_models m ON m.id = i.model_id
+            LEFT JOIN vehicle_variants v ON v.id = i.variant_id
+            LEFT JOIN vehicle_colors c ON c.id = i.color_id
+            WHERE ${clauses.join(" AND ")}
+            ORDER BY i.created_at DESC
+            LIMIT 100
+        `, values);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error("BOOKING AVAILABLE INVENTORY ERROR:", err);
+        res.status(500).json({ message: "Failed to load available inventory" });
+    }
+});
+
+router.post("/:id/allocate-inventory", auth, requireBookingManage, async (req, res) => {
+    const client = await db.connect();
+
+    try {
+        const bookingId = parseId(req.params.id);
+        const inventoryId = parseId(req.body.inventory_id);
+
+        if (!bookingId || !inventoryId) {
+            return res.status(400).json({ message: "Valid booking and inventory are required" });
+        }
+
+        await client.query("BEGIN");
+
+        const bookingResult = await client.query(`
+            SELECT b.*, l.name AS customer_name
+            FROM bookings b
+            LEFT JOIN leads l ON l.id = b.lead_id
+            WHERE b.id=$1
+            FOR UPDATE
+        `, [bookingId]);
+
+        if (!bookingResult.rows.length) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ message: "Booking not found" });
+        }
+
+        const booking = bookingResult.rows[0];
+
+        const conflict = await assertNoActiveBookingConflict(client, {
+            inventoryId,
+            excludeBookingId: bookingId
+        });
+
+        if (conflict) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+                message: `Vehicle already linked with active booking: ${conflict.booking_no || conflict.id}`
+            });
+        }
+
+        const inventoryResult = await client.query(`
+            SELECT *
+            FROM vehicle_inventory_units
+            WHERE id=$1
+            AND COALESCE(status,'ACTIVE')='ACTIVE'
+            FOR UPDATE
+        `, [inventoryId]);
+
+        if (!inventoryResult.rows.length) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ message: "Inventory vehicle not found" });
+        }
+
+        const inventory = inventoryResult.rows[0];
+
+        if (inventory.allocated_lead_id && Number(inventory.allocated_lead_id) !== Number(booking.lead_id)) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({ message: "Vehicle already allocated to another lead" });
+        }
+
+        const updatedBooking = await client.query(`
+            UPDATE bookings
+            SET inventory_id=$1,
+                booking_status='VEHICLE_ALLOCATED',
+                updated_by=$2,
+                updated_at=NOW()
+            WHERE id=$3
+            RETURNING *
+        `, [inventoryId, req.user.id, bookingId]);
+
+        await client.query(`
+            UPDATE vehicle_inventory_units
+            SET allocated_lead_id=$1,
+                allocated_customer_name=$2,
+                booking_id=$3,
+                vehicle_status='ALLOCATED_TO_CUSTOMER',
+                updated_by=$4,
+                updated_at=NOW()
+            WHERE id=$5
+        `, [
+            booking.lead_id,
+            booking.customer_name || "",
+            bookingId,
+            req.user.id,
+            inventoryId
+        ]);
+
+        await client.query(`
+            UPDATE leads
+            SET allocated_inventory_id=$1,
+                allocated_vin_number=$2,
+                vehicle_allocated_at=NOW(),
+                vehicle_allocation_status='ALLOCATED',
+                status='BOOKED',
+                updated_at=NOW()
+            WHERE id=$3
+        `, [
+            inventoryId,
+            inventory.vin_number || "",
+            booking.lead_id
+        ]);
+
+        await logLeadActivity(client, {
+            lead_id: booking.lead_id,
+            user_id: req.user.id,
+            action: "VEHICLE_ALLOCATED_TO_BOOKING",
+            booking_id: bookingId,
+            new_value: inventory.vin_number || String(inventoryId),
+            remarks: `Vehicle allocated to booking ${booking.booking_no}`
+        });
+
+        await client.query("COMMIT");
+
+        res.json({
+            message: "Vehicle allocated to booking successfully",
+            booking: updatedBooking.rows[0]
+        });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("BOOKING ALLOCATE INVENTORY ERROR:", err);
+        res.status(500).json({ message: "Failed to allocate vehicle to booking" });
+    } finally {
+        client.release();
+    }
+});
+
 
 /* UPDATE BOOKING */
 router.put("/:id", auth, requireBookingManage, async (req, res) => {
