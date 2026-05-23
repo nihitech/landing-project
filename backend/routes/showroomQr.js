@@ -5,6 +5,7 @@ const QRCode = require("qrcode");
 const router = express.Router();
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const roleAccess = require("../services/roleAccess");
 const assignmentEngine = require("../services/assignmentEngine");
 const { calculateScore, getLeadPriority } = require("../services/scoring");
 
@@ -14,14 +15,14 @@ try { logger = require("../utils/activityLogger"); } catch(e) {}
 const CONSENT_TEXT = "I agree that the showroom/dealer may use my enquiry information for contacting me, service improvement, future vehicle suggestions, analytics, customer journey insights, and AI-assisted business intelligence. I understand that my data will be used only for business/service improvement and customer support purposes.";
 
 function clean(v, f=""){ return String(v ?? f).trim(); }
-function role(v){ return clean(v).toLowerCase(); }
+function role(v){ return roleAccess.roleOf(v); }
 function phone(v){ return String(v || "").replace(/\D/g,"").slice(-10); }
 function parseId(v){ if(v==="" || v===null || v===undefined) return null; const n=Number(v); return Number.isInteger(n)&&n>0?n:NaN; }
 function cat(v){ const c=clean(v||"AD").toUpperCase(); return ["AD","EV"].includes(c)?c:"AD"; }
-function isAdmin(req){ return req.user?.is_higher_authority===true || ["admin","super_admin","owner","director","ceo"].includes(role(req.user?.role)); }
-function hasPerm(req,k){ if(isAdmin(req)) return true; return Array.isArray(req.user?.permissions) && req.user.permissions.includes(k); }
-function canManage(req,res,next){ if(isAdmin(req)||["receptionist","manager","team_leader"].includes(role(req.user?.role))||hasPerm(req,"showroom_qr.manage")) return next(); return res.status(403).json({message:"No permission to manage showroom QR"}); }
-function canReview(req,res,next){ if(isAdmin(req)||["receptionist","manager","team_leader","telecaller"].includes(role(req.user?.role))||hasPerm(req,"showroom_qr.review")) return next(); return res.status(403).json({message:"No permission to review showroom enquiries"}); }
+function isAdmin(req){ return req.user?.is_higher_authority===true || roleAccess.isAdmin(req.user); }
+function hasPerm(req,k){ return roleAccess.hasPermission(req.user,k); }
+function canManage(req,res,next){ if(isAdmin(req)||["receptionist","reception","front_office","frontoffice","front-desk","front_desk","cre","customer_relation_executive","customer_relations_executive","manager","team_leader"].includes(role(req.user?.role))||hasPerm(req,"showroom_qr.manage")) return next(); return res.status(403).json({message:"No permission to manage showroom QR"}); }
+function canReview(req,res,next){ if(isAdmin(req)||["receptionist","reception","front_office","frontoffice","front-desk","front_desk","cre","customer_relation_executive","customer_relations_executive","manager","team_leader","telecaller","crm_executive"].includes(role(req.user?.role))||hasPerm(req,"showroom_qr.review")) return next(); return res.status(403).json({message:"No permission to review showroom enquiries"}); }
 async function audit(p){ try{ if(logger?.logActivity) await logger.logActivity(p); }catch(e){} }
 function baseUrl(req){ return (req.headers.origin || `${req.headers["x-forwarded-proto"]||req.protocol||"https"}://${req.headers["x-forwarded-host"]||req.headers.host}`).replace(/\/$/,""); }
 function code(){ return `QR-${new Date().toISOString().slice(0,10).replace(/-/g,"")}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`; }

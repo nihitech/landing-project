@@ -34,7 +34,7 @@ function readCurrentUser() {
 
   try {
     const parsed = JSON.parse(raw || "{}");
-    parsed.role = String(parsed.role || "sales").toLowerCase();
+    parsed.role = normalizeUserRole(parsed.role || "sales");
     return parsed;
   } catch {
     return { role: "sales" };
@@ -512,13 +512,72 @@ function maybeRedirectDashboardToWorkspace() {
 
 
 function menuAllowedForRole(node) {
-  const role = String(user?.role || "sales").toLowerCase();
+  const role = normalizeUserRole(user?.role || "sales");
+
   if (["admin","super_admin","system_admin","owner","director","ceo"].includes(role)) return true;
+
   const text = `${node?.title || ""} ${node?.url || ""}`.toLowerCase();
-  const sales = ["workspace","lead","quick","follow","vehicle-status","communication","notification","timeline","booking"];
-  const manager = [...sales,"approval","report"];
-  const receptionist = ["workspace","showroom","qr","quick","lead","notification","timeline"];
-  const allowed = ["manager","sales_manager","team_leader","branch_manager","bm"].includes(role) ? manager : ["receptionist","front_office","cre"].includes(role) ? receptionist : sales;
-  if (!node.url && node.children) return node.children.some(menuAllowedForRole);
+
+  const salesAllowed = [
+    "workspace","lead","quick","follow","vehicle-status","communication","notification",
+    "timeline","booking","test","field"
+  ];
+
+  const managerAllowed = [
+    "workspace","lead","quick","follow","vehicle-status","communication","notification",
+    "timeline","booking","booking-allocation","delivery-readiness","approval","report",
+    "showroom","qr"
+  ];
+
+  const receptionistAllowed = [
+    "workspace","showroom","qr","quick","lead","notification","timeline"
+  ];
+
+  const digitalAllowed = [
+    "workspace","lead","quick","follow","communication","notification","timeline",
+    "report","showroom","qr","data change approvals"
+  ];
+
+  const telecallerAllowed = [
+    "workspace","lead","quick","follow","communication","notification","timeline"
+  ];
+
+  let allowed = salesAllowed;
+  if (["manager","team_leader","branch_manager"].includes(role)) allowed = managerAllowed;
+  if (role === "receptionist") allowed = receptionistAllowed;
+  if (role === "digital_marketing") allowed = digitalAllowed;
+  if (role === "telecaller") allowed = telecallerAllowed;
+
+  if (!node.url && node.children) return node.children.some(child => menuAllowedForRole(child));
+
   return allowed.some(k => text.includes(k));
+}
+
+function normalizeUserRole(value) {
+  const role = String(value || "").trim().toLowerCase().replace(/\s+/g, "_").replace(/-/g, "_");
+  const aliases = {
+    reception: "receptionist",
+    frontoffice: "receptionist",
+    front_office: "receptionist",
+    frontdesk: "receptionist",
+    front_desk: "receptionist",
+    cre: "receptionist",
+    customer_relation_executive: "receptionist",
+    salesperson: "sales",
+    sales_person: "sales",
+    sales_executive: "sales",
+    sales_consultant: "sales",
+    sales_advisor: "sales",
+    digital_marketer: "digital_marketing",
+    digital_marketing_manager: "digital_marketing",
+    marketing_manager: "digital_marketing",
+    online_marketing: "digital_marketing",
+    sales_manager: "manager",
+    bm: "branch_manager",
+    crm_executive: "telecaller",
+    tele_caller: "telecaller",
+    telecalling: "telecaller",
+    tele_calling: "telecaller"
+  };
+  return aliases[role] || role || "sales";
 }

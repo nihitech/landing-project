@@ -3,6 +3,7 @@ const router = express.Router();
 
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const roleAccess = require("../services/roleAccess");
 
 let logger = null;
 try { logger = require("../utils/activityLogger"); } catch (err) {}
@@ -17,11 +18,11 @@ function parseId(value) {
 }
 
 function roleOf(user) {
-    return clean(user?.role).toLowerCase();
+    return roleAccess.roleOf(user);
 }
 
 function isManagerUser(user) {
-    return ["manager", "sales_manager", "team_leader", "branch_manager", "bm", "dgm", "gm", "md", "ceo", "admin", "super_admin"].includes(roleOf(user));
+    return roleAccess.isManager(user);
 }
 
 async function audit(payload) {

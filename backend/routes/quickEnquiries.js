@@ -4,15 +4,16 @@ const crypto = require("crypto");
 const router = express.Router();
 const db = require("../config/db");
 const auth = require("../middleware/auth");
+const roleAccess = require("../services/roleAccess");
 const assignmentEngine = require("../services/assignmentEngine");
 
 let logger=null; try{ logger=require("../utils/activityLogger"); }catch(e){}
 let scoring=null; try{ scoring=require("../services/scoring"); }catch(e){}
 
 function clean(v,f=""){return String(v??f).trim();}
-function role(v){return clean(v).toLowerCase();}
-function isAdmin(req){return req.user?.is_higher_authority===true||["admin","super_admin","owner","director","ceo"].includes(role(req.user?.role));}
-function hasPerm(req,k){return isAdmin(req)||(Array.isArray(req.user?.permissions)&&req.user.permissions.includes(k));}
+function role(v){return roleAccess.roleOf(v);}
+function isAdmin(req){return req.user?.is_higher_authority===true||roleAccess.isAdmin(req.user);}
+function hasPerm(req,k){return roleAccess.hasPermission(req.user,k);}
 function parseId(v){if(v===""||v===null||v===undefined)return null;const n=Number(v);return Number.isInteger(n)&&n>0?n:NaN;}
 function phone(v){return String(v||"").replace(/\D/g,"").slice(-10);}
 function cat(v){const c=clean(v||"AD").toUpperCase();return["AD","EV"].includes(c)?c:"AD";}
@@ -21,8 +22,8 @@ function status(v,f="PENDING_VALIDATION"){const s=clean(v||f).toUpperCase();retu
 function otp(){return String(Math.floor(100000+Math.random()*900000));}
 function hash(v){return crypto.createHash("sha256").update(String(v)).digest("hex");}
 async function audit(p){try{if(logger?.logActivity) await logger.logActivity(p);}catch(e){}}
-function canCreate(req,res,next){const r=role(req.user?.role);if(isAdmin(req)||["sales","sales_executive","sales_consultant","manager","team_leader","field","field_executive"].includes(r)||hasPerm(req,"quick_enquiry.create"))return next();return res.status(403).json({message:"No permission to create quick enquiries"});}
-function canReview(req,res,next){const r=role(req.user?.role);if(isAdmin(req)||["telecaller","crm_executive","manager","team_leader","branch_manager"].includes(r)||hasPerm(req,"quick_enquiry.review"))return next();return res.status(403).json({message:"No permission to review quick enquiries"});}
+function canCreate(req,res,next){const r=role(req.user?.role);if(isAdmin(req)||["sales","manager","team_leader","branch_manager","field"].includes(r)||hasPerm(req,"quick_enquiry.create"))return next();return res.status(403).json({message:"No permission to create quick enquiries"});}
+function canReview(req,res,next){const r=role(req.user?.role);if(isAdmin(req)||["telecaller","manager","team_leader","branch_manager","receptionist"].includes(r)||hasPerm(req,"quick_enquiry.review"))return next();return res.status(403).json({message:"No permission to review quick enquiries"});}
 function scoreSafe(d){try{if(scoring?.calculateScore)return scoring.calculateScore(d);}catch(e){} let s=30;if(d.phone)s+=10;if(d.car_interest)s+=10;if(d.source==="REFERRAL")s+=15;return Math.min(s,100);}
 function prioritySafe(s){try{if(scoring?.getLeadPriority)return scoring.getLeadPriority(s).toUpperCase();}catch(e){} return s>=70?"HOT":s>=45?"WARM":"COLD";}
 
