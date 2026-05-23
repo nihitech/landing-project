@@ -283,6 +283,8 @@ router.post("/", auth, requireBookingManage, async (req, res) => {
 
         const finalInventoryId = inventoryId || leadResult.rows[0].allocated_inventory_id || null;
 
+        const finalRetailStatus = retailStatus(req.body.retail_status);
+
         if (!finalInventoryId) {
             await client.query("ROLLBACK");
             return res.status(400).json({

@@ -365,37 +365,171 @@ router.post("/lead/:id/followup", auth, async (req, res) => {
     }
 });
 
+
+async function generateProcessBookingNo(client) {
+    const today = new Date();
+    const prefix = `BK${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+    const result = await client.query(`SELECT COUNT(*)::int AS count FROM bookings WHERE booking_no LIKE $1`, [`${prefix}%`]);
+    const next = Number(result.rows[0]?.count || 0) + 1;
+    return `${prefix}-${String(next).padStart(4, "0")}`;
+}
+
+async function ensureBookingWorkflowColumns() {
+    await db.query(`
+        ALTER TABLE leads
+        ADD COLUMN IF NOT EXISTS booking_request_status VARCHAR(60) DEFAULT 'NOT_REQUESTED',
+        ADD COLUMN IF NOT EXISTS booking_requested_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS booking_requested_by INTEGER REFERENCES users(id),
+        ADD COLUMN IF NOT EXISTS vehicle_allocation_status VARCHAR(60) DEFAULT 'NOT_ALLOCATED'
+    `);
+}
+
 router.post("/lead/:id/request-booking", auth, async (req, res) => {
+    const client = await db.connect();
+
     try {
         await ensureSchema();
+        await ensureBookingWorkflowColumns();
 
         const id = parseId(req.params.id);
         if (Number.isNaN(id)) return res.status(400).json({ message: "Invalid lead id" });
 
         await requireValidatedLeadForForwardAction(id);
 
-        const old = await db.query(`SELECT * FROM leads WHERE id=$1 LIMIT 1`, [id]);
-        if (!old.rows.length) return res.status(404).json({ message: "Lead not found" });
+        await client.query("BEGIN");
 
-        await db.query(`UPDATE leads SET status='BOOKED', updated_at=NOW() WHERE id=$1`, [id]);
+        const leadResult = await client.query(`
+            SELECT *
+            FROM leads
+            WHERE id=$1
+            FOR UPDATE
+        `, [id]);
+
+        if (!leadResult.rows.length) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ message: "Lead not found" });
+        }
+
+        const lead = leadResult.rows[0];
+
+        if (!isManagerUser(req.user) && lead.assigned_to && Number(lead.assigned_to) !== Number(req.user.id)) {
+            await client.query("ROLLBACK");
+            return res.status(403).json({ message: "You can request booking only for your assigned lead" });
+        }
+
+        const existingBooking = await client.query(`
+            SELECT *
+            FROM bookings
+            WHERE lead_id=$1
+            AND COALESCE(booking_status,'BOOKED') NOT IN ('CANCELLED')
+            ORDER BY created_at DESC
+            LIMIT 1
+        `, [id]);
+
+        let booking;
+        let bookingCreated = false;
+
+        if (existingBooking.rows.length) {
+            booking = existingBooking.rows[0];
+
+            await client.query(`
+                UPDATE bookings
+                SET remarks = COALESCE(NULLIF(remarks,''),'') || $1,
+                    updated_by=$2,
+                    updated_at=NOW()
+                WHERE id=$3
+            `, [
+                `\nBooking request refreshed by sales. ${clean(req.body.remarks || "")}`,
+                req.user.id,
+                booking.id
+            ]);
+        } else {
+            const bookingNo = await generateProcessBookingNo(client);
+
+            const created = await client.query(`
+                INSERT INTO bookings
+                (
+                    lead_id, inventory_id, booking_no, booking_date,
+                    booking_amount, receipt_no, booking_status,
+                    finance_required, finance_partner, loan_status,
+                    insurance_required, insurance_partner, insurance_status,
+                    exchange_required, exchange_vehicle_details, exchange_status,
+                    retail_status, remarks, created_by, updated_by
+                )
+                VALUES
+                ($1,NULL,$2,NOW(),$3,$4,'BOOKED',$5,$6,$7,$8,$9,$10,$11,$12,$13,'PENDING',$14,$15,$15)
+                RETURNING *
+            `, [
+                id,
+                bookingNo,
+                Number(req.body.booking_amount || 0),
+                clean(req.body.receipt_no),
+                req.body.finance_required === true,
+                clean(req.body.finance_partner),
+                clean(req.body.loan_status || "NOT_REQUIRED"),
+                req.body.insurance_required === undefined ? true : req.body.insurance_required === true,
+                clean(req.body.insurance_partner),
+                clean(req.body.insurance_status || "PENDING"),
+                req.body.exchange_required === true,
+                clean(req.body.exchange_vehicle_details),
+                clean(req.body.exchange_status || "NOT_REQUIRED"),
+                clean(req.body.remarks || "Booking requested by sales. Vehicle allotment pending."),
+                req.user.id
+            ]);
+
+            booking = created.rows[0];
+            bookingCreated = true;
+        }
+
+        await client.query(`
+            UPDATE leads
+            SET status='BOOKED',
+                booking_request_status='REQUESTED',
+                booking_requested_at=COALESCE(booking_requested_at,NOW()),
+                booking_requested_by=COALESCE(booking_requested_by,$1),
+                vehicle_allocation_status=CASE
+                    WHEN allocated_inventory_id IS NOT NULL THEN 'ALLOCATED'
+                    ELSE 'PENDING_ALLOCATION'
+                END,
+                updated_at=NOW()
+            WHERE id=$2
+        `, [req.user.id, id]);
 
         await logProcessAction({
-            action_key: "BOOKING_REQUESTED",
+            action_key: bookingCreated ? "BOOKING_RECORD_CREATED" : "BOOKING_REQUEST_REFRESHED",
             lead_id: id,
-            entity_id: id,
+            entity_id: booking.id,
+            entity_type: "BOOKING",
             performed_by: req.user.id,
-            old_status: old.rows[0].status,
+            old_status: lead.status,
             new_status: "BOOKED",
-            remarks: clean(req.body.remarks || "Booking requested by sales user"),
-            metadata: { booking_request: true }
+            remarks: clean(req.body.remarks || "Booking requested by sales"),
+            metadata: {
+                booking_id: booking.id,
+                booking_no: booking.booking_no,
+                vehicle_allocation_status: lead.allocated_inventory_id ? "ALLOCATED" : "PENDING_ALLOCATION"
+            }
         });
 
-        res.json({ message: "Booking request created. Vehicle allotment remains controlled by booking/inventory workflow." });
+        await client.query("COMMIT");
+
+        res.json({
+            message: bookingCreated
+                ? "Booking record created. Vehicle allotment is pending if no vehicle is allocated."
+                : "Existing booking request updated.",
+            booking,
+            vehicle_allocation_status: lead.allocated_inventory_id ? "ALLOCATED" : "PENDING_ALLOCATION"
+        });
+
     } catch (err) {
+        await client.query("ROLLBACK");
         console.error("BOOKING REQUEST PROCESS ERROR:", err);
         res.status(err.statusCode || 500).json({ message: err.message || "Failed to request booking" });
+    } finally {
+        client.release();
     }
 });
+
 
 router.get("/logs", auth, async (req, res) => {
     try {
