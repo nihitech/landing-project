@@ -40,6 +40,47 @@ const SOURCES = [
     "SHOWROOM"
 ];
 
+function cleanCodePart(value, fallback = "GEN") {
+  return String(value || fallback)
+    .replace(/[^a-zA-Z]/g, "")
+    .substring(0, 3)
+    .toUpperCase()
+    .padEnd(3, "X");
+}
+
+async function generateLeadCode(pool, companyName, branchName) {
+  const companyCode = cleanCodePart(companyName, "SHI");
+  const branchCode = cleanCodePart(branchName, "GEN");
+
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = String(now.getFullYear()).slice(-2);
+
+  const prefix = `${companyCode}-${branchCode}-${month}${year}`;
+
+  const result = await pool.query(
+    `
+    SELECT lead_code
+    FROM leads
+    WHERE lead_code LIKE $1
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [`${prefix}-%`]
+  );
+
+  let nextSerial = 1;
+
+  if (result.rows.length && result.rows[0].lead_code) {
+    const lastSerial = parseInt(result.rows[0].lead_code.split("-").pop(), 10);
+    if (!Number.isNaN(lastSerial)) {
+      nextSerial = lastSerial + 1;
+    }
+  }
+
+  return `${prefix}-${String(nextSerial).padStart(4, "0")}`;
+}
+
 function normalizePhone(phone) {
     return String(phone || "").replace(/\D/g, "").slice(-10);
 }
