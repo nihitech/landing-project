@@ -46,7 +46,7 @@ function processLeadActionButtons(lead) {
   const id = Number(lead.id);
   return `
     <div class="process-action-buttons">
-      <button onclick="openProcessFollowup(${id})" class="copy-btn">Follow-up</button>
+      <button onclick="quickCompleteDetailedEnquiry(${id})" class="save-btn">Validate</button><button onclick="openProcessFollowup(${id})" class="copy-btn">Follow-up</button>
       <button onclick="quickProcessMove(${id}, 'TEST-DRIVE')" class="copy-btn">Test Drive</button>
       <button onclick="quickProcessBooking(${id})" class="save-btn">Booking</button>
       <button onclick="openProcessQuery(${id})" class="copy-btn">Ask Manager</button>
@@ -159,3 +159,14 @@ async function openManagerReassign(leadId) {
 
 window.answerProcessQuery = answerProcessQuery;
 window.openManagerReassign = openManagerReassign;
+
+async function processCompleteDetailedEnquiry(leadId, remarks = "") {
+  return request(`${API}/process-actions/lead/${leadId}/complete-detailed-enquiry`, { method: "POST", headers: authHeaders(true), body: JSON.stringify({ remarks }) });
+}
+async function quickCompleteDetailedEnquiry(leadId) {
+  const remarks = prompt("Validation remarks / customer confirmation details") || "";
+  try { await processCompleteDetailedEnquiry(leadId, remarks); toast("Customer validated and detailed enquiry completed"); if (typeof loadWorkspaceEngine === "function") await loadWorkspaceEngine(); }
+  catch (err) { toast(err.message || "Validation failed", true); }
+}
+window.processCompleteDetailedEnquiry = processCompleteDetailedEnquiry;
+window.quickCompleteDetailedEnquiry = quickCompleteDetailedEnquiry;

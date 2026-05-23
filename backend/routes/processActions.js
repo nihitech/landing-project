@@ -69,6 +69,7 @@ async function ensureSchema() {
     await db.query(`CREATE INDEX IF NOT EXISTS idx_process_queries_lead ON process_queries(lead_id)`);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_process_queries_status ON process_queries(query_status)`);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_process_action_logs_lead ON process_action_logs(lead_id)`);
+    await db.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS customer_validation_status VARCHAR(50) DEFAULT 'PENDING', ADD COLUMN IF NOT EXISTS detailed_enquiry_completed BOOLEAN DEFAULT false, ADD COLUMN IF NOT EXISTS detailed_enquiry_completed_at TIMESTAMP, ADD COLUMN IF NOT EXISTS validated_by INTEGER REFERENCES users(id), ADD COLUMN IF NOT EXISTS validated_at TIMESTAMP, ADD COLUMN IF NOT EXISTS validation_remarks TEXT`);
 }
 
 async function logProcessAction(payload) {
@@ -91,6 +92,19 @@ async function logProcessAction(payload) {
         JSON.stringify(payload.metadata || {})
     ]);
 
+    return result.rows[0];
+}
+
+
+function isLeadCustomerValidated(lead = {}) {
+    const validation = clean(lead.customer_validation_status).toUpperCase();
+    const status = clean(lead.status).toUpperCase();
+    return lead.detailed_enquiry_completed === true || validation === "OTP_VERIFIED" || validation === "VERIFIED" || ["DETAILED_ENQUIRY","QUALIFIED","TEST-DRIVE","BOOKED","CLOSED"].includes(status);
+}
+async function requireValidatedLeadForForwardAction(leadId) {
+    const result = await db.query(`SELECT id,status,customer_validation_status,detailed_enquiry_completed FROM leads WHERE id=$1 LIMIT 1`, [leadId]);
+    if (!result.rows.length) { const e = new Error("Lead not found"); e.statusCode=404; throw e; }
+    if (!isLeadCustomerValidated(result.rows[0])) { const e = new Error("Customer validation and detailed enquiry completion required before Test Drive or Booking"); e.statusCode=409; throw e; }
     return result.rows[0];
 }
 
@@ -231,6 +245,27 @@ router.post("/queries/:id/answer", auth, async (req, res) => {
     }
 });
 
+
+router.post("/lead/:id/complete-detailed-enquiry", auth, async (req, res) => {
+    try {
+        await ensureSchema();
+        const id = parseId(req.params.id);
+        if (Number.isNaN(id)) return res.status(400).json({ message: "Invalid lead id" });
+        const old = await db.query(`SELECT * FROM leads WHERE id=$1 LIMIT 1`, [id]);
+        if (!old.rows.length) return res.status(404).json({ message: "Lead not found" });
+        const lead = old.rows[0];
+        if (!isManagerUser(req.user) && lead.assigned_to && Number(lead.assigned_to) !== Number(req.user.id)) {
+            return res.status(403).json({ message: "You can validate only your assigned leads" });
+        }
+        const result = await db.query(`UPDATE leads SET customer_validation_status='OTP_VERIFIED', detailed_enquiry_completed=true, detailed_enquiry_completed_at=NOW(), validated_by=$1, validated_at=NOW(), validation_remarks=$2, status=CASE WHEN status IN ('BOOKED','TEST-DRIVE','CLOSED','LOST') THEN status ELSE 'QUALIFIED' END, updated_at=NOW() WHERE id=$3 RETURNING *`, [req.user.id, clean(req.body.remarks || "Customer validated and detailed enquiry completed"), id]);
+        await logProcessAction({action_key:"DETAILED_ENQUIRY_COMPLETED",lead_id:id,entity_id:id,performed_by:req.user.id,old_status:lead.status,new_status:result.rows[0].status,remarks:clean(req.body.remarks || "Customer validated and detailed enquiry completed"),metadata:{customer_validation_status:"OTP_VERIFIED",detailed_enquiry_completed:true}});
+        res.json({ message: "Customer validated and detailed enquiry completed", lead: result.rows[0] });
+    } catch (err) {
+        console.error("DETAILED ENQUIRY COMPLETE ERROR:", err);
+        res.status(500).json({ message: "Failed to complete detailed enquiry" });
+    }
+});
+
 router.post("/lead/:id/status", auth, async (req, res) => {
     try {
         await ensureSchema();
@@ -244,7 +279,8 @@ router.post("/lead/:id/status", auth, async (req, res) => {
             return res.status(400).json({ message: "Invalid next status" });
         }
 
-        const old = await db.query(`SELECT id,status,assigned_to FROM leads WHERE id=$1 LIMIT 1`, [id]);
+        if (["TEST-DRIVE", "BOOKED"].includes(newStatus)) await requireValidatedLeadForForwardAction(id);
+        const old = await db.query(`SELECT id,status,assigned_to,customer_validation_status,detailed_enquiry_completed FROM leads WHERE id=$1 LIMIT 1`, [id]);
         if (!old.rows.length) return res.status(404).json({ message: "Lead not found" });
 
         const oldLead = old.rows[0];
@@ -274,7 +310,7 @@ router.post("/lead/:id/status", auth, async (req, res) => {
         res.json({ message: "Lead moved forward", lead: result.rows[0] });
     } catch (err) {
         console.error("LEAD STATUS PROCESS ERROR:", err);
-        res.status(500).json({ message: "Failed to move lead status" });
+        res.status(err.statusCode || 500).json({ message: err.message || "Failed to move lead status" });
     }
 });
 
@@ -336,6 +372,8 @@ router.post("/lead/:id/request-booking", auth, async (req, res) => {
         const id = parseId(req.params.id);
         if (Number.isNaN(id)) return res.status(400).json({ message: "Invalid lead id" });
 
+        await requireValidatedLeadForForwardAction(id);
+
         const old = await db.query(`SELECT * FROM leads WHERE id=$1 LIMIT 1`, [id]);
         if (!old.rows.length) return res.status(404).json({ message: "Lead not found" });
 
@@ -355,7 +393,7 @@ router.post("/lead/:id/request-booking", auth, async (req, res) => {
         res.json({ message: "Booking request created. Vehicle allotment remains controlled by booking/inventory workflow." });
     } catch (err) {
         console.error("BOOKING REQUEST PROCESS ERROR:", err);
-        res.status(500).json({ message: "Failed to request booking" });
+        res.status(err.statusCode || 500).json({ message: err.message || "Failed to request booking" });
     }
 });
 
