@@ -49,7 +49,7 @@ function processLeadActionButtons(lead) {
       <button onclick="quickCompleteDetailedEnquiry(${id})" class="save-btn">Validate</button><button onclick="openProcessFollowup(${id})" class="copy-btn">Follow-up</button>
       <button onclick="quickProcessMove(${id}, 'TEST-DRIVE')" class="copy-btn">Test Drive</button>
       <button onclick="quickProcessBooking(${id})" class="save-btn">Booking</button>
-      <button onclick="openProcessQuery(${id})" class="copy-btn">Ask Manager</button>
+      <button onclick="openProcessQuery(${id})" class="copy-btn">Ask Manager</button><a href="call-logs.html?lead=${id}" class="copy-btn">Call Log</a>
     </div>
   `;
 }

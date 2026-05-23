@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS call_logs (
+id SERIAL PRIMARY KEY,lead_id INTEGER REFERENCES leads(id),customer_name VARCHAR(200),customer_phone VARCHAR(30),call_direction VARCHAR(30) DEFAULT 'OUTBOUND',call_type VARCHAR(80) DEFAULT 'FOLLOW_UP',call_status VARCHAR(80) DEFAULT 'COMPLETED',call_started_at TIMESTAMP DEFAULT NOW(),call_duration_seconds INTEGER DEFAULT 0,recording_url TEXT,recording_file_name VARCHAR(250),summary TEXT,customer_response TEXT,next_followup_at TIMESTAMP,created_by INTEGER REFERENCES users(id),branch_id INTEGER,metadata JSONB DEFAULT '{}'::jsonb,created_at TIMESTAMP DEFAULT NOW(),updated_at TIMESTAMP DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS idx_call_logs_lead ON call_logs(lead_id);
+CREATE INDEX IF NOT EXISTS idx_call_logs_created_by ON call_logs(created_by);
+INSERT INTO permission_master(permission_key,permission_label,module_name) VALUES ('call_recording.view','View Call Recordings','Call Recording'),('call_recording.upload','Upload Call Recording','Call Recording') ON CONFLICT(permission_key) DO NOTHING;

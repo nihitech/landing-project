@@ -65,6 +65,8 @@ const ROLE_CONFIG = {
       ["Quick Enquiries", "quick-enquiries.html", "copy-btn"],
       ["QR Leads", "showroom-qr-admin.html", "copy-btn"],
       ["Communications", "communications.html", "copy-btn"],
+      ["Call Logs", "call-logs.html", "copy-btn"],
+      ["Call Logs", "call-logs.html", "copy-btn"],
       ["Reports", "reports.html", "copy-btn"],
       ["Data Change Approvals", "data-change-approvals.html", "copy-btn"]
     ]
