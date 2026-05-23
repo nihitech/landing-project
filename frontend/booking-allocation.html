@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booking Allocation Queue</title>
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+<div id="sidebarContainer"></div>
+<main class="main-content">
+<header class="module-header">
+<div>
+<span class="tag">Booking Allocation</span>
+<h1>🚘 Booking Allocation Queue</h1>
+<p>Pending booking requests waiting for VIN / vehicle allocation.</p>
+</div>
+<div class="module-actions">
+<button onclick="loadAllocationQueue()" class="copy-btn">Refresh</button>
+<button onclick="logout()" class="logout-btn">Logout</button>
+</div>
+</header>
+
+<section class="workspace-kpi-grid">
+<div class="summary-card"><span>Pending Allocation</span><strong id="pendingCount">0</strong></div>
+<div class="summary-card"><span>Loaded Inventory Options</span><strong id="inventoryCount">0</strong></div>
+</section>
+
+<section class="role-workspace-layout">
+<div class="table-card">
+<div class="page-header">
+<h2>Pending Booking Requests</h2>
+<p>Select a booking to view matching available vehicles.</p>
+</div>
+<div id="bookingQueue" class="role-task-list"></div>
+</div>
+
+<div class="table-card">
+<div class="page-header">
+<h2>Available Vehicles</h2>
+<p id="selectedBookingText">Select a booking first.</p>
+</div>
+<div id="inventoryOptions" class="role-task-list"></div>
+</div>
+</section>
+
+</main>
+</div>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('booking-allocation');</script>
+<script src="./js/booking-allocation.js"></script>
+</body>
+</html>

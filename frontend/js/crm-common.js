@@ -247,6 +247,7 @@ const CRM_MENU = [
         title: "Conversion",
         children: [
           { title: "Bookings", url: "bookings.html", key: "bookings" },
+          { title: "Booking Allocation", url: "booking-allocation.html", key: "booking-allocation" },
           { title: "Delivery / PDI", url: "delivery.html", key: "delivery" }
         ]
       }

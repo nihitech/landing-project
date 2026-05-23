@@ -1,0 +1,3 @@
+-- Booking Allocation Queue v1
+-- Uses existing bookings, leads and vehicle_inventory_units tables.
+-- No destructive DB changes.
