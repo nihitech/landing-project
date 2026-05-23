@@ -27,6 +27,7 @@ const notificationRoutes = require("./routes/notifications");
 const customerTimelineRoutes = require("./routes/customerTimeline");
 const processActionRoutes = require("./routes/processActions");
 const callLogRoutes = require("./routes/callLogs");
+const performanceScorecardRoutes = require("./routes/performanceScorecard");
 
 const app = express();
 
@@ -108,6 +109,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/customer-timeline", customerTimelineRoutes);
 app.use("/api/process-actions", processActionRoutes);
 app.use("/api/call-logs", callLogRoutes);
+app.use("/api/performance-scorecard", performanceScorecardRoutes);
 // Test routes
 app.get("/", (req, res) => {
     res.json({ message: "Mahindra Lead CRM API running" });

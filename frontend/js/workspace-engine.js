@@ -24,6 +24,7 @@ const ROLE_CONFIG = {
       ["+ Quick Enquiry", "sales-dashboard.html", "save-btn"],
       ["My Leads", "leads.html", "copy-btn"],
       ["Follow-ups", "followups.html", "copy-btn"],
+      ["Scorecard", "performance-scorecard.html", "copy-btn"],
       ["Vehicle Status", "vehicle-status.html", "copy-btn"],
       ["Bookings", "bookings.html", "copy-btn"],
       ["Field Activity", "field-activities.html", "copy-btn"]
@@ -40,6 +41,7 @@ const ROLE_CONFIG = {
       ["Delivery Readiness", "delivery-readiness.html", "copy-btn"],
       ["Approvals", "data-change-approvals.html", "copy-btn"],
       ["Reports", "reports.html", "copy-btn"],
+      ["Scorecard", "performance-scorecard.html", "copy-btn"],
       ["QR Enquiries", "showroom-qr-admin.html", "copy-btn"]
     ]
   },
@@ -68,6 +70,7 @@ const ROLE_CONFIG = {
       ["Call Logs", "call-logs.html", "copy-btn"],
       ["Call Logs", "call-logs.html", "copy-btn"],
       ["Reports", "reports.html", "copy-btn"],
+      ["Scorecard", "performance-scorecard.html", "copy-btn"],
       ["Data Change Approvals", "data-change-approvals.html", "copy-btn"]
     ]
   },

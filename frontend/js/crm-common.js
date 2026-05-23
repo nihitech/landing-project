@@ -211,7 +211,8 @@ const CRM_MENU = [
       { title: "Control Center", url: "dashboard.html", key: "dashboard" },
       { title: "Activity Intelligence", url: "activity.html", key: "activity", adminOnly: true },
       { title: "Analytics", url: "analytics.html", key: "analytics" },
-      { title: "Performance", url: "performance.html", key: "performance" }
+      { title: "Performance", url: "performance.html", key: "performance" },
+      { title: "Scorecard", url: "performance-scorecard.html", key: "performance-scorecard" }
     ]
   },
   {

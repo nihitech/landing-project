@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Performance Scorecard</title>
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body class="crm-v2">
+<div class="crm-layout">
+<div id="sidebarContainer"></div>
+<main class="main-content">
+<header class="module-header">
+<div>
+<span class="tag">Performance Intelligence</span>
+<h1>📊 Role Performance Scorecard</h1>
+<p>Sales, telecalling, digital and manager performance based on real workflow activity.</p>
+</div>
+<div class="module-actions">
+<input id="fromDate" type="date">
+<input id="toDate" type="date">
+<button onclick="loadScorecard()" class="copy-btn">Refresh</button>
+<button onclick="logout()" class="logout-btn">Logout</button>
+</div>
+</header>
+
+<section class="scorecard-hero">
+<div>
+<span>Your Score</span>
+<strong id="mainScore">0</strong>
+<p id="scoreRole">-</p>
+</div>
+<div id="ratioGrid" class="score-ratio-grid"></div>
+</section>
+
+<section class="workspace-kpi-grid">
+<div class="summary-card"><span>Total Leads</span><strong id="leadTotal">0</strong></div>
+<div class="summary-card"><span>Qualified</span><strong id="qualifiedTotal">0</strong></div>
+<div class="summary-card"><span>Bookings</span><strong id="bookingTotal">0</strong></div>
+<div class="summary-card"><span>Calls</span><strong id="callTotal">0</strong></div>
+<div class="summary-card"><span>Missed Follow-ups</span><strong id="missedTotal">0</strong></div>
+</section>
+
+<section class="role-workspace-layout">
+<div class="table-card">
+<div class="page-header"><h2>Team Performance</h2><p>Visible for manager / digital / admin roles.</p></div>
+<table class="report-table">
+<thead><tr><th>User</th><th>Role</th><th>Leads</th><th>Bookings</th><th>Calls</th><th>Score</th></tr></thead>
+<tbody id="teamTable"></tbody>
+</table>
+</div>
+
+<div class="table-card">
+<div class="page-header"><h2>Source Performance</h2><p>Lead source-wise conversion.</p></div>
+<div id="sourceList" class="role-task-list"></div>
+</div>
+</section>
+
+</main>
+</div>
+<script src="./js/crm-common.js"></script>
+<script>loadLayout('performance-scorecard');</script>
+<script src="./js/performance-scorecard.js"></script>
+</body>
+</html>

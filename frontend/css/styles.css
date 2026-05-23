@@ -4277,3 +4277,25 @@ select.vehicle-intel-select,
 .readiness-pill.done{background:#ecfdf5;color:#047857;border-color:#bbf7d0}
 .blocker-note{margin-top:10px;padding:10px;border-radius:12px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
 @media(max-width:900px){.readiness-head{flex-direction:column}}
+
+
+/* Performance Scorecard v1 */
+.scorecard-hero{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  align-items:stretch;
+  background:#111827;
+  color:#fff;
+  border-radius:24px;
+  padding:24px;
+  margin-bottom:20px;
+}
+.scorecard-hero span,.scorecard-hero p{color:#cbd5e1;margin:0}
+.scorecard-hero strong{display:block;font-size:56px;line-height:1}
+.score-ratio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;min-width:55%}
+.score-ratio{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:12px}
+.score-ratio strong{font-size:22px;margin-top:5px}
+.score-bar{height:8px;background:rgba(255,255,255,.16);border-radius:999px;overflow:hidden;margin-top:8px}
+.score-bar i{display:block;height:100%;background:#22c55e;border-radius:999px}
+@media(max-width:900px){.scorecard-hero{flex-direction:column}.score-ratio-grid{min-width:100%}}
