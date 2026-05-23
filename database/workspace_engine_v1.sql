@@ -1,0 +1,1 @@
+-- Workspace Engine v1 uses existing tables and APIs. No destructive DB changes.

@@ -220,7 +220,7 @@ const CRM_MENU = [
     key: "workspaces",
     tone: "workspace",
     children: [
-      { title: "My Workspace", url: "workspace-router.html", key: "workspace-router" },
+      { title: "My Workspace", url: "workspace.html", key: "workspace" },
       { title: "Sales Workspace", url: "sales-dashboard.html", key: "sales-dashboard" },
       { title: "Reception Workspace", url: "receptionist-dashboard.html", key: "receptionist-dashboard" },
       { title: "Manager Workspace", url: "manager-dashboard.html", key: "manager-dashboard" },
@@ -346,7 +346,7 @@ function loadLayout(activeKey = "") {
       </div>
 
       <nav class="sidebar-tree nikrion-tree">
-        ${CRM_MENU.map(group => renderMenuGroup(group, activeKey)).join("")}
+        ${CRM_MENU.filter(menuAllowedForRole).map(group => renderMenuGroup(group, activeKey)).join("")}
       </nav>
 
       <div class="sidebar-signature">
@@ -378,7 +378,7 @@ function renderMenuGroup(group, activeKey) {
         <b>⌄</b>
       </button>
       <div class="menu-children">
-        ${(group.children || []).map(child => renderMenuNode(child, activeKey, 1)).join("")}
+        ${(group.children || []).filter(menuAllowedForRole).map(child => renderMenuNode(child, activeKey, 1)).join("")}
       </div>
     </div>
   `;
@@ -402,7 +402,7 @@ function renderMenuNode(node, activeKey, level = 1) {
         <b>⌄</b>
       </button>
       <div class="menu-node-children">
-        ${(node.children || []).map(child => renderMenuNode(child, activeKey, level + 1)).join("")}
+        ${(node.children || []).filter(menuAllowedForRole).map(child => renderMenuNode(child, activeKey, level + 1)).join("")}
       </div>
     </div>
   `;
@@ -486,13 +486,13 @@ async function applyGovernanceUiRules() {
 function workspaceForRole(roleValue = user?.role) {
   const role = String(roleValue || "sales").toLowerCase();
 
-  if (["receptionist", "front_office", "cre", "customer_relation_executive"].includes(role)) return "receptionist-dashboard.html";
-  if (["manager", "sales_manager", "team_leader", "branch_manager", "bm"].includes(role)) return "manager-dashboard.html";
+  if (["receptionist", "front_office", "cre", "customer_relation_executive"].includes(role)) return "workspace.html";
+  if (["manager", "sales_manager", "team_leader", "branch_manager", "bm"].includes(role)) return "workspace.html";
   if (["field", "field_executive"].includes(role)) return "field-dashboard.html";
-  if (["gm", "dgm", "md", "ceo", "director", "owner"].includes(role)) return "executive-dashboard.html";
+  if (["gm", "dgm", "md", "ceo", "director", "owner"].includes(role)) return "workspace.html";
   if (["admin", "super_admin", "system_admin"].includes(role)) return "dashboard.html";
 
-  return "sales-dashboard.html";
+  return "workspace.html";
 }
 
 function goToMyWorkspace() {
@@ -506,4 +506,17 @@ function maybeRedirectDashboardToWorkspace() {
     const target = workspaceForRole(role);
     if (target && target !== "dashboard.html") window.location.replace(target);
   }
+}
+
+
+function menuAllowedForRole(node) {
+  const role = String(user?.role || "sales").toLowerCase();
+  if (["admin","super_admin","system_admin","owner","director","ceo"].includes(role)) return true;
+  const text = `${node?.title || ""} ${node?.url || ""}`.toLowerCase();
+  const sales = ["workspace","lead","quick","follow","vehicle-status","communication","notification","timeline","booking"];
+  const manager = [...sales,"approval","report"];
+  const receptionist = ["workspace","showroom","qr","quick","lead","notification","timeline"];
+  const allowed = ["manager","sales_manager","team_leader","branch_manager","bm"].includes(role) ? manager : ["receptionist","front_office","cre"].includes(role) ? receptionist : sales;
+  if (!node.url && node.children) return node.children.some(menuAllowedForRole);
+  return allowed.some(k => text.includes(k));
 }

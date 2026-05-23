@@ -1,0 +1,3 @@
+-- Manager Query & Approval Workspace v1
+-- Uses existing process_queries and process_action_logs tables from Process Action Engine v1.
+-- No destructive DB changes.

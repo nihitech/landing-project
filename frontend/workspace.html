@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>NIKRION Workspace</title><link rel="stylesheet" href="./css/styles.css"></head>
+<body class="crm-v2"><div class="crm-layout"><div id="sidebarContainer"></div><main class="main-content">
+<header class="module-header"><div><span class="tag" id="workspaceRoleTag">Workspace</span><h1 id="workspaceTitle">My Workspace</h1><p id="workspaceSubtitle">Role-based widgets and process actions.</p></div><div class="module-actions"><button onclick="loadWorkspaceEngine()" class="copy-btn">Refresh</button><button onclick="logout()" class="logout-btn">Logout</button></div></header>
+<section id="profileWidget" class="workspace-profile-card"></section>
+<section id="workspaceKpis" class="workspace-kpi-grid role-kpi-grid"></section>
+<section class="workspace-engine-layout"><div id="primaryWidgets" class="workspace-widget-stack"></div><aside id="actionWidgets" class="workspace-widget-stack"></aside></section>
+</main></div><script src="./js/crm-common.js"></script><script>loadLayout('workspace');</script><script src="./js/process-actions.js"></script>
+<script src="./js/workspace-engine.js"></script></body></html>

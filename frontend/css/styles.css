@@ -4240,3 +4240,28 @@ select.vehicle-intel-select,
     grid-template-columns: 1fr;
   }
 }
+
+/* Workspace Engine v1 */
+.workspace-profile-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e2e8f0;border-radius:22px;padding:16px;margin-bottom:20px;box-shadow:0 12px 30px rgba(15,23,42,.05)}
+.workspace-avatar{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:#111827;color:#fff;font-size:24px;font-weight:800}
+.workspace-profile-card strong,.workspace-profile-card small{display:block}.workspace-profile-card small{color:#64748b;margin-top:4px}.workspace-score{margin-left:auto;text-align:right}.workspace-score span,.workspace-score b{display:block}.workspace-score span{color:#64748b;font-size:12px}
+.workspace-engine-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px}.workspace-widget-stack{display:grid;gap:20px}.workspace-widget-card{margin-bottom:0}
+@media(max-width:980px){.workspace-engine-layout{grid-template-columns:1fr}.workspace-score{margin-left:0;text-align:left}.workspace-profile-card{align-items:flex-start;flex-direction:column}}
+
+
+/* Process Action Engine v1 */
+.process-action-buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+.process-action-buttons button{
+  min-height:34px;
+}
+
+
+/* Manager Query Workspace v1 */
+.query-task small b{
+  color:#0f172a;
+}
